@@ -48,7 +48,7 @@ int main(int argc, char* argv[]){
 	printf("R14: %lx excuted\n", reg.r_r14);
 	printf("R15: %lx excuted\n", reg.r_r15);
 
-	ptrace(PT_DETACH, pid, NULL, 0);
+	ptrace(PT_DETACH, pid, (caddr_t)1, 0);
 	printf("Process detached\n");
 	return 0;
 }
