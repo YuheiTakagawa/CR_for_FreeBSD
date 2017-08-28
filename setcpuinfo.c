@@ -1,6 +1,5 @@
 #include <assert.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <sys/ptrace.h>
 #include <sys/wait.h>
@@ -36,6 +35,10 @@ int main(int argc, char* argv[]){
 		} else if (WIFSTOPPED(status)){
 			printf("stop %d\n", WSTOPSIG(status));
 			rc = ptrace(PT_GETREGS, pid, (caddr_t)&reg, 0);
+			if((int)reg.r_rax==0xf0)
+				reg.r_rbx = reg.r_rbx+10;
+			rc = ptrace(PT_SETREGS, pid, (caddr_t)&reg, 0);
+			rc = ptrace(PT_GETREGS, pid, (caddr_t)&reg, 0);
 			if(rc < 0){
 				perror("ptrace");
 				exit (1);
@@ -48,8 +51,6 @@ int main(int argc, char* argv[]){
 			printf("RSI: %lx excuted\n", reg.r_rsi);
 			printf("RDI: %lx excuted\n", reg.r_rdi);
 			printf("RBP: %lx excuted\n", reg.r_rbp);
-			printf("RIP: %lx excuted\n", reg.r_rip);
-			printf("FLG: %lx excuted\n", reg.r_rflags);
 			printf("R8 : %lx excuted\n", reg.r_r8);
 			printf("R9 : %lx excuted\n", reg.r_r9);
 			printf("R10: %lx excuted\n", reg.r_r10);
@@ -58,17 +59,10 @@ int main(int argc, char* argv[]){
 			printf("R13: %lx excuted\n", reg.r_r13);
 			printf("R14: %lx excuted\n", reg.r_r14);
 			printf("R15: %lx excuted\n", reg.r_r15);
-			printf("CS : %lx excuted\n", reg.r_cs);
-			printf("SS : %lx excuted\n", reg.r_ss);
-			printf("DS : %lx excuted\n", reg.r_ds);
-			printf("ES : %lx excuted\n", reg.r_es);
-			printf("FS : %lx excuted\n", reg.r_fs);
-			printf("GS : %lx excuted\n", reg.r_gs);
 		}
 		//reg.r_r9 = 0xa;
 		//rc = ptrace(PT_SETREGS, pid, (caddr_t)&reg, 0);
 		//ptrace(PT_CONTINUE, pid, (caddr_t)1, 0);
-		sleep(1);
 		ptrace(PT_SYSCALL, pid, (caddr_t)1 , 0);
 		printf("process cotinue\n");
 		count++;
