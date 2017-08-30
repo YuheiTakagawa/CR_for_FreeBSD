@@ -48,6 +48,7 @@ int main(int argc, char* argv[]){
 			printf("RSI: %lx excuted\n", reg.r_rsi);
 			printf("RDI: %lx excuted\n", reg.r_rdi);
 			printf("RBP: %lx excuted\n", reg.r_rbp);
+			printf("RSP: %lx excuted\n", reg.r_rsp);
 			printf("RIP: %lx excuted\n", reg.r_rip);
 			printf("FLG: %lx excuted\n", reg.r_rflags);
 			printf("R8 : %lx excuted\n", reg.r_r8);
