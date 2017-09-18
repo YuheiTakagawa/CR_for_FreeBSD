@@ -6,7 +6,7 @@
 #include <sys/ptrace.h>
 #include <sys/wait.h>
 
-#define BUFSIZE 1024
+#define BUFSIZE 1024 
 int main(int argc, char* argv[]){
 	pid_t pid;
 	char mempath[30] = {'\0'};
@@ -39,7 +39,11 @@ int main(int argc, char* argv[]){
 	}
 
 
-	ptrace(PT_ATTACH, pid, NULL, 0);
+	if(ptrace(PT_ATTACH, pid, NULL, 0) < 0){
+		perror("ptrace");
+		exit (1);
+	}
+
 	waitpid(pid, &status, 0);
 	if(WIFEXITED(status)){
 			printf("exited");
@@ -48,14 +52,11 @@ int main(int argc, char* argv[]){
 	else if(WIFSTOPPED(status)){
 
 	lseek(mem_fd, 0x400000, SEEK_SET);
-	
-	while(1){
+	while(1){	
 		rnum = read(mem_fd, buf, sizeof(buf));
 		printf("%d\n", rnum);
 		if(rnum > 0){
 			write(memdump_fd, buf, rnum);
-		}else if(rnum == 0){
-			break;
 		}else{
 			close(mem_fd);
 			close(memdump_fd);
@@ -64,8 +65,11 @@ int main(int argc, char* argv[]){
 		}
 	}
 	}
-	ptrace(PT_CONTINUE, pid, NULL, 0);
-	ptrace(PT_DETACH, pid, NULL, 0);
+	if(ptrace(PT_DETACH, pid, NULL, 0) < 0){
+		perror("ptrace");
+		exit(1);
+	}
+	printf("detach\n");
 
 	return 0;
 }
