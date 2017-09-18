@@ -10,6 +10,8 @@
 
 int target(char *path, char* argv[]);
 int getregs(int pid);
+int setregs(int pid);
+int setmem(int pid);
 
 int main(int argc, char* argv[]){
 	int pid;
@@ -36,10 +38,16 @@ int main(int argc, char* argv[]){
 				perror("waitpid");
 				exit(1);
 			}
+			if(WSTOPSIG(status) == SIGTRAP){
+				printf("sigtrap\n");
+				getregs(pid);
+				setregs(pid);
+			}
 			if(WIFSTOPPED(status)){
 				printf("stopped\n");
 				getregs(pid);
 				ptrace(PT_CONTINUE, pid, (caddr_t)1, 0);
+			//	ptrace(PT_SYSCALL, pid, (caddr_t)1, 0);
 			}else if(WIFEXITED(status)){
 				perror("exited");
 				exit(1);
@@ -71,6 +79,31 @@ int getregs(int pid){
 	printf("RBX: %lx \n", reg.r_rbx);
 	printf("RCX: %lx \n", reg.r_rcx);
 	printf("RDX: %lx \n", reg.r_rdx);
+	printf("RSI: %lx \n", reg.r_rsi);
+	printf("RDI: %lx \n", reg.r_rdi);
+	printf("RBP: %lx \n", reg.r_rbp);
+	printf("RSP: %lx \n", reg.r_rsp);
+	printf("RIP: %lx \n", reg.r_rip);
+	printf("FLG: %lx \n", reg.r_rflags);
+	printf("R8: %lx \n", reg.r_r8);
+	printf("R9: %lx \n", reg.r_r9);
+	printf("R10: %lx \n", reg.r_r10);
+	printf("R11: %lx \n", reg.r_r11);
+	return 0;
+}
 
+int setregs(int pid){
+	struct reg reg;
+
+	reg.r_rax = 0x1;
+	reg.r_rbx = 0x2;
+	reg.r_rcx = 0x0;
+	reg.r_rdx = 0x0;
+
+	ptrace(PT_SETREGS, pid, (caddr_t)&reg, 0);
+	return 0;
+}
+
+int setmem(int pid){
 	return 0;
 }
