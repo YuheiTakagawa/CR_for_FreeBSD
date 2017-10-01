@@ -15,14 +15,19 @@ int main(int argc, char* argv[]){
 	int mem_fd, memdump_fd;
 	int rnum;
 	int status;
-	
-	if(argc < 2){
-		printf("Usage: %s <pid>\n", argv[0]);
+	long int da, st;
+
+	if(argc < 4){
+		printf("Usage: %s <pid> <Data address> <Stack address>\n",argv[0]);
 		exit(1);
 	}
 
 	pid = atoi(argv[1]);
-
+	
+	da = strtol(argv[2], NULL, 16);
+	st = strtol(argv[3], NULL, 16);
+	printf("da: %lx\n", da);
+	printf("st: %lx\n", st);
 
 	snprintf(mempath, 30, "/proc/%d/mem", pid);
 	mem_fd = open(mempath, O_RDWR);
