@@ -12,7 +12,7 @@ int main(int argc, char* argv[]){
 	char mempath[30] = {'\0'};
 	char dumppath[30] = {'\0'};
 	char buf[BUFSIZE];
-	int mem_fd, memdump_fd;
+	int mem_fd, memdatadump_fd,memstackdump_fd;
 	int rnum;
 	int status;
 	long int da, st;
@@ -36,9 +36,11 @@ int main(int argc, char* argv[]){
 		exit(1);
 	}
 
-	snprintf(dumppath, 30, "/dump/%d_mem.img", pid);
-	memdump_fd = open(dumppath, O_WRONLY | O_CREAT);
-	if(memdump_fd < 0){
+	snprintf(dumppath, 30, "/dump/%d_memdata.img", pid);
+	memdatadump_fd = open(dumppath, O_WRONLY | O_CREAT);
+	snprintf(dumppath, 30, "/dump/%d_memstack.img", pid);
+	memstackdump_fd = open(dumppath, O_WRONLY | O_CREAT);
+	if(memdatadump_fd < 0 || memstackdump_fd < 0){
 		perror("open");
 		exit(1);
 	}
@@ -56,19 +58,33 @@ int main(int argc, char* argv[]){
 			}
 	else if(WIFSTOPPED(status)){
 
-	lseek(mem_fd, 0x400000, SEEK_SET);
+	lseek(mem_fd, da, SEEK_SET);
 	while(1){	
 		rnum = read(mem_fd, buf, sizeof(buf));
 		printf("%d\n", rnum);
 		if(rnum > 0){
-			write(memdump_fd, buf, rnum);
+			write(memdatadump_fd, buf, rnum);
 		}else{
-			close(mem_fd);
-			close(memdump_fd);
+			close(memdatadump_fd);
 			printf("closed files\n");
 			break;
 		}
 	}
+
+	lseek(mem_fd, st, SEEK_SET);
+	while(1){	
+		rnum = read(mem_fd, buf, sizeof(buf));
+		printf("%d\n", rnum);
+		if(rnum > 0){
+			write(memstackdump_fd, buf, rnum);
+		}else{
+			close(memstackdump_fd);
+			printf("closed files\n");
+			break;
+		}
+	}
+
+	close(mem_fd);
 	}
 	if(ptrace(PT_DETACH, pid, NULL, 0) < 0){
 		perror("ptrace");
