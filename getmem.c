@@ -97,6 +97,23 @@ int tracing (pid_t pid, long int stackoffset, long int dataoffset){
 	return 0;
 }
 
+int getmems(pid_t pid){
+	int read_fd, dump_fd;
+	
+	read_fd = open_read_file(pid);
+	
+	dump_fd = open_dump_file(pid, "data");
+	getmem(read_fd, dump_fd, dataoffset);
+
+	dump_fd = open_dump_file(pid, "stack");
+	getmem(read_fd, dump_fd, stackoffset);
+
+	close(read_fd);
+	return 0;
+}
+
+
+
 int getmem(int read_fd, int dump_fd, long int offset){
 	char buf[BUFSIZE];
 	int rnum;
