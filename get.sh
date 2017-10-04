@@ -15,9 +15,10 @@ data=`cat /compat/linux/proc/$pid/maps |\
 
 echo data address is $data
 
-stack=`cat /compat/linux/proc/$pid/maps |\
-	grep -E  "\\[stack\]"|\
-	cut -d'-' -f1`
+#stack=`cat /compat/linux/proc/$pid/maps |\
+#	grep -E  "\\[stack\]"|\
+#	cut -d'-' -f1`
 
+stack=7ffffffdf000
 echo stack address is $stack
 /CR_for_FreeBSD/getall $pid $data $stack
