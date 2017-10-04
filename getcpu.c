@@ -11,7 +11,7 @@
 #include <stdlib.h>
 
 int tracing(pid_t pid, int fd);
-int getregs(pid_t pid, int fd);
+int getregs(pid_t pid);
 int open_dump_file(pid_t pid, char* dumptype);
 
 int main(int argc, char* argv[]){
@@ -23,7 +23,6 @@ int main(int argc, char* argv[]){
 	}
 	pid = atoi(argv[1]);
 
-	fd = open_dump_file(pid, "regs");
 	tracing(pid, fd);
 }
 
@@ -48,9 +47,13 @@ int open_dump_file(pid_t pid, char *dumptype){
  * "pid" is target Process Identify, "fd" is file descriptor of dump file
  */
 
-int getregs(pid_t pid, int fd){
+int getregs(pid_t pid){
 	struct reg reg;
 	int rc;
+	int fd;
+
+	fd = open_dump_file(pid, "regs");
+
 	memset(&reg, 0, sizeof(reg));
 		
 	rc = ptrace(PT_GETREGS, pid, (caddr_t)&reg, 0);
@@ -100,7 +103,7 @@ int tracing(pid_t pid, int fd){
 	if(WIFEXITED(status)){
 	} else if (WIFSTOPPED(status)){
 		printf("stop %d\n", WSTOPSIG(status));
-		getregs(pid, fd);
+		getregs(pid);
 	}
 
 	ptrace(PT_DETACH, pid, (caddr_t)1, 0);
