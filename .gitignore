@@ -3,3 +3,4 @@
 !/.gitignore
 !/test/
 !/test/count*
+!/*.sh
