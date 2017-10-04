@@ -7,14 +7,16 @@
 #include <sys/wait.h>
 
 #define BUFSIZE 1024 
+#define PATHBUF 30
+
+int open_read_file(pid_t pid);
+int open_dump_file(pid_t pid, char* dumptype);
+int tracing(pid_t pid, long int daoffset, long int stoffset);
+int getmem(int read_fd, int dump_fd, long int offset);
+
+
 int main(int argc, char* argv[]){
 	pid_t pid;
-	char mempath[30] = {'\0'};
-	char dumppath[30] = {'\0'};
-	char buf[BUFSIZE];
-	int mem_fd, memdatadump_fd,memstackdump_fd;
-	int rnum;
-	int status;
 	long int da, st;
 
 	if(argc < 4){
@@ -23,29 +25,49 @@ int main(int argc, char* argv[]){
 	}
 
 	pid = atoi(argv[1]);
-	
+
 	da = strtol(argv[2], NULL, 16);
 	st = strtol(argv[3], NULL, 16);
 	printf("da: %lx\n", da);
 	printf("st: %lx\n", st);
 
-	snprintf(mempath, 30, "/proc/%d/mem", pid);
-	mem_fd = open(mempath, O_RDWR);
-	if(mem_fd < 0){
+	tracing(pid, da, st);
+
+}
+
+int open_read_file(pid_t pid){
+	int fd;
+	char filepath[PATHBUF] = {'\0'};
+	
+	snprintf(filepath, sizeof(filepath), "/proc/%d/mem", pid);
+	fd = open(filepath, O_RDONLY);
+	if(fd < 0){
 		perror("open");
 		exit(1);
 	}
 
-	snprintf(dumppath, 30, "/dump/%d_memdata.img", pid);
-	memdatadump_fd = open(dumppath, O_WRONLY | O_CREAT);
-	snprintf(dumppath, 30, "/dump/%d_memstack.img", pid);
-	memstackdump_fd = open(dumppath, O_WRONLY | O_CREAT);
-	if(memdatadump_fd < 0 || memstackdump_fd < 0){
+	return fd;
+}
+
+int open_dump_file(pid_t pid, char *dumptype){
+	int fd;
+	char filepath[PATHBUF] = {'\0'};
+
+	snprintf(filepath, sizeof(filepath) , "/dump/%d_mem%s.img", pid, dumptype);
+	fd = open(filepath, O_WRONLY | O_CREAT);
+	if(fd < 0){
 		perror("open");
 		exit(1);
 	}
 
+	return fd;
+}
 
+
+int tracing (pid_t pid, long int stackoffset, long int dataoffset){
+	int status;
+	int read_fd;
+	int dump_fd;
 	if(ptrace(PT_ATTACH, pid, NULL, 0) < 0){
 		perror("ptrace");
 		exit (1);
@@ -53,44 +75,51 @@ int main(int argc, char* argv[]){
 
 	waitpid(pid, &status, 0);
 	if(WIFEXITED(status)){
-			printf("exited");
-			exit(1);
-			}
-	else if(WIFSTOPPED(status)){
+		printf("exited");
+		exit(1);
+	}else if(WIFSTOPPED(status)){
+		
+		read_fd = open_read_file(pid);
 
-	lseek(mem_fd, da, SEEK_SET);
-	while(1){	
-		rnum = read(mem_fd, buf, sizeof(buf));
-		printf("%d\n", rnum);
-		if(rnum > 0){
-			write(memdatadump_fd, buf, rnum);
-		}else{
-			close(memdatadump_fd);
-			printf("closed files\n");
-			break;
-		}
-	}
-
-	lseek(mem_fd, st, SEEK_SET);
-	while(1){	
-		rnum = read(mem_fd, buf, sizeof(buf));
-		printf("%d\n", rnum);
-		if(rnum > 0){
-			write(memstackdump_fd, buf, rnum);
-		}else{
-			close(memstackdump_fd);
-			printf("closed files\n");
-			break;
-		}
-	}
-
-	close(mem_fd);
+		dump_fd = open_dump_file(pid, "data");
+		getmem(read_fd, dump_fd, dataoffset);
+		
+		dump_fd = open_dump_file(pid, "stack");
+		getmem(read_fd, dump_fd, stackoffset);
+	
 	}
 	if(ptrace(PT_DETACH, pid, NULL, 0) < 0){
 		perror("ptrace");
 		exit(1);
 	}
 	printf("detach\n");
+
+	return 0;
+}
+
+int getmem(int read_fd, int dump_fd, long int offset){
+	char buf[BUFSIZE];
+	int rnum;
+	
+	lseek(read_fd, offset, SEEK_SET);
+
+	while(1){	
+
+		rnum = read(read_fd, buf, sizeof(buf));
+		printf("%d\n", rnum);
+
+		if(rnum > 0){
+		
+			write(dump_fd, buf, rnum);
+		
+		}else{
+		
+			close(dump_fd);
+			printf("closed files\n");
+			break;
+		
+		}
+	}
 
 	return 0;
 }
