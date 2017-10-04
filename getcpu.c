@@ -10,10 +10,10 @@
 #include <string.h>
 #include <stdlib.h>
 
-int tracing(pid_t pid, int fd);
+//int tracing(pid_t pid, int fd);
 int getregs(pid_t pid);
-int open_dump_file(pid_t pid, char* dumptype);
-
+//int open_dump_file(pid_t pid, char* dumptype);
+/*
 int main(int argc, char* argv[]){
 	int fd;
 	pid_t pid;
@@ -40,7 +40,7 @@ int open_dump_file(pid_t pid, char *dumptype){
 	return fd;
 
 }
-
+*/
 /*
  * get register status
  * must run  ptrace(PT_ATTACH) before call this function
@@ -90,7 +90,7 @@ int getregs(pid_t pid){
 	return rc;
 
 }
-
+/*
 int tracing(pid_t pid, int fd){
 	int status;
 	int rc;
@@ -110,4 +110,4 @@ int tracing(pid_t pid, int fd){
 	printf("Process detached\n");
 	return 0;
 }
-
+*/
