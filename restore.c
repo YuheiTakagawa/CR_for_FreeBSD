@@ -8,15 +8,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define BUFSIZE 1024
+#define PATHBUF 30
+
 int target(char *path, char* argv[]);
 int getregs(int pid);
 int setregs(int pid);
-int setmem(int pid);
+int setmems(int pid);
+
 
 int main(int argc, char* argv[]){
 	int pid;
 	int status;
-	char *path;
 	if(argc < 2){
 		printf("Usage: %s path\n", argv[0]);
 		exit(1);
@@ -38,16 +41,12 @@ int main(int argc, char* argv[]){
 				perror("waitpid");
 				exit(1);
 			}
-			if(WSTOPSIG(status) == SIGTRAP){
-				printf("sigtrap\n");
-				getregs(pid);
-				setregs(pid);
-			}
 			if(WIFSTOPPED(status)){
-				printf("stopped\n");
-				getregs(pid);
+				printf("stopped:%d\n", WSTOPSIG(status));
+				//setregs(pid);
+				//setmems(pid);
+				printf("finished setting values\n");
 				ptrace(PT_CONTINUE, pid, (caddr_t)1, 0);
-			//	ptrace(PT_SYSCALL, pid, (caddr_t)1, 0);
 			}else if(WIFEXITED(status)){
 				perror("exited");
 				exit(1);
@@ -70,40 +69,81 @@ int target(char *path, char *argv[]){
 	exit(ret);
 }
 
-
-int getregs(int pid){
-	struct reg reg;
-	ptrace(PT_GETREGS, pid, (caddr_t)&reg, 0);
-
-	printf("RAX: %lx \n", reg.r_rax);
-	printf("RBX: %lx \n", reg.r_rbx);
-	printf("RCX: %lx \n", reg.r_rcx);
-	printf("RDX: %lx \n", reg.r_rdx);
-	printf("RSI: %lx \n", reg.r_rsi);
-	printf("RDI: %lx \n", reg.r_rdi);
-	printf("RBP: %lx \n", reg.r_rbp);
-	printf("RSP: %lx \n", reg.r_rsp);
-	printf("RIP: %lx \n", reg.r_rip);
-	printf("FLG: %lx \n", reg.r_rflags);
-	printf("R8: %lx \n", reg.r_r8);
-	printf("R9: %lx \n", reg.r_r9);
-	printf("R10: %lx \n", reg.r_r10);
-	printf("R11: %lx \n", reg.r_r11);
-	return 0;
-}
-
 int setregs(int pid){
 	struct reg reg;
 
-	reg.r_rax = 0x1;
+	reg.r_rax = 0x4;
 	reg.r_rbx = 0x2;
-	reg.r_rcx = 0x0;
-	reg.r_rdx = 0x0;
+	reg.r_rcx = 0x4b6402b9c5bfacc2;
+	reg.r_rdx = 0x7fffffffe848;
+	reg.r_rsi = 0x7fffffffea60;
+	reg.r_rdi = 0x7fffffffea70;
+	reg.r_rbp = 0x7fffffffeac0;
+	reg.r_rsp = 0x7fffffffea58;
+	reg.r_rip = 0x80090843a;
+	reg.r_rflags = 0x203;
+	reg.r_r8 = 0x2;
+	reg.r_r9 = 0x1;
+	reg.r_r10 = 0x400867;
+	reg.r_r11 = 0x202;
+	reg.r_r12 = 0x7fffffffeb48;
+	reg.r_r13 = 0x7fffffffeb60;
+	reg.r_r14 = 0x800bc0cc0;
+	reg.r_r15 = 0x1;
+	reg.r_cs = 0x43;
+	reg.r_ss = 0x3b;
+	reg.r_ds = 0x3b;
+	reg.r_es = 0x3b;
+	reg.r_fs = 0x13;
+	reg.r_gs = 0x1b;
 
-	ptrace(PT_SETREGS, pid, (caddr_t)&reg, 0);
+	if(ptrace(PT_SETREGS, pid, (caddr_t)&reg, 0) < 0){
+		perror("ptrace");
+		exit(1);
+	}
 	return 0;
 }
 
-int setmem(int pid){
+int setmems(int pid){
+	int write_fd;
+	int read_fd;
+	char filepath[PATHBUF];
+	int rnum;
+	char buf[BUFSIZE];
+
+	snprintf(filepath, sizeof(filepath), "/proc/%d/mem", pid);
+	write_fd = open(filepath, O_WRONLY);
+
+	snprintf(filepath, sizeof(filepath), "/dump/5017_data.img");
+	read_fd = open(filepath, O_RDONLY);
+
+	lseek(write_fd, 0x601000, SEEK_SET);
+
+	while(1){
+		
+		rnum = read(read_fd, buf, sizeof(buf));
+		if(rnum > 0){
+			write(write_fd, buf, rnum);
+		}else{
+			close(read_fd);
+			break;
+		}
+	}
+
+	snprintf(filepath, sizeof(filepath), "/dump/5017_stack.img");
+	read_fd = open(filepath, O_RDONLY);
+
+	lseek(write_fd, 0x7ffffffdf000, SEEK_SET);
+
+	while(1){
+		rnum = read(read_fd, buf, sizeof(buf));
+		if(rnum > 0){
+			write(write_fd, buf, rnum);
+		}else{
+			close(read_fd);
+			break;
+		}
+	}
+	close(write_fd);
 	return 0;
 }
