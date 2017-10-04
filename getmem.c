@@ -10,11 +10,11 @@
 #define PATHBUF 30
 
 int open_read_file(pid_t pid);
-int open_dump_file(pid_t pid, char* dumptype);
+//int open_dump_file(pid_t pid, char* dumptype);
 int tracing(pid_t pid, long int daoffset, long int stoffset);
 int getmem(int read_fd, int dump_fd, long int offset);
 
-
+/*
 int main(int argc, char* argv[]){
 	pid_t pid;
 	long int da, st;
@@ -34,7 +34,7 @@ int main(int argc, char* argv[]){
 	tracing(pid, da, st);
 
 }
-
+*/
 int open_read_file(pid_t pid){
 	int fd;
 	char filepath[PATHBUF] = {'\0'};
@@ -53,7 +53,7 @@ int open_dump_file(pid_t pid, char *dumptype){
 	int fd;
 	char filepath[PATHBUF] = {'\0'};
 
-	snprintf(filepath, sizeof(filepath) , "/dump/%d_mem%s.img", pid, dumptype);
+	snprintf(filepath, sizeof(filepath) , "/dump/%d_%s.img", pid, dumptype);
 	fd = open(filepath, O_WRONLY | O_CREAT);
 	if(fd < 0){
 		perror("open");
@@ -63,8 +63,8 @@ int open_dump_file(pid_t pid, char *dumptype){
 	return fd;
 }
 
-
-int tracing (pid_t pid, long int stackoffset, long int dataoffset){
+/*
+int tracing (pid_t pid, long int dataoffset, long int stackoffset){
 	int status;
 	int read_fd;
 	int dump_fd;
@@ -96,8 +96,8 @@ int tracing (pid_t pid, long int stackoffset, long int dataoffset){
 
 	return 0;
 }
-
-int getmems(pid_t pid){
+*/
+int getmems(pid_t pid, long int dataoffset, long int stackoffset){
 	int read_fd, dump_fd;
 	
 	read_fd = open_read_file(pid);
