@@ -3,13 +3,12 @@
 # get process identify of $1 program running
 pid=`ps ax |\
     	grep $1 |\
-       	grep -v -e grep -e $0  |\
+       	grep -v -e grep -e $0 -e restore |\
        	cut -d' ' -f1`
 
 echo target is $pid
 
 data=`cat /proc/$pid/map |\
-	
 	sed -n 2P |\
 	cut -d' ' -f1`
 
