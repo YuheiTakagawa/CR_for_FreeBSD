@@ -9,7 +9,7 @@ pid=`ps ax |\
 echo target is $pid
 
 data=`cat /proc/$pid/map |\
-	grep $1 |\
+	
 	sed -n 2P |\
 	cut -d' ' -f1`
 
