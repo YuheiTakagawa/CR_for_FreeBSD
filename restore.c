@@ -46,11 +46,16 @@ int main(int argc, char* argv[]){
 				exit(1);
 			}
 			if(WIFSTOPPED(status)){
+				if(flag < 100){
+					ptrace(PT_SYSCALL, pid, (caddr_t)1, 0);
+					flag++;
+				}else{
 				printf("stopped:%d\n", WSTOPSIG(status));
-				setmems(pid, filePid);
-				setregs(pid, filePid);
-				printf("finished setting values\n");
-				ptrace(PT_DETACH, pid, (caddr_t)1, 0);
+					setmems(pid, filePid);
+					setregs(pid, filePid);
+					printf("finished setting values\n");
+					ptrace(PT_DETACH, pid, (caddr_t)1, 0);
+				}
 			}else if(WIFEXITED(status)){
 				perror("exited");
 				exit(1);
