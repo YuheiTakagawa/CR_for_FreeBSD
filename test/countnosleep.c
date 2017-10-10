@@ -7,7 +7,7 @@ int main(char *args[]){
 	for(c = 0; c < 1000000; c++){
 		snprintf(ch, sizeof(ch),  "Hello %d\n", c);
 		write(1, ch, sizeof(ch));
-//		sleep(1);
+		sleep(1);
 	}
 	return 0;
 }
