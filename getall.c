@@ -18,7 +18,6 @@ int tracing(pid_t pid, long int daoffset, long int stoffset);
 
 
 int main(int argc, char* argv[]){
-	int fd;
 	pid_t pid;
 	long int da, st;
 	if(argc < 4){
@@ -51,9 +50,13 @@ int tracing(pid_t pid, long int daoffset, long int stoffset){
 		getregs(pid);
 		getmems(pid, daoffset, stoffset);
 	}
+	
+	printf("Checkpoint\n");
 
+	/*
 	ptrace(PT_DETACH, pid, (caddr_t)1, 0);
 	printf("Process detached\n");
+	*/
 	return 0;
 }
 
