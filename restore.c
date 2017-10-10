@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
+#include <elf.h>
 
 #define BUFSIZE 1024
 #define PATHBUF 30
@@ -22,6 +23,7 @@ int main(int argc, char* argv[]){
 	int pid, filePid;
 	int status;
 	int flag = 0;
+	Elf64_Addr entry_point=0x400530;
 	if(argc < 3){
 		printf("Usage: %s <path> <file pid>\n", argv[0]);
 		exit(1);
@@ -47,7 +49,7 @@ int main(int argc, char* argv[]){
 			}
 			if(WIFSTOPPED(status)){
 				if(flag == 0){
-					ptrace(PT_WRITE_I, pid, (caddr_t)0x400470, 0xCC);
+					ptrace(PT_WRITE_I, pid, (caddr_t)entry_point, 0xCC);
 					ptrace(PT_CONTINUE, pid, (caddr_t)1, 0);
 					flag++;
 				}
