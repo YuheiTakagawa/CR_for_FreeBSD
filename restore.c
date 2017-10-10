@@ -11,23 +11,25 @@
 #define BUFSIZE 1024
 #define PATHBUF 30
 
-#include "getcpu.c"
-#include "getmem.c"
 int target(char *path, char* argv[]);
-int setregs(int pid);
-int setmems(int pid);
+int setmems(pid_t pid, int filePid);
+int write_mem(int read_fd, int write_fd, long int offset);
+int setregs(pid_t pid);
+int open_file(pid_t pid, char* st);
 
 
 int main(int argc, char* argv[]){
-	int pid;
+	int pid, filePid;
 	int status;
 	int flag = 0;
-	if(argc < 2){
-		printf("Usage: %s path\n", argv[0]);
+	if(argc < 3){
+		printf("Usage: %s <path> <file pid>\n", argv[0]);
 		exit(1);
 	}
-	printf("%s\n", argv[1]);
+	filePid = atoi(argv[2]);
+	printf("CMD : %s\n", argv[1]);
 	printf("PPID: %d\n", getpid());
+	printf("Restore file: %d\n", filePid); 
 
 	pid = fork();
 	if(pid < 0){
@@ -45,8 +47,8 @@ int main(int argc, char* argv[]){
 			}
 			if(WIFSTOPPED(status)){
 				printf("stopped:%d\n", WSTOPSIG(status));
+				setmems(pid, filePid);
 				setregs(pid);
-				setmems(pid);
 				ptrace(PT_DETACH, pid, (caddr_t)1, 0);
 				printf("finished setting values\n");
 			}else if(WIFEXITED(status)){
@@ -76,16 +78,16 @@ int setregs(int pid){
 
 	reg.r_rax = 0x4;
 	reg.r_rbx = 0x1;
-	reg.r_rcx = 0x41b5fa;
+	reg.r_rcx = 0xb6732c493a81f428;
 	reg.r_rdx = 0xa;
 	reg.r_rsi = 0x7fffffffea80;
 	reg.r_rdi = 0x7fffffffea90;
 	reg.r_rbp = 0x7fffffffead0;
 	reg.r_rsp = 0x7fffffffea78;
-	reg.r_rip = 0x40b79a;
+	reg.r_rip = 0x40b7aa;
 	reg.r_rflags = 0x203;
-	reg.r_r8 = 0x2;
-	reg.r_r9 = 0x100;
+	reg.r_r8 = 0x7fffffbac830;
+	reg.r_r9 = 0xf;
 	reg.r_r10 = 0x0;
 	reg.r_r11 = 0x7fffffffe958;
 	reg.r_r12 = 0x2;
@@ -105,46 +107,50 @@ int setregs(int pid){
 	return 0;
 }
 
-int setmems(int pid){
+int setmems(pid_t pid, pid_t filePid){
 	int write_fd;
 	int read_fd;
-	char filepath[PATHBUF];
-	int rnum;
 	char buf[BUFSIZE];
 
-	snprintf(filepath, sizeof(filepath), "/proc/%d/mem", pid);
-	write_fd = open(filepath, O_WRONLY);
+	write_fd = open_file(pid, "mem");
+	
 
-	snprintf(filepath, sizeof(filepath), "/dump/5739_data.img");
-	read_fd = open(filepath, O_RDONLY);
+	read_fd = open_file(filePid, "data");
+	write_mem(read_fd, write_fd, 0x665000);	
 
-	lseek(write_fd, 0x665000, SEEK_SET);
+	read_fd = open_file(filePid, "stack");
+	write_mem(read_fd, write_fd, 0x7ffffffdf000);
 
-	while(1){
-		
-		rnum = read(read_fd, buf, sizeof(buf));
-		if(rnum > 0){
-			write(write_fd, buf, rnum);
-		}else{
-			close(read_fd);
-			break;
-		}
-	}
-
-	snprintf(filepath, sizeof(filepath), "/dump/5739_stack.img");
-	read_fd = open(filepath, O_RDONLY);
-
-	lseek(write_fd, 0x7ffffffdf000, SEEK_SET);
-
-	while(1){
-		rnum = read(read_fd, buf, sizeof(buf));
-		if(rnum > 0){
-			write(write_fd, buf, rnum);
-		}else{
-			close(read_fd);
-			break;
-		}
-	}
 	close(write_fd);
 	return 0;
+}
+
+int open_file(pid_t pid, char* flag){
+	char filepath[PATHBUF];
+
+	if(flag == "mem"){
+		snprintf(filepath, sizeof(filepath), "/proc/%d/mem", pid);
+		return  open(filepath, O_WRONLY);
+	}	
+	snprintf(filepath, sizeof(filepath), "/dump/%d_%s.img", pid, flag);
+	return open(filepath, O_RDONLY);
+}
+
+int write_mem(int read_fd, int write_fd, long int offset){
+	char buf[BUFSIZE];
+	int rnum;
+
+	lseek(write_fd, offset, SEEK_SET);
+
+	while(1){
+
+		rnum = read(read_fd, buf, sizeof(buf));
+		if(rnum > 0){
+			write(write_fd, buf, rnum);
+		}else{
+			close(read_fd);
+			break;
+		}
+	}
+	return rnum;
 }
