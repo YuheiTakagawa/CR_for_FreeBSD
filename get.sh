@@ -8,17 +8,18 @@ pid=`ps ax |\
 
 echo target is $pid
 
-data=`cat /compat/linux/proc/$pid/maps |\
-       	grep -A 1 $1 |\
-       	grep -v $1 |\
-       	cut -d'-' -f1`
+data=`cat /proc/$pid/map |\
+	grep $1 |\
+	sed -n 2P |\
+	cut -d' ' -f1`
 
 echo data address is $data
 
-#stack=`cat /compat/linux/proc/$pid/maps |\
-#	grep -E  "\\[stack\]"|\
-#	cut -d'-' -f1`
+stack=`cat /proc/$pid/map |\
+	tail -q -r |\
+	sed -n 2P  |\
+	cut -d' ' -f1`
 
-stack=7ffffffdf000
+#stack=7ffffffdf000
 echo stack address is $stack
 /CR_for_FreeBSD/getall $pid $data $stack
