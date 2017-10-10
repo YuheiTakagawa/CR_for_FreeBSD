@@ -12,9 +12,9 @@
 #define PATHBUF 30
 
 int target(char *path, char* argv[]);
-int setmems(pid_t pid, int filePid);
+int setmems(pid_t pid, pid_t filePid);
 int write_mem(int read_fd, int write_fd, long int offset);
-int setregs(pid_t pid);
+int setregs(pid_t pid, pid_t filePid);
 int open_file(pid_t pid, char* st);
 
 
@@ -48,9 +48,9 @@ int main(int argc, char* argv[]){
 			if(WIFSTOPPED(status)){
 				printf("stopped:%d\n", WSTOPSIG(status));
 				setmems(pid, filePid);
-				setregs(pid);
-				ptrace(PT_DETACH, pid, (caddr_t)1, 0);
+				setregs(pid, filePid);
 				printf("finished setting values\n");
+				ptrace(PT_DETACH, pid, (caddr_t)1, 0);
 			}else if(WIFEXITED(status)){
 				perror("exited");
 				exit(1);
@@ -73,33 +73,13 @@ int target(char *path, char *argv[]){
 	exit(ret);
 }
 
-int setregs(int pid){
+int setregs(int pid, pid_t filePid){
 	struct reg reg;
+	int fd;
 
-	reg.r_rax = 0x4;
-	reg.r_rbx = 0x1;
-	reg.r_rcx = 0xb6732c493a81f428;
-	reg.r_rdx = 0xa;
-	reg.r_rsi = 0x7fffffffea80;
-	reg.r_rdi = 0x7fffffffea90;
-	reg.r_rbp = 0x7fffffffead0;
-	reg.r_rsp = 0x7fffffffea78;
-	reg.r_rip = 0x40b7aa;
-	reg.r_rflags = 0x203;
-	reg.r_r8 = 0x7fffffbac830;
-	reg.r_r9 = 0xf;
-	reg.r_r10 = 0x0;
-	reg.r_r11 = 0x7fffffffe958;
-	reg.r_r12 = 0x2;
-	reg.r_r13 = 0x7fffffffeb68;
-	reg.r_r14 = 0x7fffffffeb58;
-	reg.r_r15 = 0x1;
-	reg.r_cs = 0x43;
-	reg.r_ss = 0x3b;
-	reg.r_ds = 0x3b;
-	reg.r_es = 0x3b;
-	reg.r_fs = 0x13;
-	reg.r_gs = 0x1b;
+	memset(&reg, 0, sizeof(reg));
+	fd = open_file(filePid, "regs");
+	read(fd, &reg, sizeof(reg));
 	if(ptrace(PT_SETREGS, pid, (caddr_t)&reg, 0) < 0){
 		perror("ptrace(PT_SETREGS, ...)");
 		exit(1);
