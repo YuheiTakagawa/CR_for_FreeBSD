@@ -3,7 +3,7 @@
 
 int main(char *args[]){
 	int c;
-	char ch[10] = {'\0'};
+	char ch[50] = {'\0'};
 	for(c = 0; c < 5000; c++){
 		snprintf(ch, sizeof(ch),  "Hello %d\n", c);
 		write(1, ch, sizeof(ch));
