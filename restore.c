@@ -46,10 +46,12 @@ int main(int argc, char* argv[]){
 				exit(1);
 			}
 			if(WIFSTOPPED(status)){
-				if(flag < 70){
-					ptrace(PT_SYSCALL, pid, (caddr_t)1, 0);
+				if(flag == 0){
+					ptrace(PT_WRITE_I, pid, (caddr_t)0x400470, 0xCC);
+					ptrace(PT_CONTINUE, pid, (caddr_t)1, 0);
 					flag++;
-				}else{
+				}
+				else{
 					printf("stopped:%d\n", WSTOPSIG(status));
 					setmems(pid, filePid);
 					setregs(pid, filePid);
