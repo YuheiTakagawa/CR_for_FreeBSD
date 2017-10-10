@@ -123,7 +123,7 @@ int getmem(int read_fd, int dump_fd, long int offset){
 	while(1){	
 
 		rnum = read(read_fd, buf, sizeof(buf));
-		printf("%d\n", rnum);
+//		printf("%d\n", rnum);
 
 		if(rnum > 0){
 		
