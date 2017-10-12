@@ -25,7 +25,9 @@ int main(int argc, char* argv[]){
 	int status;
 	int flag = 0;
 	char *filepath;
+	long origin_text;
 	Elf64_Addr entry_point;
+
 	if(argc < 3){
 		printf("Usage: %s <path> <file pid>\n", argv[0]);
 		exit(1);
@@ -53,8 +55,7 @@ int main(int argc, char* argv[]){
 			if(WIFSTOPPED(status)){
 				if(flag == 0){
 					entry_point = get_entry_point(filepath);
-//					printf("%llx\n", entry_point);
-
+					origin_text = ptrace(PT_READ_I, pid, (caddr_t)entry_point, 0);
 					ptrace(PT_WRITE_I, pid, (caddr_t)entry_point, 0xCC);
 					ptrace(PT_CONTINUE, pid, (caddr_t)1, 0);
 					flag++;
@@ -62,6 +63,8 @@ int main(int argc, char* argv[]){
 				else{
 					printf("stopped:%d\n", WSTOPSIG(status));
 					setmems(pid, filePid);
+					ptrace(PT_WRITE_I, pid, (caddr_t)entry_point, origin_text);
+					printf("%llx\n", ptrace(PT_READ_I, pid, (caddr_t)entry_point, 0));
 					setregs(pid, filePid);
 					printf("finished setting values\n");
 					ptrace(PT_DETACH, pid, (caddr_t)1, 0);
