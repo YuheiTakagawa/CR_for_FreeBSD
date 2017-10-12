@@ -17,17 +17,20 @@ int setmems(pid_t pid, pid_t filePid);
 int write_mem(int read_fd, int write_fd, long int offset);
 int setregs(pid_t pid, pid_t filePid);
 int open_file(pid_t pid, char* st);
+Elf64_Addr get_entry_point(char* filepath);
 
 
 int main(int argc, char* argv[]){
 	int pid, filePid;
 	int status;
 	int flag = 0;
-	Elf64_Addr entry_point=0x400530;
+	char *filepath;
+	Elf64_Addr entry_point;
 	if(argc < 3){
 		printf("Usage: %s <path> <file pid>\n", argv[0]);
 		exit(1);
 	}
+	filepath = argv[1];
 	filePid = atoi(argv[2]);
 	printf("CMD : %s\n", argv[1]);
 	printf("PPID: %d\n", getpid());
@@ -40,7 +43,7 @@ int main(int argc, char* argv[]){
 	}
 	
 	if(pid == 0){
-		target(argv[1],NULL);
+		target(filepath, NULL);
 	}else{
 		while(1){
 			if(waitpid(pid, &status, 0) < 0){
@@ -49,6 +52,9 @@ int main(int argc, char* argv[]){
 			}
 			if(WIFSTOPPED(status)){
 				if(flag == 0){
+					entry_point = get_entry_point(filepath);
+//					printf("%llx\n", entry_point);
+
 					ptrace(PT_WRITE_I, pid, (caddr_t)entry_point, 0xCC);
 					ptrace(PT_CONTINUE, pid, (caddr_t)1, 0);
 					flag++;
@@ -142,4 +148,14 @@ int write_mem(int read_fd, int write_fd, long int offset){
 		}
 	}
 	return rnum;
+}
+
+Elf64_Addr get_entry_point(char* filepath){
+		Elf64_Ehdr header;
+		int fd = open(filepath, O_RDONLY);
+		memset(&header, 0, sizeof(Elf64_Ehdr));
+
+		read(fd, &header, sizeof(header));
+		Elf64_Addr entry = header.e_entry;
+		return entry;
 }
