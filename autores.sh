@@ -2,6 +2,11 @@
 
 while :
 do
+	filepath=`ls /dump | wc -w`
+	if [ $filepath -eq 0 ]
+	then 
+		continue
+	fi
 	filepath=`ls -tl /dump |\
 	       	head -2 |\
 		tail -1 |\
