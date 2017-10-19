@@ -4,7 +4,9 @@
 export pid=`ps ax |\
     	grep $1 |\
        	grep -v -e grep -e $0 -e restore -e migrate |\
-       	cut -d' ' -f1`
+	sed -e 's/  */ /g'|\
+	sed 's/^[-t]*//'|\
+       	cut -d' ' -f2`
 
 echo target is $pid
 
