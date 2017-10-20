@@ -49,9 +49,9 @@ int main(int argc, char* argv[]){
 				exit(1);
 			}
 			if(WIFSTOPPED(status)){
-				if(flag < 100){
-				//	ptrace(PT_WRITE_I, pid, 0x400470, 0xCC);
-					if(ptrace(PTRACE_SYSCALL, pid, NULL, NULL) < 0){
+				if(flag == 0){
+					ptrace(PTRACE_POKETEXT, pid, 0x400530, 0xCC);
+					if(ptrace(PTRACE_CONT, pid, NULL, NULL) < 0){
 	perror("ptrace_cont");
 	exit(1);
 }
@@ -62,8 +62,7 @@ int main(int argc, char* argv[]){
 					setmems(pid, filePid);
 					setregs(pid, filePid);
 					printf("finished setting values\n");
-					ptrace(PTRACE_CONT, pid, (caddr_t)1, 0);
-sleep(1);
+					ptrace(PTRACE_CONT, pid, NULL, NULL);
 				}
 			}else if(WIFEXITED(status)){
 				perror("exited");
@@ -79,9 +78,8 @@ int target(char *path, char *argv[]){
 	int ret;
 	printf("CPID: %d\n", getpid());
 	printf("command: %s\n", exec[0]);
-	ptrace(PT_TRACE_ME, 0, NULL, 0);
+	ptrace(PTRACE_TRACEME, 0, NULL, 0);
 	printf("trace me\n");
-	
 	ret = execvp(exec[0], exec);
 	perror("execvp");
 	exit(ret);
@@ -96,9 +94,9 @@ int setregs(int pid, pid_t filePid){
 	read(fd, &reg, sizeof(reg));
 	printf("rax:%llx\n", reg.orig_rax);
 	printf("rip:%llx\n", reg.rip);
+	printf("rbp:%llx\n", reg.rbp);
 	if(ptrace(PTRACE_SETREGS, pid, 0, &reg) < 0){
 		perror("ptrace(PTRACE_SETREGS, ...)");
-		exit(1);
 	}
 	return 0;
 }
@@ -112,10 +110,16 @@ int setmems(pid_t pid, pid_t filePid){
 	
 
 	read_fd = open_file(filePid, "data");
-	write_mem(read_fd, write_fd, 0x600000);	
+	write_mem(read_fd, write_fd, 0x6c9000);	
+	
 
+	char tmp[50], *tmp2;
+	snprintf(tmp, sizeof(tmp), "bash getstack.sh %d", pid);
+	FILE *fp = popen(tmp, "r");
+	fgets(tmp, sizeof(tmp), fp);	
+	printf("%llx\n", strtoll(tmp, &tmp2, 16));
 	read_fd = open_file(filePid, "stack");
-	write_mem(read_fd, write_fd, 0x7fff74f186f0);
+	write_mem(read_fd, write_fd, strtoll(tmp, &tmp2, 16));
 
 	close(write_fd);
 	return 0;

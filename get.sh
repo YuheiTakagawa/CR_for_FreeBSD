@@ -4,7 +4,9 @@
 pid=`ps ax |\
     	grep $1 |\
        	grep -v -e grep -e $0  |\
-       	cut -d' ' -f2`
+	sed -e 's/  */ /g'|\
+	sed 's/^ //'|\
+       	cut -d' ' -f1`
 
 echo target is $pid
 
@@ -17,8 +19,7 @@ data=`cat /proc/$pid/maps |\
 echo data address is $data
 
 stack=`cat /proc/$pid/maps |\
-	tac |\
-	sed -n 4P  |\
+	grep stack|\
 	cut -d' ' -f1|\
 	cut -d'-' -f1`
 
