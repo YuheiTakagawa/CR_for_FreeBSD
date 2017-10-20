@@ -9,6 +9,8 @@
 #include <sys/wait.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/user.h>
+#include <sys/reg.h>
 
 //int tracing(pid_t pid, int fd);
 int getregs(pid_t pid);
@@ -48,7 +50,7 @@ int open_dump_file(pid_t pid, char *dumptype){
  */
 
 int getregs(pid_t pid){
-	struct reg reg;
+	struct user_regs_struct reg;
 	int rc;
 	int fd;
 
@@ -62,29 +64,29 @@ int getregs(pid_t pid){
 		perror("ptrace");
 		exit (1);
 	}
-	printf("RAX: %lx excuted\n", reg.r_rax);
-	printf("RBX: %lx excuted\n", reg.r_rbx);
-	printf("RCX: %lx excuted\n", reg.r_rcx);
-	printf("RDX: %lx excuted\n", reg.r_rdx);
-	printf("RSI: %lx excuted\n", reg.r_rsi);
-	printf("RDI: %lx excuted\n", reg.r_rdi);
-	printf("RBP: %lx excuted\n", reg.r_rbp);
-	printf("RSP: %lx excuted\n", reg.r_rsp);
-	printf("RIP: %lx excuted\n", reg.r_rip);
-	printf("FLG: %lx excuted\n", reg.r_rflags);
-	printf("R8 : %lx excuted\n", reg.r_r8);
-	printf("R9 : %lx excuted\n", reg.r_r9);
-	printf("R10: %lx excuted\n", reg.r_r10);
-	printf("R11: %lx excuted\n", reg.r_r11);
-	printf("R12: %lx excuted\n", reg.r_r12);
-	printf("R13: %lx excuted\n", reg.r_r13);
-	printf("R14: %lx excuted\n", reg.r_r14);
-	printf("R15: %lx excuted\n", reg.r_r15);
-	printf("CS : %lx excuted\n", reg.r_cs);
-	printf("SS : %lx excuted\n", reg.r_ss);
-	printf("DS : %x excuted\n", reg.r_ds);
-	printf("ES : %x excuted\n", reg.r_es);
-	printf("FS : %x excuted\n", reg.r_fs);
+	printf("RAX: %lx excuted\n", reg.rax);
+	printf("RBX: %lx excuted\n", reg.rbx);
+	printf("RCX: %lx excuted\n", reg.rcx);
+	printf("RDX: %lx excuted\n", reg.rdx);
+	printf("RSI: %lx excuted\n", reg.rsi);
+	printf("RDI: %lx excuted\n", reg.rdi);
+	printf("RBP: %lx excuted\n", reg.rbp);
+	printf("RSP: %lx excuted\n", reg.rsp);
+	printf("RIP: %lx excuted\n", reg.rip);
+	printf("FLG: %lx excuted\n", reg.rflags);
+	printf("R8 : %lx excuted\n", reg.r8);
+	printf("R9 : %lx excuted\n", reg.r9);
+	printf("R10: %lx excuted\n", reg.r10);
+	printf("R11: %lx excuted\n", reg.r11);
+	printf("R12: %lx excuted\n", reg.r12);
+	printf("R13: %lx excuted\n", reg.r13);
+	printf("R14: %lx excuted\n", reg.r14);
+	printf("R15: %lx excuted\n", reg.r15);
+	printf("CS : %lx excuted\n", reg.cs);
+	printf("SS : %lx excuted\n", reg.ss);
+	printf("DS : %x excuted\n", reg.ds);
+	printf("ES : %x excuted\n", reg.es);
+	printf("FS : %x excuted\n", reg.fs);
 
 	write(fd, &reg, sizeof(reg));
 	

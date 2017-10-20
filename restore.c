@@ -7,6 +7,8 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/user.h>
+#include <sys/reg.h>
 
 #define BUFSIZE 1024
 #define PATHBUF 30
@@ -41,14 +43,18 @@ int main(int argc, char* argv[]){
 		target(argv[1],NULL);
 	}else{
 		while(1){
+			printf("wait pid:%d\n", pid);
 			if(waitpid(pid, &status, 0) < 0){
 				perror("waitpid");
 				exit(1);
 			}
 			if(WIFSTOPPED(status)){
-				if(flag == 0){
-					ptrace(PT_WRITE_I, pid, (caddr_t)0x400470, 0xCC);
-					ptrace(PT_CONTINUE, pid, (caddr_t)1, 0);
+				if(flag < 100){
+				//	ptrace(PT_WRITE_I, pid, 0x400470, 0xCC);
+					if(ptrace(PTRACE_SYSCALL, pid, NULL, NULL) < 0){
+	perror("ptrace_cont");
+	exit(1);
+}
 					flag++;
 				}
 				else{
@@ -56,7 +62,8 @@ int main(int argc, char* argv[]){
 					setmems(pid, filePid);
 					setregs(pid, filePid);
 					printf("finished setting values\n");
-					ptrace(PT_DETACH, pid, (caddr_t)1, 0);
+					ptrace(PTRACE_CONT, pid, (caddr_t)1, 0);
+sleep(1);
 				}
 			}else if(WIFEXITED(status)){
 				perror("exited");
@@ -81,14 +88,16 @@ int target(char *path, char *argv[]){
 }
 
 int setregs(int pid, pid_t filePid){
-	struct reg reg;
+	struct user_regs_struct reg;
 	int fd;
 
 	memset(&reg, 0, sizeof(reg));
 	fd = open_file(filePid, "regs");
 	read(fd, &reg, sizeof(reg));
-	if(ptrace(PT_SETREGS, pid, (caddr_t)&reg, 0) < 0){
-		perror("ptrace(PT_SETREGS, ...)");
+	printf("rax:%llx\n", reg.orig_rax);
+	printf("rip:%llx\n", reg.rip);
+	if(ptrace(PTRACE_SETREGS, pid, 0, &reg) < 0){
+		perror("ptrace(PTRACE_SETREGS, ...)");
 		exit(1);
 	}
 	return 0;
@@ -103,10 +112,10 @@ int setmems(pid_t pid, pid_t filePid){
 	
 
 	read_fd = open_file(filePid, "data");
-	write_mem(read_fd, write_fd, 0x665000);	
+	write_mem(read_fd, write_fd, 0x600000);	
 
 	read_fd = open_file(filePid, "stack");
-	write_mem(read_fd, write_fd, 0x7ffffffdf000);
+	write_mem(read_fd, write_fd, 0x7fff74f186f0);
 
 	close(write_fd);
 	return 0;
