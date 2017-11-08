@@ -64,6 +64,7 @@ int getregs(pid_t pid){
 		perror("ptrace(GETREGS)");
 		exit (1);
 	}
+	printf("OAX: %llx excuted\n", reg.orig_rax);
 	printf("RAX: %llx excuted\n", reg.rax);
 	printf("RBX: %llx excuted\n", reg.rbx);
 	printf("RCX: %llx excuted\n", reg.rcx);
@@ -74,6 +75,8 @@ int getregs(pid_t pid){
 	printf("RSP: %llx excuted\n", reg.rsp);
 	printf("RIP: %llx excuted\n", reg.rip);
 	printf("FLG: %llx excuted\n", reg.eflags);
+	printf("FSB: %llx excuted\n", reg.fs_base);
+	printf("GSB: %llx excuted\n", reg.gs_base);
 	printf("R8 : %llx excuted\n", reg.r8);
 	printf("R9 : %llx excuted\n", reg.r9);
 	printf("R10: %llx excuted\n", reg.r10);

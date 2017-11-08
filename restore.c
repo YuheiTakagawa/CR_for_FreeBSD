@@ -24,6 +24,7 @@ int main(int argc, char* argv[]){
 	int pid, filePid;
 	int status;
 	int flag = 0;
+	long origin;
 	if(argc < 3){
 		printf("Usage: %s <path> <file pid>\n", argv[0]);
 		exit(1);
@@ -50,18 +51,32 @@ int main(int argc, char* argv[]){
 			}
 			if(WIFSTOPPED(status)){
 				if(flag == 0){
-					ptrace(PTRACE_POKETEXT, pid, 0x400530, 0xCC);
+					origin = ptrace(PTRACE_PEEKTEXT, pid, 0x4009ae, 0);
+					ptrace(PTRACE_POKETEXT, pid, 0x4009ae, 0xCC);
 					if(ptrace(PTRACE_CONT, pid, NULL, NULL) < 0){
 	perror("ptrace_cont");
 	exit(1);
 }
 					flag++;
+				}else if(flag <10){
+					ptrace(PTRACE_POKETEXT, pid, 0x4009ae, origin);
+					ptrace(PTRACE_SYSCALL, pid, NULL, NULL);
+					flag++;
 				}
-				else{
+				else if (flag == 10){
 					printf("stopped:%d\n", WSTOPSIG(status));
 					setmems(pid, filePid);
 					setregs(pid, filePid);
 					printf("finished setting values\n");
+					ptrace(PTRACE_CONT, pid, NULL, NULL);
+					flag++;
+//sleep(1);
+				}else{
+					struct user_regs_struct reg1;
+					ptrace(PTRACE_GETREGS, pid, NULL, reg1);
+					printf("RAX:%llx\n", reg1.rax);
+					printf("OAX:%llx\n", reg1.orig_rax);
+					printf("RIP:%llx\n", reg1.rip); 
 					ptrace(PTRACE_CONT, pid, NULL, NULL);
 				}
 			}else if(WIFEXITED(status)){
@@ -91,13 +106,46 @@ int setregs(int pid, pid_t filePid){
 
 	memset(&reg, 0, sizeof(reg));
 	fd = open_file(filePid, "regs");
-	read(fd, &reg, sizeof(reg));
+//	read(fd, &reg, sizeof(reg));
+	reg.orig_rax = 0x1;
+	reg.rax      = 0x1;
+	reg.rbx	     = 0x4002c8;
+	reg.rcx	     = 0x64;
+	reg.rdx      = 0x32;
+	reg.rsi      = 0x7fffffffdb10;
+	reg.rdi      = 0x1;
+	reg.rbp      = 0x7fffffffdb50;
+	reg.rsp      = 0x7fffffffdae8;
+	reg.rip      = 0x43f5e0;
+	reg.eflags   = 0x246;
+	reg.fs_base  = 0x6dc880;
+	reg.gs_base  = 0x0;
+	reg.r8       = 0x0;
+	reg.r9       = 0x9;
+	reg.r10      = 0x64;
+	reg.r11      = 0x1;
+	reg.r12      = 0x4015c0;
+	reg.r13      = 0x401650;
+	reg.r14      = 0x0;
+	reg.r15      = 0x0;
+	reg.cs       = 0x43;
+	reg.ss       = 0x3b;
+	reg.ds       = 0x3b;
+	reg.es       = 0x3b;
+	reg.fs       = 0x13;
+	reg.gs       = 0x1b;
 	printf("rax:%llx\n", reg.orig_rax);
 	printf("rip:%llx\n", reg.rip);
 	printf("rbp:%llx\n", reg.rbp);
 	if(ptrace(PTRACE_SETREGS, pid, 0, &reg) < 0){
 		perror("ptrace(PTRACE_SETREGS, ...)");
 	}
+					struct user_regs_struct reg1;
+					ptrace(PTRACE_GETREGS, pid, NULL, &reg1);
+					printf("RAX:%llx\n", reg1.rax);
+					printf("OAX:%llx\n", reg1.orig_rax);
+					printf("RIP:%llx\n", reg1.rip); 
+					printf("RBP:%llx\n", reg1.rbp); 
 	return 0;
 }
 
@@ -113,13 +161,14 @@ int setmems(pid_t pid, pid_t filePid){
 	write_mem(read_fd, write_fd, 0x6c9000);	
 	
 
-	char tmp[50], *tmp2;
-	snprintf(tmp, sizeof(tmp), "bash getstack.sh %d", pid);
-	FILE *fp = popen(tmp, "r");
-	fgets(tmp, sizeof(tmp), fp);	
-	printf("%llx\n", strtoll(tmp, &tmp2, 16));
+//	char tmp[50], *tmp2;
+	//snprintf(tmp, sizeof(tmp), "bash getstack.sh %d", pid);
+	//FILE *fp = popen(tmp, "r");
+//	fgets(tmp, sizeof(tmp), fp);	
+//	printf("%llx\n", strtoll(tmp, &tmp2, 16));
 	read_fd = open_file(filePid, "stack");
-	write_mem(read_fd, write_fd, strtoll(tmp, &tmp2, 16));
+	//write_mem(read_fd, write_fd, strtoll(tmp, &tmp2, 16));
+	write_mem(read_fd, write_fd, 0x7ffffffdf000);
 
 	close(write_fd);
 	return 0;
