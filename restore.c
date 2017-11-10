@@ -58,12 +58,12 @@ int main(int argc, char* argv[]){
 	exit(1);
 }
 					flag++;
-				}else if(flag <10){
+			/*	}else if(flag <10){
 					ptrace(PTRACE_POKETEXT, pid, 0x4009ae, origin);
 					ptrace(PTRACE_SYSCALL, pid, NULL, NULL);
 					flag++;
-				}
-				else if (flag == 10){
+			*/	}
+				else if (flag > 0){
 					printf("stopped:%d\n", WSTOPSIG(status));
 					setmems(pid, filePid);
 					setregs(pid, filePid);
