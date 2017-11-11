@@ -10,37 +10,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-//int tracing(pid_t pid, int fd);
 int getregs(pid_t pid);
-//int open_dump_file(pid_t pid, char* dumptype);
-/*
-int main(int argc, char* argv[]){
-	int fd;
-	pid_t pid;
-	if(argc < 2){
-		printf("Usage: %s <pid to be traced>\n", argv[0]);
-		exit (1);
-	}
-	pid = atoi(argv[1]);
-
-	tracing(pid, fd);
-}
-
-int open_dump_file(pid_t pid, char *dumptype){
-
-	int fd;
-	char filepath[30] = {'\0'};
-
-	snprintf(filepath, sizeof(filepath), "/dump/%d_%s.img", pid, dumptype);
-	fd = open(filepath, O_WRONLY | O_CREAT);
-	if(fd < 0){
-		perror("open");
-		exit(1);
-	}
-	return fd;
-
-}
-*/
 /*
  * get register status
  * must run  ptrace(PT_ATTACH) before call this function
@@ -51,6 +21,7 @@ int getregs(pid_t pid){
 	struct reg reg;
 	int rc;
 	int fd;
+	unsigned long fs_base, gs_base;
 
 	fd = open_dump_file(pid, "regs");
 
@@ -59,7 +30,19 @@ int getregs(pid_t pid){
 		
 	rc = ptrace(PT_GETREGS, pid, (caddr_t)&reg, 0);
 	if(rc < 0){
-		perror("ptrace");
+		perror("ptrace(PT_GETREGS)");
+		exit (1);
+	}
+
+	rc = ptrace(PT_GETFSBASE, pid, (caddr_t)&fs_base, 0);
+	if(rc < 0){
+		perror("ptrace(PT_GETFSBASE)");
+		exit (1);
+	}
+
+	rc = ptrace(PT_GETGSBASE, pid, (caddr_t)&gs_base, 0);
+	if(rc < 0){
+		perror("ptrace(PT_GETGSBASE)");
 		exit (1);
 	}
 	printf("RAX: %lx excuted\n", reg.r_rax);
@@ -80,35 +63,18 @@ int getregs(pid_t pid){
 	printf("R13: %lx excuted\n", reg.r_r13);
 	printf("R14: %lx excuted\n", reg.r_r14);
 	printf("R15: %lx excuted\n", reg.r_r15);
+	printf("TRA: %lx excuted\n", reg.r_trapno);
 	printf("CS : %lx excuted\n", reg.r_cs);
 	printf("SS : %lx excuted\n", reg.r_ss);
 	printf("DS : %x excuted\n", reg.r_ds);
 	printf("ES : %x excuted\n", reg.r_es);
 	printf("FS : %x excuted\n", reg.r_fs);
+	printf("GS : %x excuted\n", reg.r_gs);
+	printf("FSB: %x excuted\n", fs_base);
+	printf("GSB: %x excuted\n", gs_base);
 
 	write(fd, &reg, sizeof(reg));
 	
 	return rc;
 
 }
-/*
-int tracing(pid_t pid, int fd){
-	int status;
-	int rc;
-	rc = ptrace(PT_ATTACH, pid, NULL, 0);
-	if(rc < 0){
-		perror("ptrace");
-		exit (1);
-	}
-	waitpid(pid, &status, 0);
-	if(WIFEXITED(status)){
-	} else if (WIFSTOPPED(status)){
-		printf("stop %d\n", WSTOPSIG(status));
-		getregs(pid);
-	}
-
-	ptrace(PT_DETACH, pid, (caddr_t)1, 0);
-	printf("Process detached\n");
-	return 0;
-}
-*/
