@@ -46,11 +46,17 @@ int tracing(pid_t pid, long int daoffset, long int stoffset){
 
 	if(WIFEXITED(status)){
 	} else if (WIFSTOPPED(status)){
+		ptrace(PT_TO_SCE, pid, (caddr_t)1, 0);
+	}
+	
+	waitpid(pid, &status, 0);
+
+	if(WIFEXITED(status)){
+	} else if (WIFSTOPPED(status)){
 		printf("stop %d\n", pid);
 		getregs(pid);
 		getmems(pid, daoffset, stoffset);
 	}
-	
 	printf("Checkpoint\n");
 
 	/*
