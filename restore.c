@@ -54,7 +54,8 @@ int main(int argc, char* argv[]){
 			}
 			if(WIFSTOPPED(status)){
 				if(flag == 0){
-					entry_point = get_entry_point(filepath);
+				//	entry_point = get_entry_point(filepath);
+					entry_point = 0x4009ae;
 					origin_text = ptrace(PT_READ_I, pid, (caddr_t)entry_point, 0);
 					ptrace(PT_WRITE_I, pid, (caddr_t)entry_point, 0xCC);
 					ptrace(PT_CONTINUE, pid, (caddr_t)1, 0);
@@ -64,10 +65,9 @@ int main(int argc, char* argv[]){
 					printf("stopped:%d\n", WSTOPSIG(status));
 					setmems(pid, filePid);
 					ptrace(PT_WRITE_I, pid, (caddr_t)entry_point, origin_text);
-					printf("%llx\n", ptrace(PT_READ_I, pid, (caddr_t)entry_point, 0));
 					setregs(pid, filePid);
 					printf("finished setting values\n");
-					ptrace(PT_DETACH, pid, (caddr_t)1, 0);
+					ptrace(PT_CONTINUE, pid, (caddr_t)1, 0);
 				}
 			}else if(WIFEXITED(status)){
 				perror("exited");
@@ -97,7 +97,31 @@ int setregs(int pid, pid_t filePid){
 
 	memset(&reg, 0, sizeof(reg));
 	fd = open_file(filePid, "regs");
-	read(fd, &reg, sizeof(reg));
+//	read(fd, &reg, sizeof(reg));
+	reg.r_rax=0x23;
+	reg.r_rbx=0xffffffffffffffd0;
+	reg.r_rcx=0x43ea70;
+	reg.r_rdx=0x32;
+	reg.r_rsi=0x7fffffffedf0;
+	reg.r_rdi=0x7fffffffedf0;
+	reg.r_rbp=0x2;
+	reg.r_rsp=0x7fffffffede8;
+	reg.r_rip=0x43ea70;
+	reg.r_rflags=0x246;
+	reg.r_r8=0x0;
+	reg.r_r9=0x8;
+	reg.r_r10=0x64;
+	reg.r_r11=0x246;
+	reg.r_r12=0x4015c0;
+	reg.r_r13=0x401650;
+	reg.r_r14=0x0;
+	reg.r_r15=0x0;
+	reg.r_cs=0x43;
+	reg.r_ss=0x3b;
+	reg.r_ds=0x0;
+	reg.r_es=0x0;
+	reg.r_fs=0x0;
+	reg.r_gs=0x0;
 	if(ptrace(PT_SETREGS, pid, (caddr_t)&reg, 0) < 0){
 		perror("ptrace(PT_SETREGS, ...)");
 		exit(1);
@@ -114,7 +138,7 @@ int setmems(pid_t pid, pid_t filePid){
 	
 
 	read_fd = open_file(filePid, "data");
-	write_mem(read_fd, write_fd, 0x665000);	
+	write_mem(read_fd, write_fd, 0x6c9000);	
 
 	read_fd = open_file(filePid, "stack");
 	write_mem(read_fd, write_fd, 0x7ffffffdf000);
