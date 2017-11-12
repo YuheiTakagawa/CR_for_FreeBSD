@@ -102,11 +102,14 @@ int target(char *path, char *argv[]){
 
 int setregs(int pid, pid_t filePid){
 	struct user_regs_struct reg;
+	struct user_regs_struct getreg;
 	int fd;
 
 	memset(&reg, 0, sizeof(reg));
+	memset(&getreg, 0, sizeof(getreg));
 	fd = open_file(filePid, "regs");
-//	read(fd, &reg, sizeof(reg));
+	read(fd, &getreg, sizeof(getreg));
+	ptrace(PTRACE_GETREGS, pid, 0, &reg);
 /*	reg.orig_rax = 0x1;
 	reg.rax      = 0xfffffffffffffdfc;
 	reg.rbx	     = 0x4002c8;
@@ -136,7 +139,7 @@ int setregs(int pid, pid_t filePid){
 	reg.gs       = 0x0;
 */
 
-
+/*
 	reg.orig_rax = 0x23;
 	reg.rax      = 0xfffffffffffffdfc;
 	reg.rbx	     = 0xffffffffffffffd0;
@@ -164,18 +167,31 @@ int setregs(int pid, pid_t filePid){
 	reg.es       = 0x0;
 	reg.fs       = 0x0;
 	reg.gs       = 0x0;
-	printf("rax:%llx\n", reg.orig_rax);
-	printf("rip:%llx\n", reg.rip);
-	printf("rbp:%llx\n", reg.rbp);
+*/
+	reg.orig_rax = getreg.orig_rax;
+	reg.rax      = getreg.rax;
+	reg.rbx	     = getreg.rbx;
+	reg.rcx	     = getreg.rcx;
+	reg.rdx      = getreg.rdx;
+	reg.rsi      = getreg.rsi;
+	reg.rdi      = getreg.rdi;
+	reg.rbp      = getreg.rbp;
+	reg.rsp      = getreg.rsp;
+	reg.rip      = getreg.rip;
+	reg.eflags   = getreg.eflags;
+	reg.fs_base  = getreg.fs_base;
+	reg.gs_base  = getreg.gs_base;
+	reg.r8       = getreg.r8;
+	reg.r9       = getreg.r9;
+	reg.r10      = getreg.r10;
+	reg.r11      = getreg.r11;
+	reg.r12      = getreg.r12;
+	reg.r13      = getreg.r13;
+	reg.r14      = getreg.r14;
+	reg.r15      = getreg.r15;
 	if(ptrace(PTRACE_SETREGS, pid, 0, &reg) < 0){
 		perror("ptrace(PTRACE_SETREGS, ...)");
 	}
-					struct user_regs_struct reg1;
-					ptrace(PTRACE_GETREGS, pid, NULL, &reg1);
-					printf("RAX:%llx\n", reg1.rax);
-					printf("OAX:%llx\n", reg1.orig_rax);
-					printf("RIP:%llx\n", reg1.rip); 
-					printf("RBP:%llx\n", reg1.rbp); 
 	return 0;
 }
 

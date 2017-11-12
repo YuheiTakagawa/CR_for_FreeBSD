@@ -12,37 +12,7 @@
 #include <sys/user.h>
 #include <sys/reg.h>
 
-//int tracing(pid_t pid, int fd);
 int getregs(pid_t pid);
-//int open_dump_file(pid_t pid, char* dumptype);
-/*
-int main(int argc, char* argv[]){
-	int fd;
-	pid_t pid;
-	if(argc < 2){
-		printf("Usage: %s <pid to be traced>\n", argv[0]);
-		exit (1);
-	}
-	pid = atoi(argv[1]);
-
-	tracing(pid, fd);
-}
-
-int open_dump_file(pid_t pid, char *dumptype){
-
-	int fd;
-	char filepath[30] = {'\0'};
-
-	snprintf(filepath, sizeof(filepath), "/dump/%d_%s.img", pid, dumptype);
-	fd = open(filepath, O_WRONLY | O_CREAT);
-	if(fd < 0){
-		perror("open");
-		exit(1);
-	}
-	return fd;
-
-}
-*/
 /*
  * get register status
  * must run  ptrace(PT_ATTACH) before call this function
