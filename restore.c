@@ -107,7 +107,7 @@ int setregs(int pid, pid_t filePid){
 	memset(&reg, 0, sizeof(reg));
 	fd = open_file(filePid, "regs");
 //	read(fd, &reg, sizeof(reg));
-	reg.orig_rax = 0x1;
+/*	reg.orig_rax = 0x1;
 	reg.rax      = 0xfffffffffffffdfc;
 	reg.rbx	     = 0x4002c8;
 	reg.rcx	     = 0x64;
@@ -123,7 +123,37 @@ int setregs(int pid, pid_t filePid){
 	reg.r8       = 0x0;
 	reg.r9       = 0x9;
 	reg.r10      = 0x64;
-	reg.r11      = 0x1;
+	reg.r11      = 0xb;
+	reg.r12      = 0x4015c0;
+	reg.r13      = 0x401650;
+	reg.r14      = 0x0;
+	reg.r15      = 0x0;
+	reg.cs       = 0x33;
+	reg.ss       = 0x2b;
+	reg.ds       = 0x0;
+	reg.es       = 0x0;
+	reg.fs       = 0x0;
+	reg.gs       = 0x0;
+*/
+
+
+	reg.orig_rax = 0x23;
+	reg.rax      = 0xfffffffffffffdfc;
+	reg.rbx	     = 0xffffffffffffffd0;
+	reg.rcx	     = 0x43ea70;
+	reg.rdx      = 0x32;
+	reg.rsi      = 0x7fffffffedf0;
+	reg.rdi      = 0x7fffffffedf0;
+	reg.rbp      = 0x2;
+	reg.rsp      = 0x7fffffffede8;
+	reg.rip      = 0x43ea70;
+	reg.eflags   = 0x246;
+	reg.fs_base  = 0x6ce880;
+	reg.gs_base  = 0x0;
+	reg.r8       = 0x0;
+	reg.r9       = 0x8;
+	reg.r10      = 0x64;
+	reg.r11      = 0x246;
 	reg.r12      = 0x4015c0;
 	reg.r13      = 0x401650;
 	reg.r14      = 0x0;
