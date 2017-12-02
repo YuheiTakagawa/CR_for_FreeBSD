@@ -128,7 +128,9 @@ int setregs(int pid, pid_t filePid){
 	memset(&reg, 0, sizeof(reg));
 	fd = open_file(filePid, "regs");
 	read(fd, &linuxreg, sizeof(linuxreg));
+
 	ptrace(PT_GETREGS, pid, (caddr_t)&reg, 0);
+
 	reg.r_rax=linuxreg.orig_rax;
 	reg.r_rbx=linuxreg.rbx;
 	reg.r_rcx=linuxreg.rcx;
@@ -147,13 +149,15 @@ int setregs(int pid, pid_t filePid){
 	reg.r_r13=linuxreg.r13;
 	reg.r_r14=linuxreg.r14;
 	reg.r_r15=linuxreg.r15;
+
 /*	reg.r_cs=0x43;
 	reg.r_ss=0x3b;
 	reg.r_ds=0x0;
 	reg.r_es=0x0;
 	reg.r_fs=0x0;
 	reg.r_gs=0x0;
-*/	if(ptrace(PT_SETREGS, pid, (caddr_t)&reg, 0) < 0){
+*/	
+	if(ptrace(PT_SETREGS, pid, (caddr_t)&reg, 0) < 0){
 		perror("ptrace(PT_SETREGS, ...)");
 		exit(1);
 	}
