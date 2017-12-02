@@ -19,6 +19,35 @@ int setregs(pid_t pid, pid_t filePid);
 int open_file(pid_t pid, char* st);
 Elf64_Addr get_entry_point(char* filepath);
 
+struct linuxreg {
+  unsigned long int r15;
+  unsigned long int r14;
+  unsigned long int r13;
+  unsigned long int r12;
+  unsigned long int rbp;
+  unsigned long int rbx;
+  unsigned long int r11;
+  unsigned long int r10;
+  unsigned long int r9;
+  unsigned long int r8;
+  unsigned long int rax;
+  unsigned long int rcx;
+  unsigned long int rdx;
+  unsigned long int rsi;
+  unsigned long int rdi;
+  unsigned long int orig_rax;
+  unsigned long int rip;
+  unsigned long int cs;
+  unsigned long int eflags;
+  unsigned long int rsp;
+  unsigned long int ss;
+  unsigned long int fs_base;
+  unsigned long int gs_base;
+  unsigned long int ds;
+  unsigned long int es;
+  unsigned long int fs;
+  unsigned long int gs;
+};
 
 int main(int argc, char* argv[]){
 	int pid, filePid;
@@ -93,35 +122,41 @@ int target(char *path, char *argv[]){
 
 int setregs(int pid, pid_t filePid){
 	struct reg reg;
+	struct linuxreg linuxreg;
 	int fd;
 
 	memset(&reg, 0, sizeof(reg));
 	fd = open_file(filePid, "regs");
-//	read(fd, &reg, sizeof(reg));
-	reg.r_rax=0x23;
-	reg.r_rbx=0xffffffffffffffd0;
-	reg.r_rcx=0x43ea70;
-	reg.r_rdx=0x32;
-	reg.r_rsi=0x7fffffffedf0;
-	reg.r_rdi=0x7fffffffedf0;
-	reg.r_rbp=0x2;
-	reg.r_rsp=0x7fffffffede8;
-	reg.r_rip=0x43ea70;
-	reg.r_rflags=0x246;
-	reg.r_r8=0x0;
-	reg.r_r9=0x8;
-	reg.r_r10=0x64;
-	reg.r_r11=0x246;
-	reg.r_r12=0x4015c0;
-	reg.r_r13=0x401650;
-	reg.r_r14=0x0;
-	reg.r_r15=0x0;
-	reg.r_cs=0x43;
+	read(fd, &linuxreg, sizeof(linuxreg));
+
+	ptrace(PT_GETREGS, pid, (caddr_t)&reg, 0);
+
+	reg.r_rax=linuxreg.orig_rax;
+	reg.r_rbx=linuxreg.rbx;
+	reg.r_rcx=linuxreg.rcx;
+	reg.r_rdx=linuxreg.rdx;
+	reg.r_rsi=linuxreg.rsi;
+	reg.r_rdi=linuxreg.rdi;
+	reg.r_rbp=linuxreg.rbp;
+	reg.r_rsp=linuxreg.rsp;
+	reg.r_rip=linuxreg.rip;
+	reg.r_rflags=linuxreg.eflags;
+	reg.r_r8=linuxreg.r8;
+	reg.r_r9=linuxreg.r9;
+	reg.r_r10=linuxreg.r10;
+	reg.r_r11=linuxreg.r11;
+	reg.r_r12=linuxreg.r12;
+	reg.r_r13=linuxreg.r13;
+	reg.r_r14=linuxreg.r14;
+	reg.r_r15=linuxreg.r15;
+
+/*	reg.r_cs=0x43;
 	reg.r_ss=0x3b;
 	reg.r_ds=0x0;
 	reg.r_es=0x0;
 	reg.r_fs=0x0;
 	reg.r_gs=0x0;
+*/	
 	if(ptrace(PT_SETREGS, pid, (caddr_t)&reg, 0) < 0){
 		perror("ptrace(PT_SETREGS, ...)");
 		exit(1);
