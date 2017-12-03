@@ -21,9 +21,11 @@ struct orig{
 	struct reg reg;
 };
 
+#define LINUX_MAP_ANONYMOUS 0x20
+
 struct orig *parasite_setregs(int pid, char* mem, struct orig *orig){
 	struct reg reg;
-	char *path = "Inject!\n";
+	char *path = "Parasite Injection!\n";
 
 	printf("================================\n");
 	ptrace(PT_GETREGS, pid, (caddr_t)&reg, 1);
@@ -33,13 +35,18 @@ struct orig *parasite_setregs(int pid, char* mem, struct orig *orig){
 
 	printf("path: %p\n", path);
 
-/* completed write system call injection */
-	
-	reg.r_rax = 1;
-	reg.r_rdi = 1;
-	reg.r_rsi = (unsigned long int)path; 
-	reg.r_rdx = sizeof(path);
-	reg.r_r10 = 0x0;	
+/* Injection mmap systemcall registers */
+	printf("MAP_SHARED: %x\n", MAP_SHARED);
+	printf("MAP_PRIVATE: %x\n", MAP_PRIVATE);
+       	printf("MAP_ANONYMOUS: %x\n", MAP_ANONYMOUS);
+	printf("LINUX_MAP: %x\n", MAP_SHARED | LINUX_MAP_ANONYMOUS);
+	printf("PROT: %x\n", PROT_READ|PROT_WRITE|PROT_EXEC);
+	reg.r_rax = 9;
+	reg.r_rdi = 0x0;
+	reg.r_rsi = 1024; 
+	reg.r_rdx = 0x7;
+	reg.r_rdx = PROT_READ | PROT_WRITE | PROT_EXEC;
+	reg.r_r10 = MAP_PRIVATE | LINUX_MAP_ANONYMOUS;	
 	reg.r_r8  = 0x0;
 	reg.r_r9  = 0x0;
 	
@@ -98,6 +105,7 @@ void restore_setregs(int pid, struct reg orig){
 	
 	ptrace(PT_GETREGS, pid, (caddr_t)&reg, 1);
 	printf("return value(rax) : %lx\n", reg.r_rax);
+		
 	ptrace(PT_SETREGS, pid, (caddr_t)&orig, 1);
 	printf("restore_registers\n");
 }
@@ -131,7 +139,7 @@ int main(int argc, char* argv[]){
 	}else if (WIFSTOPPED(status)){
 		printf("stop PID = %d, by signal = %d\n", pid, WSTOPSIG(status));
 
-		mem = (char*) mmap(NULL, 1024, PROT_WRITE|PROT_READ|PROT_EXEC, MAP_ANONYMOUS |MAP_PRIVATE, -1, 0);
+//		mem = (char*) mmap(0, 1024, PROT_WRITE|PROT_READ|PROT_EXEC, MAP_ANONYMOUS |MAP_PRIVATE, -1, 0);
 		if(mem == MAP_FAILED){
 			perror("mmap");
 			exit(1);
