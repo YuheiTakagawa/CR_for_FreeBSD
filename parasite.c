@@ -23,7 +23,7 @@ struct orig{
 
 struct orig *parasite_setregs(int pid, char* mem, struct orig *orig){
 	struct reg reg;
-	char *path = "Inject!\n";
+	char *path = "Parasite Injected!\n";
 
 	printf("================================\n");
 	ptrace(PT_GETREGS, pid, (caddr_t)&reg, 1);
@@ -38,7 +38,7 @@ struct orig *parasite_setregs(int pid, char* mem, struct orig *orig){
 	reg.r_rax = 1;
 	reg.r_rdi = 1;
 	reg.r_rsi = (unsigned long int)path; 
-	reg.r_rdx = sizeof(path);
+	reg.r_rdx = strlen(path);
 	reg.r_r10 = 0x0;	
 	reg.r_r8  = 0x0;
 	reg.r_r9  = 0x0;
