@@ -1,3 +1,6 @@
+#ifndef INJECT_SYSCALL
+#define INJECT_SYSCALL
+
 #include <unistd.h>
 #include <stdarg.h>
 
@@ -83,3 +86,5 @@ void restore_memory(int pid, struct orig *orig){
 	//ptrace(PT_WRITE_I, pid, (caddr_t)orig->addr, orig->data);
 	
 }
+
+#endif
