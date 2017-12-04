@@ -10,31 +10,9 @@
 #define PATHBUF 30
 
 int open_read_file(pid_t pid);
-//int open_dump_file(pid_t pid, char* dumptype);
 int tracing(pid_t pid, long int daoffset, long int stoffset);
 int getmem(int read_fd, int dump_fd, long int offset);
 
-/*
-int main(int argc, char* argv[]){
-	pid_t pid;
-	long int da, st;
-
-	if(argc < 4){
-		printf("Usage: %s <pid> <Data address> <Stack address>\n",argv[0]);
-		exit(1);
-	}
-
-	pid = atoi(argv[1]);
-
-	da = strtol(argv[2], NULL, 16);
-	st = strtol(argv[3], NULL, 16);
-	printf("da: %lx\n", da);
-	printf("st: %lx\n", st);
-
-	tracing(pid, da, st);
-
-}
-*/
 int open_read_file(pid_t pid){
 	int fd;
 	char filepath[PATHBUF] = {'\0'};
@@ -63,40 +41,6 @@ int open_dump_file(pid_t pid, char *dumptype){
 	return fd;
 }
 
-/*
-int tracing (pid_t pid, long int dataoffset, long int stackoffset){
-	int status;
-	int read_fd;
-	int dump_fd;
-	if(ptrace(PT_ATTACH, pid, NULL, 0) < 0){
-		perror("ptrace");
-		exit (1);
-	}
-
-	waitpid(pid, &status, 0);
-	if(WIFEXITED(status)){
-		printf("exited");
-		exit(1);
-	}else if(WIFSTOPPED(status)){
-		
-		read_fd = open_read_file(pid);
-
-		dump_fd = open_dump_file(pid, "data");
-		getmem(read_fd, dump_fd, dataoffset);
-		
-		dump_fd = open_dump_file(pid, "stack");
-		getmem(read_fd, dump_fd, stackoffset);
-	
-	}
-	if(ptrace(PT_DETACH, pid, NULL, 0) < 0){
-		perror("ptrace");
-		exit(1);
-	}
-	printf("detach\n");
-
-	return 0;
-}
-*/
 int getmems(pid_t pid, long int dataoffset, long int stackoffset){
 	int read_fd, dump_fd;
 	

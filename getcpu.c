@@ -10,7 +10,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "register.h"
+#include "register.c"
 
 int getregs(pid_t pid);
 /*
