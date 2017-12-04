@@ -52,7 +52,7 @@ int main(int argc, char* argv[]){
 				if(flag == 0){
 				//	entry_point = get_entry_point(filepath);
 					entry_point = 0x4009ae;
-					origin_text = ptrace_write_i(pid, entry_point, 0);
+					origin_text = ptrace_read_i(pid, entry_point);
 					ptrace_write_i(pid, entry_point, 0xCC);
 					ptrace_cont(pid);
 					flag++;

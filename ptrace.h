@@ -78,21 +78,11 @@ int ptrace_write_d(int pid, unsigned long int addr, long buf){
 }
 
 int ptrace_read_i(int pid, unsigned long int addr){
-	int rc;
-	if(rc = ptrace(PT_READ_I, pid, (caddr_t)addr, 0) < 0){
-		perror("ptrace(PT_READ_I)");
-		exit(1);
-	}
-	return rc;
+	return ptrace(PT_READ_I, pid, (caddr_t)addr, 0);
 }
 
 int ptrace_read_d(int pid, unsigned long int addr){
-	int rc;
-	if(rc = ptrace(PT_READ_D, pid, (caddr_t)addr, 0) < 0){
-		perror("ptrace(PT_READ_D)");
-		exit(1);
-	}
-	return rc;
+	return ptrace(PT_READ_D, pid, (caddr_t)addr, 0);
 }
 
 int ptrace_step(int pid){

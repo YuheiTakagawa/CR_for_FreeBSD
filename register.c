@@ -33,6 +33,12 @@ struct linuxreg{
 	unsigned long int gs;
 };
 
+int check_rip_syscall(int pid, unsigned long int rip){
+	
+	printf("rip code:%lx\n", ptrace_read_i(pid, rip));
+
+	return 1;
+}
 
 int setregs(int pid, pid_t filePid){
 	struct reg reg;
@@ -71,6 +77,8 @@ int setregs(int pid, pid_t filePid){
 	reg.r_fs = 0x0;
 	reg.r_gs = 0x0;
 */      
+	check_rip_syscall(pid, reg.r_rip);
+
 	if(ptrace_set_regs(pid, &reg) < 0){
 	perror("ptrace(PT_SETREGS, ...)");
 	exit(1);
