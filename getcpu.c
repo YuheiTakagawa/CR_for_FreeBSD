@@ -11,6 +11,7 @@
 #include <stdlib.h>
 
 #include "register.c"
+#include "ptrace.h"
 
 int getregs(pid_t pid);
 /*
@@ -23,7 +24,6 @@ int getregs(pid_t pid);
 int getregs(pid_t pid){
 	struct reg reg;
 	struct linuxreg linuxreg;
-	int rc;
 	int fd;
 	unsigned long fs_base, gs_base;
 
@@ -32,25 +32,13 @@ int getregs(pid_t pid){
 	memset(&reg, 0, sizeof(reg));
 
 		
-	rc = ptrace(PT_GETREGS, pid, (caddr_t)&reg, 0);
-	if(rc < 0){
-		perror("ptrace(PT_GETREGS)");
-		exit (1);
-	}
+	ptrace_get_regs(pid, &reg);
 
-	rc = ptrace(PT_GETFSBASE, pid, (caddr_t)&fs_base, 0);
-	if(rc < 0){
-		perror("ptrace(PT_GETFSBASE)");
-		exit (1);
-	}
+	ptrace_get_fsbase(pid, &fs_base);
+	ptrace_get_gsbase(pid, &gs_base);
 
-	rc = ptrace(PT_GETGSBASE, pid, (caddr_t)&gs_base, 0);
-	if(rc < 0){
-		perror("ptrace(PT_GETGSBASE)");
-		exit (1);
-	}
-	printf("RAX: %lx excuted\n", reg.r_rax);
 	printf("RBX: %lx excuted\n", reg.r_rbx);
+
 	printf("RCX: %lx excuted\n", reg.r_rcx);
 	printf("RDX: %lx excuted\n", reg.r_rdx);
 	printf("RSI: %lx excuted\n", reg.r_rsi);
