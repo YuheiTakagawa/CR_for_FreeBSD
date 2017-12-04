@@ -72,7 +72,7 @@ int main(int argc, char* argv[]){
 
 		printf("munmap\n");
 		inject_syscall(pid, &orig, SYSCALL_ARGS, 11, 0x7ffffffdf000, 
-				0x21000, 0x0, 0x0, 0x0, 0x0);
+				0x20000, 0x0, 0x0, 0x0, 0x0);
 		ptrace(PT_CONTINUE, pid, (caddr_t)1, 0);
 	}
 
@@ -88,7 +88,7 @@ int main(int argc, char* argv[]){
 		restore_setregs(pid, orig.reg);
 		restore_memory(pid, &orig);
 		inject_syscall(pid, &orig, SYSCALL_ARGS, 9, 0x7ffffffdf000,
-				0x21000, PROT_READ | PROT_WRITE | PROT_EXEC,
+				0x20000, PROT_READ | PROT_WRITE | PROT_EXEC,
 				MAP_PRIVATE | LINUX_MAP_ANONYMOUS, 0x0, 0x0);
 		ptrace(PT_CONTINUE, pid, (caddr_t)1, 0);
 	}
