@@ -6,40 +6,12 @@
 #include <sys/ptrace.h>
 #include <sys/wait.h>
 
+#include "files.h"
+
 #define BUFSIZE 1024 
 #define PATHBUF 30
 
-int open_read_file(pid_t pid);
-int tracing(pid_t pid, long int daoffset, long int stoffset);
 int getmem(int read_fd, int dump_fd, long int offset);
-
-int open_read_file(pid_t pid){
-	int fd;
-	char filepath[PATHBUF] = {'\0'};
-	
-	snprintf(filepath, sizeof(filepath), "/proc/%d/mem", pid);
-	fd = open(filepath, O_RDONLY);
-	if(fd < 0){
-		perror("open");
-		exit(1);
-	}
-
-	return fd;
-}
-
-int open_dump_file(pid_t pid, char *dumptype){
-	int fd;
-	char filepath[PATHBUF] = {'\0'};
-
-	snprintf(filepath, sizeof(filepath) , "/dump/%d_%s.img", pid, dumptype);
-	fd = open(filepath, O_WRONLY | O_CREAT);
-	if(fd < 0){
-		perror("open");
-		exit(1);
-	}
-
-	return fd;
-}
 
 int getmems(pid_t pid, long int dataoffset, long int stackoffset){
 	int read_fd, dump_fd;
