@@ -8,9 +8,11 @@
 #include <sys/mman.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 
 #define BUFSIZE 1024
 #define PATHBUF 30
+#define SYSCALL_ARGS 7 
 
 long code = 0xcc050f;
 
@@ -22,107 +24,55 @@ struct orig{
 };
 
 #define LINUX_MAP_ANONYMOUS 0x20
-void munstack(int pid){
-	struct reg reg;
-	printf("================================\n");
-	printf("Entry munstack\n");
+
+void inject_syscall_regs(int pid, struct orig *orig, int nr, 
+		unsigned long arg1,
+		unsigned long arg2,
+		unsigned long arg3,
+		unsigned long arg4,
+		unsigned long arg5,
+		unsigned long arg6)
+{
+	struct reg reg;	
 	ptrace(PT_GETREGS, pid, (caddr_t)&reg, 1);
+	orig->reg = reg;
 
-	reg.r_rax = 11;
-	reg.r_rdi = 0x7ffffffdf000;
-	reg.r_rsi = 0x21000;
-       	reg.r_rdx = 0x0;	
-	reg.r_r10 = 0x0;
-	reg.r_r8  = 0x0;
-	reg.r_r9  = 0x0;
-
-	/* injection syscall 0xcc050f */	
-	if(ptrace(PT_WRITE_I, pid, (caddr_t)reg.r_rip, code) < 0){
-		perror("ptrace(WRITE_I)");
-		exit(1);
-	}
-	/******************************/
+	reg.r_rax = (uint64_t)nr;
+	reg.r_rdi = arg1;
+	reg.r_rsi = arg2;
+	reg.r_rdx = arg3;
+	reg.r_r10 = arg4;
+	reg.r_r8  = arg5;
+	reg.r_r9  = arg6;
 
 	ptrace(PT_SETREGS, pid, (caddr_t)&reg, 1);
-	printf("finished munmap\n");
 }
 
-
-struct orig *parasite_setregs(int pid, char* mem, struct orig *orig){
-	struct reg reg;
-	char *path = "Parasite Injection!\n";
-
-	printf("================================\n");
-	ptrace(PT_GETREGS, pid, (caddr_t)&reg, 1);
-	printf("Get registers: \n");
-	orig->reg = reg;
-	printf("Evacuation registers: \n");
-
-	printf("path: %p\n", path);
-
-/* Injection mmap systemcall registers */
-	printf("MAP_SHARED: %x\n", MAP_SHARED);
-	printf("MAP_PRIVATE: %x\n", MAP_PRIVATE);
-       	printf("MAP_ANONYMOUS: %x\n", MAP_ANONYMOUS);
-	printf("LINUX_MAP: %x\n", MAP_SHARED | LINUX_MAP_ANONYMOUS);
-	printf("PROT: %x\n", PROT_READ|PROT_WRITE|PROT_EXEC);
-	reg.r_rax = 9;
-	reg.r_rdi = 0x0;
-	reg.r_rsi = 1024; 
-	//reg.r_rdx = 0x7;
-	reg.r_rdx = PROT_READ | PROT_WRITE | PROT_EXEC;
-	reg.r_r10 = MAP_PRIVATE | LINUX_MAP_ANONYMOUS;	
-	reg.r_r8  = 0x0;
-	reg.r_r9  = 0x0;
-	
-	printf("path:%s, rdi:%d, size:%d\n", path, reg.r_rdi, reg.r_r10);
-	printf("rip:%lx\n", reg.r_rip);
-/* changed memory direct */
-	/* get origal memory */
-	orig->text = ptrace(PT_READ_I, pid, (caddr_t)reg.r_rip, 0);
-	orig->data = ptrace(PT_READ_D, pid, (caddr_t)path, 0);
-	orig->addr = path;
-	/******************************/
+void inject_syscall_mem(int pid, struct orig *orig, unsigned long rip){
+	orig->text = ptrace(PT_READ_I, pid, (caddr_t)rip, 0);
+	orig->data = 0x0;
+	orig->addr = 0x0;
 
 	/* injection syscall 0xcc050f */	
-	if(ptrace(PT_WRITE_I, pid, (caddr_t)reg.r_rip, code) < 0){
+	if(ptrace(PT_WRITE_I, pid, (caddr_t)rip, code) < 0){
 		perror("ptrace(WRITE_I)");
 		exit(1);
 	}
 	/******************************/
+}
 
- 	int* tmp = malloc(sizeof(int));
-/*
-	memset(tmp, 0, 4 + 1);
- 	memcpy(tmp, code, 4);
- 	if(ptrace(PT_WRITE_I, pid, (caddr_t)reg.r_rip, *tmp) < 0){
- 		perror("ptrace(WRITE_I)");
- 		exit(1);
- 	}
-*/
-	/* write buffer convert to machine lang*/
-	for(int i = 0; i < strlen(path) / 4 + 1; i++){
-		memset(tmp, 0, 4 + 1);
-		memcpy(tmp, path + i * 4, 4);
-		if(ptrace(PT_WRITE_D, pid, (caddr_t)path + i*4 , *tmp) < 0){
-			perror("ptrace(WRITE_I)");
-			exit(1);
-		}
-	}
-
-	free(tmp);
-
-	printf("orig_text: %lx\n", orig->text);
-	printf("orig_data: %lx\n", orig->data);
+void inject_syscall(int pid, struct orig *orig, int num, ...){
+	va_list list;
+	unsigned long arg[num];
 	
-/************************/
-	
-	if(ptrace(PT_SETREGS, pid, (caddr_t)&reg, 1) < 0){
-		perror("ptrace(SETREGS)");
-		exit(1);
+	va_start(list, num);
+	for(int i = 0; i < num; i++){
+		arg[i] = va_arg(list, unsigned long);
 	}
-
-	return orig;
+	va_end(list);
+	inject_syscall_regs(pid, orig, arg[0], arg[1],
+		       	arg[2], arg[3], arg[4], arg[5], arg[6]);
+	inject_syscall_mem(pid, orig, orig->reg.r_rip);
 }
 
 void restore_setregs(int pid, struct reg orig){
@@ -140,6 +90,7 @@ void restore_memory(int pid, struct orig *orig){
 	ptrace(PT_WRITE_I, pid, (caddr_t)orig->addr, orig->data);
 	
 }
+
 int main(int argc, char* argv[]){
 	int pid;
 	int status;
@@ -163,14 +114,11 @@ int main(int argc, char* argv[]){
 	if(WIFEXITED(status)){
 	}else if (WIFSTOPPED(status)){
 		printf("stop PID = %d, by signal = %d\n", pid, WSTOPSIG(status));
-
-//		mem = (char*) mmap(0, 1024, PROT_WRITE|PROT_READ|PROT_EXEC, MAP_ANONYMOUS |MAP_PRIVATE, -1, 0);
-		if(mem == MAP_FAILED){
-			perror("mmap");
-			exit(1);
-		}
-		printf("add mem: %p\n", mem);
-		parasite_setregs(pid, mem, &orig);
+		printf("==================\n");
+		printf("mmap\n");
+		inject_syscall(pid, &orig, SYSCALL_ARGS, 9, 0x0, 
+				0x21000, PROT_READ | PROT_WRITE | PROT_EXEC,
+			       	MAP_PRIVATE | LINUX_MAP_ANONYMOUS, 0x0, 0x0);
 		ptrace(PT_CONTINUE, pid, (caddr_t)1, 0);
 	}
 
@@ -182,8 +130,11 @@ int main(int argc, char* argv[]){
 	if(WIFEXITED(status)){
 	}else if (WIFSTOPPED(status)){
 		printf("stop PID = %d, by signal = %d\n", pid, WSTOPSIG(status));
+		restore_setregs(pid, orig.reg);
 
-		munstack(pid);
+		printf("munmap\n");
+		inject_syscall(pid, &orig, SYSCALL_ARGS, 11, 0x7ffffffdf000, 
+				0x21000, 0x0, 0x0, 0x0, 0x0);
 		ptrace(PT_CONTINUE, pid, (caddr_t)1, 0);
 	}
 
@@ -196,6 +147,19 @@ int main(int argc, char* argv[]){
 	}else if(WIFSTOPPED(status)){
 		printf("stop PID = %d, by signal = %d\n", pid, WSTOPSIG(status));
 
+		restore_setregs(pid, orig.reg);
+		inject_syscall(pid, &orig, SYSCALL_ARGS, 9, 0x7ffffffdf000,
+				0x21000, PROT_READ | PROT_WRITE | PROT_EXEC,
+				MAP_PRIVATE | LINUX_MAP_ANONYMOUS, 0x0, 0x0);
+		ptrace(PT_CONTINUE, pid, (caddr_t)1, 0);
+	}
+	if(waitpid(pid, &status, 0) < 0){
+		perror("waitpid");
+		exit(1);
+	}
+	if(WIFEXITED(status)){
+	}else if(WIFSTOPPED(status)){
+		printf("stop PID = %d, by signal = %d\n", pid, WSTOPSIG(status));
 		restore_setregs(pid, orig.reg);
 		restore_memory(pid, &orig);
 		//ptrace(PT_DETACH, pid, (caddr_t)1, 0);
