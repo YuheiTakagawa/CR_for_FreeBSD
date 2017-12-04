@@ -1,7 +1,11 @@
 #include <unistd.h>
 
+#include "files.h"
+
+#define BUFSIZE 1024
+#define PATHBUF 30
+
 int setmems(pid_t, pid_t);
-int open_file(pid_t, char*);
 int write_mem(int, int, long int);
 
 int setmems(pid_t pid, pid_t filePid){
@@ -20,17 +24,6 @@ int setmems(pid_t pid, pid_t filePid){
 
         close(write_fd);
         return 0;
-}
-
-int open_file(pid_t pid, char* flag){
-        char filepath[PATHBUF];
-
-        if(flag == "mem"){
-                snprintf(filepath, sizeof(filepath), "/proc/%d/mem", pid);
-                return  open(filepath, O_WRONLY);
-        }
-        snprintf(filepath, sizeof(filepath), "/dump/%d_%s.img", pid, flag);
-        return open(filepath, O_RDONLY);
 }
 
 int write_mem(int read_fd, int write_fd, long int offset){
