@@ -19,13 +19,18 @@
 int target(char *path, char* argv[]);
 Elf64_Addr get_entry_point(char* filepath);
 
-void prepare_change_stack(int pid, unsigned long int old_addr, unsigned long int old_size, struct orig *orig){
-	inject_syscall(pid, orig, SYSCALL_ARGS, 11, old_addr, old_size, 0x0, 0x0, 0x0, 0x0);
+void prepare_change_stack(int pid, unsigned long int old_addr,
+	        unsigned long int old_size, struct orig *orig){
+	inject_syscall(pid, orig, SYSCALL_ARGS,
+		       	11, old_addr, old_size, 0x0, 0x0, 0x0, 0x0);
 }
 
-unsigned long int change_stack(int pid, unsigned long int new_addr, unsigned long int new_size, struct orig *orig){
+unsigned long int change_stack(int pid, unsigned long int new_addr,
+	       	unsigned long int new_size, struct orig *orig){
 	restore_orig(pid, orig);
-	inject_syscall(pid, orig, SYSCALL_ARGS, 9, new_addr, new_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | LINUX_MAP_ANONYMOUS, 0x0, 0x0);
+	inject_syscall(pid, orig, SYSCALL_ARGS,
+		       	9, new_addr, new_size, PROT_READ | PROT_WRITE,
+		       	MAP_PRIVATE | LINUX_MAP_ANONYMOUS, 0x0, 0x0);
 	return new_addr;
 }
 
