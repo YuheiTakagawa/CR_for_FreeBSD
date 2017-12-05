@@ -37,15 +37,22 @@ int main(int argc, char* argv[]){
 	long origin_text;
 	Elf64_Addr entry_point;
 	unsigned long int stack_addr;
+	unsigned long int stack_size;
 	struct orig orig;
 
-	if(argc < 3){
+	if(argc < 4){
 		printf("Usage: %s <path> <file pid>\n", argv[0]);
 		exit(1);
 	}
 
 	filepath = argv[1];
 	filePid = atoi(argv[2]);
+	//stack_addr = 0x7ffffffdf000;
+	stack_addr = strtol(argv[3], NULL, 16);
+	stack_size = 0x20000;
+	if(stack_addr != 0x7ffffffdf000){
+		stack_size = 0x21000;
+	}
 	printf("CMD : %s\n", argv[1]);
 	printf("PPID: %d\n", getpid());
 	printf("Restore file: %d\n", filePid); 
@@ -79,7 +86,8 @@ int main(int argc, char* argv[]){
 						printf("prepare changed stack position in memory layout\n");
 					}
 					if(flag == 2){
-						stack_addr = change_stack(pid, 0x7ffffffde000, 0x21000, &orig);
+						change_stack(pid, stack_addr, stack_size, &orig);
+
 						printf("changed stack position in memory layout\n");
 						printf("stack_addr %lx\n", stack_addr);
 					}
