@@ -1,5 +1,5 @@
-#ifndef INJECT_SYSCALL
-#define INJECT_SYSCALL
+#ifndef PARASITE_SYSCALL
+#define PARASITE_SYSCALL
 
 #include <unistd.h>
 #include <stdarg.h>
@@ -10,6 +10,8 @@
 #define BUFSIZE 1024
 #define PATHBUF 30
 #define SYSCALL_ARGS 7 
+
+#define LINUX_MAP_ANONYMOUS 0x20
 
 long code = 0xcc050f;
 
