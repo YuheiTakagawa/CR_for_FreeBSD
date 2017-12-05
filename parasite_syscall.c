@@ -70,6 +70,23 @@ void inject_syscall(int pid, struct orig *orig, int num, ...){
 	inject_syscall_mem(pid, orig, orig->reg.r_rip);
 }
 
+void inject_syscall_buf(int pid, struct orig *orig, unsigned long data, char *addr){
+	int *tmp = malloc(sizeof(int));
+	orig->data = ptrace_read_i(pid, (unsigned long int) addr);
+	orig->addr = addr;
+
+	/* injection syscall buf */
+	for(int i = 0; i < strlen(addr) / 4 + 1; i++){
+		memset(tmp, 0, 4 + 1);
+		memcpy(tmp, addr + i * 4, 4);
+		ptrace_write_i(pid, (unsigned long int)addr + i * 4, *tmp);
+	}
+	/*************************/
+	free(tmp);
+	printf("orig_text: %lx\n", orig->text);
+	printf("orig_data: %lx\n", orig->data);
+}
+
 void restore_setregs(int pid, struct reg orig){
 	struct reg reg;
 	
