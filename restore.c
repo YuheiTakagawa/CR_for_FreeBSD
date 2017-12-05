@@ -21,17 +21,23 @@ Elf64_Addr get_entry_point(char* filepath);
 
 void prepare_change_stack(int pid, unsigned long int old_addr,
 	        unsigned long int old_size, struct orig *orig){
-	inject_syscall(pid, orig, SYSCALL_ARGS,
+	inject_syscall(pid, orig, NULL, SYSCALL_ARGS,
 		       	11, old_addr, old_size, 0x0, 0x0, 0x0, 0x0);
 }
 
 unsigned long int change_stack(int pid, unsigned long int new_addr,
 	       	unsigned long int new_size, struct orig *orig){
 	restore_orig(pid, orig);
-	inject_syscall(pid, orig, SYSCALL_ARGS,
+	inject_syscall(pid, orig, NULL, SYSCALL_ARGS,
 		       	9, new_addr, new_size, PROT_READ | PROT_WRITE,
 		       	MAP_PRIVATE | LINUX_MAP_ANONYMOUS, 0x0, 0x0);
 	return new_addr;
+}
+
+unsigned long int prepare_restore_files(int pid, char *path, struct orig *orig){
+	printf("PATH:%s\n", path);
+	restore_orig(pid, orig);
+	inject_syscall(pid, orig, path, SYSCALL_ARGS, 2, (unsigned long int)path, O_RDWR, 0x0, 0x0, 0x0, 0x0);
 }
 
 int main(int argc, char* argv[]){
@@ -44,6 +50,7 @@ int main(int argc, char* argv[]){
 	unsigned long int stack_addr;
 	unsigned long int stack_size;
 	struct orig orig;
+	char *restore_path = "/dump/hello";
 
 	if(argc < 4){
 		printf("Usage: %s <path> <file pid>\n", argv[0]);
@@ -85,18 +92,18 @@ int main(int argc, char* argv[]){
 				else{
 					printf("stopped:%d\n", WSTOPSIG(status));
 					if(flag == 1){
-						setregs(pid, filePid);
+					 	setregs(pid, filePid);
 						printf("finished setting registers\n");
 						prepare_change_stack(pid, 0x7ffffffdf000, 0x20000, &orig);
 						printf("prepare changed stack position in memory layout\n");
-					}
-					if(flag == 2){
+					}else if(flag == 2){
 						change_stack(pid, stack_addr, stack_size, &orig);
 
 						printf("changed stack position in memory layout\n");
 						printf("stack_addr %lx\n", stack_addr);
-					}
-					if(flag == 3){
+					}else if(flag == 3){
+						prepare_restore_files(pid, restore_path, &orig);
+					}else{
 						restore_orig(pid, &orig);
 						setmems(pid, filePid, stack_addr);
 					}

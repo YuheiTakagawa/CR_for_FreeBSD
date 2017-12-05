@@ -3,6 +3,7 @@
 
 #include <unistd.h>
 #include <stdarg.h>
+#include <string.h>
 
 #include "getmem.c"
 #include "setmem.c"
@@ -56,7 +57,23 @@ void inject_syscall_mem(int pid, struct orig *orig, unsigned long rip){
 	/******************************/
 }
 
-void inject_syscall(int pid, struct orig *orig, int num, ...){
+void inject_syscall_buf(int pid, struct orig *orig, char *addr){
+	int *tmp = malloc(sizeof(int));
+	orig->data = ptrace_read_i(pid, (unsigned long int) addr);
+	orig->addr = addr;
+	/* injection syscall buf */
+	for(int i = 0; i < strlen(addr) / 4 + 1; i++){
+		memset(tmp, 0, 4 + 1);
+		memcpy(tmp, addr + i * 4, 4);
+		ptrace_write_i(pid, (unsigned long int)addr + i * 4, *tmp);
+	}
+	/*************************/
+	free(tmp);
+	printf("orig_text: %lx\n", orig->text);
+	printf("orig_data: %lx\n", orig->data);
+}
+
+void inject_syscall(int pid, struct orig *orig, char *addr, int num, ...){
 	va_list list;
 	unsigned long arg[num];
 	
@@ -68,23 +85,8 @@ void inject_syscall(int pid, struct orig *orig, int num, ...){
 	inject_syscall_regs(pid, orig, arg[0], arg[1],
 		       	arg[2], arg[3], arg[4], arg[5], arg[6]);
 	inject_syscall_mem(pid, orig, orig->reg.r_rip);
-}
-
-void inject_syscall_buf(int pid, struct orig *orig, unsigned long data, char *addr){
-	int *tmp = malloc(sizeof(int));
-	orig->data = ptrace_read_i(pid, (unsigned long int) addr);
-	orig->addr = addr;
-
-	/* injection syscall buf */
-	for(int i = 0; i < strlen(addr) / 4 + 1; i++){
-		memset(tmp, 0, 4 + 1);
-		memcpy(tmp, addr + i * 4, 4);
-		ptrace_write_i(pid, (unsigned long int)addr + i * 4, *tmp);
-	}
-	/*************************/
-	free(tmp);
-	printf("orig_text: %lx\n", orig->text);
-	printf("orig_data: %lx\n", orig->data);
+	if(addr != NULL)
+		inject_syscall_buf(pid, orig, addr);
 }
 
 void restore_setregs(int pid, struct reg orig){
