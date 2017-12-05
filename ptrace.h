@@ -1,9 +1,10 @@
+#ifndef PTRACE_H
+#define PTRACE_H
+
 #include <sys/ptrace.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#ifndef PTRACE_H
-#define PTRACE_H
 
 int ptrace_traceme(void){
 	int rc;
