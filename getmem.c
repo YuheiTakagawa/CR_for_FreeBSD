@@ -1,3 +1,6 @@
+#ifndef GETMEM
+#define GETMEM
+
 #include <stdio.h>
 #include <unistd.h>
 #include <ctype.h>
@@ -56,3 +59,5 @@ int getmem(int read_fd, int dump_fd, long int offset){
 
 	return 0;
 }
+
+#endif
