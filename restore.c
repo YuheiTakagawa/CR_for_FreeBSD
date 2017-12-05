@@ -75,25 +75,20 @@ int main(int argc, char* argv[]){
 					if(flag == 1){
 						setregs(pid, filePid);
 						printf("finished setting registers\n");
-						printf("prepare changed stack position in memory layout\n");
 						prepare_change_stack(pid, 0x7ffffffdf000, 0x20000, &orig);
+						printf("prepare changed stack position in memory layout\n");
 					}
 					if(flag == 2){
-						printf("changed stack position in memory layout\n");
 						stack_addr = change_stack(pid, 0x7ffffffde000, 0x21000, &orig);
+						printf("changed stack position in memory layout\n");
 						printf("stack_addr %lx\n", stack_addr);
-						sleep(1);
 					}
 					if(flag == 3){
 						restore_orig(pid, &orig);
 						setmems(pid, filePid, stack_addr);
-
-						sleep(1);
-			//			while(1);
 					}
 					flag++;
 					ptrace_cont(pid);
-			//		printf("CONTINUE...\n");
 				}
 			}else if(WIFEXITED(status)){
 				perror("exited");
