@@ -100,7 +100,8 @@ void restore_setregs(int pid, struct reg orig){
 void restore_memory(int pid, struct orig *orig){
 	printf("orig_text: %lx\n", orig->text);
 	ptrace_write_i(pid, orig->reg.r_rip, orig->text);
-	//ptrace(PT_WRITE_I, pid, (caddr_t)orig->addr, orig->data);
+	if(orig->addr != 0x0)
+	ptrace_write_d(pid, (unsigned long int)orig->addr, orig->data);
 }
 
 void restore_orig(int pid, struct orig *orig){
