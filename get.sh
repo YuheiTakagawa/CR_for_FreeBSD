@@ -26,3 +26,5 @@ stack=`cat /proc/$pid/maps |\
 #stack=7ffffffdf000
 echo stack address is $stack
 /CR_for_FreeBSD/getall $pid $data $stack
+kill $pid
+echo $pid
