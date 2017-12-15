@@ -214,7 +214,7 @@ int setmems(pid_t pid, pid_t filePid){
 //	printf("%llx\n", strtoll(tmp, &tmp2, 16));
 	read_fd = open_file(filePid, "stack");
 	//write_mem(read_fd, write_fd, strtoll(tmp, &tmp2, 16));
-	write_mem(read_fd, write_fd, 0x7ffffffdf000);
+	write_mem(read_fd, write_fd, 0x7ffffffde000);
 
 	close(write_fd);
 	return 0;
