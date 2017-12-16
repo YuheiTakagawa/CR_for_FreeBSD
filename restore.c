@@ -2,6 +2,7 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include <ctype.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -13,6 +14,7 @@
 #include "setmem.c"
 #include "ptrace.h"
 #include "parasite_syscall.c"
+
 #define BUFSIZE 1024
 #define PATHBUF 30
 
@@ -103,12 +105,23 @@ int main(int argc, char* argv[]){
 						printf("stack_addr %lx\n", stack_addr);
 					}else if(flag == 3){
 						prepare_restore_files(pid, restore_path, &orig);
-					}else{
+					}else if(flag == 4){
+						restore_orig(pid, &orig);
+						inject_syscall(pid, &orig, NULL, SYSCALL_ARGS, 8, 0x3, 0x300, SEEK_SET, 0x0, 0x0, 0x0);
+					}else if(flag == 5){
 						restore_orig(pid, &orig);
 						setmems(pid, filePid, stack_addr);
 					}
+					else{
+						print_regs(pid);
+					}
+					if(flag < 6)
+						ptrace_cont(pid);
+					else{
+						ptrace_step(pid);
+						sleep(1);
+					}
 					flag++;
-					ptrace_cont(pid);
 				}
 			}else if(WIFEXITED(status)){
 				perror("exited");
