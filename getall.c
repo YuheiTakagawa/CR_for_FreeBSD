@@ -55,6 +55,7 @@ int tracing(pid_t pid, long int daoffset, long int stoffset){
 		getmems(pid, daoffset, stoffset);
 	}
 	printf("Checkpoint\n");
+	ptrace_detach(pid);
 
 	return 0;
 }

@@ -28,8 +28,11 @@ print("DATA: " + data)
 stack = mm[-3].split()[0]
 print("STACK: " + stack)
 
+ret = subprocess.check_output(["/CR_for_FreeBSD/getall", pid, data, stack])
+
 # get fd information from procstat(1) 
 prst = subprocess.check_output(["procstat", "-f", pid]).decode('utf-8')
+subprocess.check_output(["kill", "-KILL", pid])
 prst = prst.split("\n")
 tmp = prst[0].split()
 
@@ -42,5 +45,4 @@ print("OFFSET: " + tmp[row[1]])
 print("NAME: " + tmp[row[2]])
 print("======================")
 
-ret = subprocess.check_output(["/CR_for_FreeBSD/getall", pid, data, stack])
 print(pid)
