@@ -51,11 +51,12 @@ int main(int argc, char* argv[]){
 	Elf64_Addr entry_point;
 	unsigned long int stack_addr;
 	unsigned long int stack_size;
+	int file_offset;
 	struct orig orig;
 	char *restore_path = "/dump/hello";
 
-	if(argc < 4){
-		printf("Usage: %s <path> <file pid>\n", argv[0]);
+	if(argc < 5){
+		printf("Usage: %s <path> <file pid> <stack addr> <file offset>\n", argv[0]);
 		exit(1);
 	}
 
@@ -67,6 +68,7 @@ int main(int argc, char* argv[]){
 	if(stack_addr != 0x7ffffffdf000){
 		stack_size = 0x21000;
 	}
+	file_offset = atoi(argv[4]);
 	printf("CMD : %s\n", argv[1]);
 	printf("PPID: %d\n", getpid());
 	printf("Restore file: %d\n", filePid); 
@@ -107,7 +109,7 @@ int main(int argc, char* argv[]){
 						prepare_restore_files(pid, restore_path, &orig);
 					}else if(flag == 4){
 						restore_orig(pid, &orig);
-						inject_syscall(pid, &orig, NULL, SYSCALL_ARGS, 8, 0x3, 0x300, SEEK_SET, 0x0, 0x0, 0x0);
+						inject_syscall(pid, &orig, NULL, SYSCALL_ARGS, 8, 0x3, file_offset, SEEK_SET, 0x0, 0x0, 0x0);
 					}else if(flag == 5){
 						restore_orig(pid, &orig);
 						setmems(pid, filePid, stack_addr);
