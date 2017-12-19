@@ -11,6 +11,7 @@
 
 #include "getmem.c"
 #include "register.c"
+#include "getfd.c"
 
 #define BUFSIZE 1024
 #define PATHBUF 30
@@ -51,6 +52,7 @@ int tracing(pid_t pid, long int daoffset, long int stoffset){
 	if(WIFEXITED(status)){
 	} else if (WIFSTOPPED(status)){
 		printf("stop %d\n", pid);
+		getfd(pid);
 		getregs(pid);
 		getmems(pid, daoffset, stoffset);
 	}

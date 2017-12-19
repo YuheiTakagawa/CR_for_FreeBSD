@@ -32,7 +32,7 @@ ret = subprocess.check_output(["/CR_for_FreeBSD/getall", pid, data, stack])
 
 # get fd information from procstat(1) 
 prst = subprocess.check_output(["procstat", "-f", pid]).decode('utf-8')
-subprocess.check_output(["kill", "-TREM", pid])
+subprocess.check_output(["kill", "-TERM", pid])
 prst = prst.split("\n")
 tmp = prst[0].split()
 
