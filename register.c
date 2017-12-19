@@ -138,8 +138,9 @@ int getregs(pid_t pid){
 	ptrace_get_fsbase(pid, &fs_base);
 	ptrace_get_gsbase(pid, &gs_base);
 
-	printf("RBX: %lx excuted\n", reg.r_rbx);
 
+	printf("RAX: %lx excuted\n", reg.r_rax);
+	printf("RBX: %lx excuted\n", reg.r_rbx);
 	printf("RCX: %lx excuted\n", reg.r_rcx);
 	printf("RDX: %lx excuted\n", reg.r_rdx);
 	printf("RSI: %lx excuted\n", reg.r_rsi);
