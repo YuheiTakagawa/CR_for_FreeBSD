@@ -36,7 +36,6 @@ int main(int argc, char* argv[]){
 
 int tracing(pid_t pid, long int daoffset, long int stoffset){
 	int status;
-	int rc;
 	
 	ptrace_attach(pid);
 
