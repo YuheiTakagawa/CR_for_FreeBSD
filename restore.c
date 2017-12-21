@@ -117,10 +117,10 @@ int main(int argc, char* argv[]){
 					else{
 						print_regs(pid);
 					}
-					if(flag < 6)
+					if(flag < 5)
 						ptrace_cont(pid);
 					else{
-						ptrace_step(pid);
+						ptrace_detach(pid);
 						sleep(1);
 					}
 					flag++;
