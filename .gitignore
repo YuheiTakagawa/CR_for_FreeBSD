@@ -6,3 +6,4 @@
 !/test/count*
 !/*.sh
 !/Makefile*
+!/README.md
