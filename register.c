@@ -35,11 +35,41 @@ struct linuxreg{
 
 int check_rip_syscall(int pid, unsigned long int rip){
 	
-	printf("rip code:%lx\n", ptrace_read_i(pid, rip));
+	printf("rip code:%x\n", ptrace_read_i(pid, rip));
 
 	return 1;
 }
 
+void print_regs(int pid){
+	struct reg reg;
+	ptrace_get_regs(pid, &reg);
+	printf("RAX: %lx excuted\n", reg.r_rax);
+        printf("RBX: %lx excuted\n", reg.r_rbx);
+        printf("RCX: %lx excuted\n", reg.r_rcx);
+        printf("RDX: %lx excuted\n", reg.r_rdx);
+        printf("RSI: %lx excuted\n", reg.r_rsi);
+        printf("RDI: %lx excuted\n", reg.r_rdi);
+        printf("RBP: %lx excuted\n", reg.r_rbp);
+        printf("RSP: %lx excuted\n", reg.r_rsp);
+        printf("RIP: %lx excuted\n", reg.r_rip);
+        printf("FLG: %lx excuted\n", reg.r_rflags);
+        printf("R8 : %lx excuted\n", reg.r_r8);
+        printf("R9 : %lx excuted\n", reg.r_r9);
+        printf("R10: %lx excuted\n", reg.r_r10);
+        printf("R11: %lx excuted\n", reg.r_r11);
+        printf("R12: %lx excuted\n", reg.r_r12);
+        printf("R13: %lx excuted\n", reg.r_r13);
+        printf("R14: %lx excuted\n", reg.r_r14);
+        printf("R15: %lx excuted\n", reg.r_r15);
+        printf("TRA: %x excuted\n", reg.r_trapno);
+        printf("CS : %lx excuted\n", reg.r_cs);
+        printf("SS : %lx excuted\n", reg.r_ss);
+        printf("DS : %x excuted\n", reg.r_ds);
+        printf("ES : %x excuted\n", reg.r_es);
+        printf("FS : %x excuted\n", reg.r_fs);
+        printf("GS : %x excuted\n", reg.r_gs);
+
+}
 int setregs(int pid, pid_t filePid){
 	struct reg reg;
 	struct linuxreg linuxreg;
@@ -95,7 +125,6 @@ int setregs(int pid, pid_t filePid){
 int getregs(pid_t pid){
 	struct reg reg;
 	struct linuxreg linuxreg;
-	int rc;
 	int fd;
 	unsigned long fs_base, gs_base;
 
@@ -108,8 +137,9 @@ int getregs(pid_t pid){
 	ptrace_get_fsbase(pid, &fs_base);
 	ptrace_get_gsbase(pid, &gs_base);
 
-	printf("RBX: %lx excuted\n", reg.r_rbx);
 
+	printf("RAX: %lx excuted\n", reg.r_rax);
+	printf("RBX: %lx excuted\n", reg.r_rbx);
 	printf("RCX: %lx excuted\n", reg.r_rcx);
 	printf("RDX: %lx excuted\n", reg.r_rdx);
 	printf("RSI: %lx excuted\n", reg.r_rsi);
@@ -126,15 +156,15 @@ int getregs(pid_t pid){
 	printf("R13: %lx excuted\n", reg.r_r13);
 	printf("R14: %lx excuted\n", reg.r_r14);
 	printf("R15: %lx excuted\n", reg.r_r15);
-	printf("TRA: %lx excuted\n", reg.r_trapno);
+	printf("TRA: %x excuted\n", reg.r_trapno);
 	printf("CS : %lx excuted\n", reg.r_cs);
 	printf("SS : %lx excuted\n", reg.r_ss);
 	printf("DS : %x excuted\n", reg.r_ds);
 	printf("ES : %x excuted\n", reg.r_es);
 	printf("FS : %x excuted\n", reg.r_fs);
 	printf("GS : %x excuted\n", reg.r_gs);
-	printf("FSB: %x excuted\n", fs_base);
-	printf("GSB: %x excuted\n", gs_base);
+	printf("FSB: %lx excuted\n", fs_base);
+	printf("GSB: %lx excuted\n", gs_base);
 
 	linuxreg.r15 = reg.r_r15;
 	linuxreg.r14 = reg.r_r14;

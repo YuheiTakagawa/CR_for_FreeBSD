@@ -2,6 +2,7 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include <ctype.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -13,20 +14,32 @@
 #include "setmem.c"
 #include "ptrace.h"
 #include "parasite_syscall.c"
+
 #define BUFSIZE 1024
 #define PATHBUF 30
 
 int target(char *path, char* argv[]);
 Elf64_Addr get_entry_point(char* filepath);
 
-void prepare_change_stack(int pid, unsigned long int old_addr, unsigned long int old_size, struct orig *orig){
-	inject_syscall(pid, orig, SYSCALL_ARGS, 11, old_addr, old_size, 0x0, 0x0, 0x0, 0x0);
+void prepare_change_stack(int pid, unsigned long int old_addr,
+	        unsigned long int old_size, struct orig *orig){
+	inject_syscall(pid, orig, NULL, SYSCALL_ARGS,
+		       	11, old_addr, old_size, 0x0, 0x0, 0x0, 0x0);
 }
 
-unsigned long int change_stack(int pid, unsigned long int new_addr, unsigned long int new_size, struct orig *orig){
+unsigned long int change_stack(int pid, unsigned long int new_addr,
+	       	unsigned long int new_size, struct orig *orig){
 	restore_orig(pid, orig);
-	inject_syscall(pid, orig, SYSCALL_ARGS, 9, new_addr, new_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | LINUX_MAP_ANONYMOUS, 0x0, 0x0);
+	inject_syscall(pid, orig, NULL, SYSCALL_ARGS,
+		       	9, new_addr, new_size, PROT_READ | PROT_WRITE,
+		       	MAP_PRIVATE | LINUX_MAP_ANONYMOUS, 0x0, 0x0);
 	return new_addr;
+}
+
+unsigned long int prepare_restore_files(int pid, char *path, struct orig *orig){
+	printf("PATH:%s\n", path);
+	restore_orig(pid, orig);
+	inject_syscall(pid, orig, path, SYSCALL_ARGS, 2, (unsigned long int)path, O_RDWR, 0x0, 0x0, 0x0, 0x0);
 }
 
 int main(int argc, char* argv[]){
@@ -38,10 +51,12 @@ int main(int argc, char* argv[]){
 	Elf64_Addr entry_point;
 	unsigned long int stack_addr;
 	unsigned long int stack_size;
+	int file_offset;
 	struct orig orig;
+	char *restore_path = "/dump/hello";
 
-	if(argc < 4){
-		printf("Usage: %s <path> <file pid>\n", argv[0]);
+	if(argc < 5){
+		printf("Usage: %s <path> <file pid> <stack addr> <file offset>\n", argv[0]);
 		exit(1);
 	}
 
@@ -53,6 +68,7 @@ int main(int argc, char* argv[]){
 	if(stack_addr != 0x7ffffffdf000){
 		stack_size = 0x21000;
 	}
+	file_offset = atoi(argv[4]);
 	printf("CMD : %s\n", argv[1]);
 	printf("PPID: %d\n", getpid());
 	printf("Restore file: %d\n", filePid); 
@@ -80,23 +96,34 @@ int main(int argc, char* argv[]){
 				else{
 					printf("stopped:%d\n", WSTOPSIG(status));
 					if(flag == 1){
-						setregs(pid, filePid);
+					 	setregs(pid, filePid);
 						printf("finished setting registers\n");
 						prepare_change_stack(pid, 0x7ffffffdf000, 0x20000, &orig);
 						printf("prepare changed stack position in memory layout\n");
-					}
-					if(flag == 2){
+					}else if(flag == 2){
 						change_stack(pid, stack_addr, stack_size, &orig);
 
 						printf("changed stack position in memory layout\n");
 						printf("stack_addr %lx\n", stack_addr);
-					}
-					if(flag == 3){
+					}else if(flag == 3){
+						prepare_restore_files(pid, restore_path, &orig);
+					}else if(flag == 4){
+						restore_orig(pid, &orig);
+						inject_syscall(pid, &orig, NULL, SYSCALL_ARGS, 8, 0x3, file_offset, SEEK_SET, 0x0, 0x0, 0x0);
+					}else if(flag == 5){
 						restore_orig(pid, &orig);
 						setmems(pid, filePid, stack_addr);
 					}
+					else{
+						print_regs(pid);
+					}
+					if(flag < 5)
+						ptrace_cont(pid);
+					else{
+						ptrace_detach(pid);
+						sleep(1);
+					}
 					flag++;
-					ptrace_cont(pid);
 				}
 			}else if(WIFEXITED(status)){
 				perror("exited");
