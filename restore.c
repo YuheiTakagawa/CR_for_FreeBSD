@@ -32,8 +32,8 @@ unsigned long int change_stack(int pid, unsigned long int new_addr,
 	restore_orig(pid, orig);
 	inject_syscall(pid, orig, NULL, SYSCALL_ARGS,
 		       	//9, new_addr, new_size, PROT_READ | PROT_WRITE,
-		       	9, 0x800000000000, new_size, PROT_READ | PROT_WRITE,
-		       	MAP_PRIVATE | LINUX_MAP_ANONYMOUS | MAP_GROWSDOWN, 0x0, 0x0);
+		       	9, new_addr, new_size, PROT_READ | PROT_WRITE,
+		       	MAP_PRIVATE | LINUX_MAP_ANONYMOUS, 0x0, 0x0);
 	return new_addr;
 }
 
