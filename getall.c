@@ -8,8 +8,10 @@
 #include <sys/wait.h>
 #include <string.h>
 #include <stdlib.h>
+
 #include "getmem.c"
-#include "getcpu.c"
+#include "register.c"
+#include "getfd.c"
 
 #define BUFSIZE 1024
 #define PATHBUF 30
@@ -34,29 +36,28 @@ int main(int argc, char* argv[]){
 
 int tracing(pid_t pid, long int daoffset, long int stoffset){
 	int status;
-	int rc;
 	
-	rc = ptrace(PT_ATTACH, pid, NULL, 0);
-	if(rc < 0){
-		perror("ptrace");
-		exit (1);
-	}
+	ptrace_attach(pid);
+/*
+	waitpro(pid, &status);
 
+	if(WIFEXITED(status)){
+	} else if (WIFSTOPPED(status)){
+		ptrace(PT_TO_SCE, pid, (caddr_t)1, 0);
+	}
+*/	
 	waitpid(pid, &status, 0);
 
 	if(WIFEXITED(status)){
 	} else if (WIFSTOPPED(status)){
 		printf("stop %d\n", pid);
+		getfd(pid);
 		getregs(pid);
 		getmems(pid, daoffset, stoffset);
 	}
-	
 	printf("Checkpoint\n");
+	ptrace_detach(pid);
 
-	/*
-	ptrace(PT_DETACH, pid, (caddr_t)1, 0);
-	printf("Process detached\n");
-	*/
 	return 0;
 }
 
