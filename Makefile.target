@@ -13,6 +13,7 @@ else
 ifeq ($(UNAME), FreeBSD)
 # for FreeBSD include file
 INCLUDE_DEP = ./include/freebsd
+CFLAG += -lprocstat
 
 else
 	$(error ("Sorry, unsupported"))
