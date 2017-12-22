@@ -1,6 +1,5 @@
-*
-!/*.c
-!/.gitignore
-!/test/
-!/test/count*
-!/*.sh
+restore
+getall
+#!*.c
+#!
+#!.gitignore
