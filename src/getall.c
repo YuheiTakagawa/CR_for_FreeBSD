@@ -11,6 +11,7 @@
 
 #include "getmem.c"
 #include "register.c"
+#include "getfd.c"
 
 #define BUFSIZE 1024
 #define PATHBUF 30
@@ -35,26 +36,20 @@ int main(int argc, char* argv[]){
 
 int tracing(pid_t pid, long int daoffset, long int stoffset){
 	int status;
-	int rc;
 	
 	ptrace_attach(pid);
 
-	waitpro(pid, &status);
-
-	if(WIFEXITED(status)){
-	} else if (WIFSTOPPED(status)){
-		ptrace(PT_TO_SCE, pid, (caddr_t)1, 0);
-	}
-	
 	waitpid(pid, &status, 0);
 
 	if(WIFEXITED(status)){
 	} else if (WIFSTOPPED(status)){
 		printf("stop %d\n", pid);
+		getfd(pid);
 		getregs(pid);
 		getmems(pid, daoffset, stoffset);
 	}
 	printf("Checkpoint\n");
+	ptrace_detach(pid);
 
 	return 0;
 }

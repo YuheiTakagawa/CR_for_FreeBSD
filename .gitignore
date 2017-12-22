@@ -1,9 +1,5 @@
-*
-!/*.c
-!/*.h
-!/.gitignore
-!/test/
-!/test/count*
-!/*.sh
-!/Makefile*
-!/README.md
+restore
+getall
+#!*.c
+#!
+#!.gitignore
