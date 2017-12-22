@@ -2,31 +2,32 @@ CC = gcc
 CFLAG = -Wall
 
 UNAME = ${shell uname}
-INCLUDE_COMMON = -I ./include/common
 SRC_DIR = ./src
 
+INCLUDE_COMMON = ./include/common
 ifeq ($(UNAME), Linux)
 # for Linux include file
-INCLUDE = -I ./include/linux $(INCLUDE_COMMON)
+INCLUDE_DEP = ./include/linux
 
 else
 ifeq ($(UNAME), FreeBSD)
 # for FreeBSD include file
-INCLUDE = -I ./include/freebsd $(INCLUDE_COMMON)
+INCLUDE_DEP = ./include/freebsd
 
 else
-	$(error ("Sorry, unsupported")
+	$(error ("Sorry, unsupported"))
 
 endif
 endif
 
+INCLUDE = -I $(INCLUDE_DEP) -I $(INCLUDE_COMMON) 
 
 all: restore getall
 
-restore: $(SRC_DIR)/restore.c
+restore: $(SRC_DIR) $(INCLUDE_DEP) $(INCLUDE_COMMON)
 	$(CC) $(CFLAG) $(INCLUDE) -o restore $(SRC_DIR)/restore.c
 
-getall: $(SRC_DIR)/getall.c
+getall: $(SRC_DIR) $(INCLUDE_DEP) $(INCLUDE_COMMON)
 	$(CC) $(CFLAG) $(INCLUDE) -o getall $(SRC_DIR)/getall.c
 
 clean:
