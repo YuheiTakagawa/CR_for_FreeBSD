@@ -1,16 +1,34 @@
-CC=gcc
-CFLAG=-Wall
+CC = gcc
+CFLAG = -Wall
 
-UNAME=${shell uname}
+UNAME = ${shell uname}
+INCLUDE_COMMON = -I ./include/common
+SRC_DIR = ./src
 
-all: restore.c getall.c
-ifeq ($(UNAME),Linux)
-#for Linux
-	$(CC) $(CFLAG) -I ./include/linux -o restore restore.c
+ifeq ($(UNAME), Linux)
+# for Linux include file
+INCLUDE = -I ./include/linux $(INCLUDE_COMMON)
+
 else
-ifeq ($(UNAME),FreeBSD)
-	$(CC) $(CFLAG) -o getall getall.c
+ifeq ($(UNAME), FreeBSD)
+# for FreeBSD include file
+INCLUDE = -I ./include/freebsd $(INCLUDE_COMMON)
+
 else
 	$(error ("Sorry, unsupported")
+
 endif
 endif
+
+
+all: restore getall
+
+restore: $(SRC_DIR)/restore.c
+	$(CC) $(CFLAG) $(INCLUDE) -o restore $(SRC_DIR)/restore.c
+
+getall: $(SRC_DIR)/getall.c
+	$(CC) $(CFLAG) $(INCLUDE) -o getall $(SRC_DIR)/getall.c
+
+clean:
+	$(RM) restore
+	$(RM) getall
