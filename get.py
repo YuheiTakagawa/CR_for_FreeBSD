@@ -2,6 +2,7 @@
 import subprocess
 import re
 import sys
+import platform
 
 argv = sys.argv
 print("cmdline: " + str(argv))
@@ -15,8 +16,12 @@ for i in ps:
 
 print("PID: " + pid)
 
-with open("/proc/" + pid + "/maps", "r") as f:
-    mm = f.read()
+if platform.system() == 'Linux':
+	with open("/proc/" + pid + "/maps", "r") as f:
+		mm = f.read()
+else:
+	with open("/proc/" + pid + "/map", "r") as f:
+		mm = f.read()
 
 mm = mm.split("\n")
 
@@ -30,24 +35,41 @@ print("STACK: " + stack)
 
 ret = subprocess.check_output(["/CR_for_FreeBSD/getall", pid, data, stack])
 
-# get fd information from procstat(1)
-prst = subprocess.check_output(["ls", "-l", "/proc/" + pid + "/fd"]).decode('utf-8')
-prst = prst.split("\n")
-tmp = prst[-2].split(" ")
-print(tmp)
-fd = tmp[8]
-name = tmp[10]
-tmp = subprocess.check_output(["cat", "/proc/" + pid + "/fdinfo/" + fd]).decode('utf-8')
-print(tmp)
-tmp = tmp.split("\n")
-print(tmp)
-subprocess.check_output(["kill", "-TERM", pid])
+if platform.system() == 'Linux':
+# get fd information from procfs(5)
+	prst = subprocess.check_output(["ls", "-l", "/proc/" + pid + "/fd"]).decode('utf-8')
+	prst = prst.split("\n")
+	tmp = prst[-2].split(" ")
+	print(tmp)
+	fd = tmp[8]
+	name = tmp[10]
+	tmp = subprocess.check_output(["cat", "/proc/" + pid + "/fdinfo/" + fd]).decode('utf-8')
+	print(tmp)
+	tmp = tmp.split("\n")
+	print(tmp)
+	subprocess.check_output(["kill", "-TERM", pid])
 
-offset = tmp[0].split(" ")[-1]
-print("======================")
-print("FD: " + fd)
-print("OFFSET: " + offset)
-print("NAME: " + name)
+	offset = tmp[0].split(" ")[-1]
+	print("======================")
+	print("FD: " + fd)
+	print("OFFSET: " + offset)
+	print("NAME: " + name)
+else:
+# get fd information from procstat(1) 
+	prst = subprocess.check_output(["procstat", "-f", pid]).decode('utf-8')
+	subprocess.check_output(["kill", "-TERM", pid])
+	prst = prst.split("\n")
+	tmp = prst[0].split()
+
+	row = [tmp.index("FD"), tmp.index("OFFSET"), tmp.index("NAME")]
+
+	tmp = prst[-2].split()
+	print("======================")
+	print("FD: " + tmp[row[0]])
+	print("OFFSET: " + tmp[row[1]])
+	print("NAME: " + tmp[row[2]])
+
+
 print("======================")
 
 print(pid)

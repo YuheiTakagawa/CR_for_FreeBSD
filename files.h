@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <string.h>
 
 #ifndef FILES_H
 #define FILES_H
@@ -9,7 +10,7 @@
 int open_file(pid_t pid, char* flag){
 	char filepath[PATHBUF];
 
-	if(flag == "mem"){
+	if(!strcmp(flag, "mem")){
 	snprintf(filepath, sizeof(filepath), "/proc/%d/mem", pid);
 	return  open(filepath, O_WRONLY);
 	}

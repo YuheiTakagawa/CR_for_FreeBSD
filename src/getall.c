@@ -39,7 +39,7 @@ int tracing(pid_t pid, long int daoffset, long int stoffset){
 	
 	ptrace_attach(pid);
 
-	waitpid(pid, &status, 0);
+	waitpro(pid, &status);
 
 	if(WIFEXITED(status)){
 	} else if (WIFSTOPPED(status)){
