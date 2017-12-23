@@ -25,22 +25,23 @@ Elf64_Addr get_entry_point(char* filepath);
 void prepare_change_stack(int pid, unsigned long int old_addr,
 	        unsigned long int old_size, struct orig *orig){
 	inject_syscall(pid, orig, NULL, SYSCALL_ARGS,
-		       	11, old_addr, old_size, 0x0, 0x0, 0x0, 0x0);
+		11, old_addr, old_size, 0x0, 0x0, 0x0, 0x0);
 }
 
 unsigned long int change_stack(int pid, unsigned long int new_addr,
 	       	unsigned long int new_size, struct orig *orig){
 	restore_orig(pid, orig);
 	inject_syscall(pid, orig, NULL, SYSCALL_ARGS,
-		       	9, new_addr, new_size, PROT_READ | PROT_WRITE,
-		       	MAP_PRIVATE | LINUX_MAP_ANONYMOUS, 0x0, 0x0);
+	       	9, new_addr, new_size, PROT_READ | PROT_WRITE,
+	       	MAP_PRIVATE | LINUX_MAP_ANONYMOUS, 0x0, 0x0);
 	return new_addr;
 }
 
-unsigned long int prepare_restore_files(int pid, char *path, struct orig *orig){
+void prepare_restore_files(int pid, char *path, struct orig *orig){
 	printf("PATH:%s\n", path);
 	restore_orig(pid, orig);
-	inject_syscall(pid, orig, path, SYSCALL_ARGS, 2, (unsigned long int)path, O_RDWR, 0x0, 0x0, 0x0, 0x0);
+	inject_syscall(pid, orig, path, SYSCALL_ARGS, 2,
+		(unsigned long int)path, O_RDWR, 0x0, 0x0, 0x0, 0x0);
 }
 
 int main(int argc, char* argv[]){
@@ -48,7 +49,6 @@ int main(int argc, char* argv[]){
 	int status;
 	int flag = 0;
 	char *filepath;
-	long origin_text;
 	Elf64_Addr entry_point;
 	unsigned long int stack_addr;
 	unsigned long int stack_size;
@@ -88,7 +88,7 @@ int main(int argc, char* argv[]){
 				if(flag == 0){
 				//	entry_point = get_entry_point(filepath);
 					entry_point = 0x4009ae;
-					origin_text = ptrace_read_i(pid, entry_point);
+					ptrace_read_i(pid, entry_point);
 					ptrace_write_i(pid, entry_point, 0xCC);
 					ptrace_cont(pid);
 					flag++;

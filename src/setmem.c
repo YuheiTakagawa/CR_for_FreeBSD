@@ -14,7 +14,6 @@ int write_mem(int, int, long int);
 int setmems(pid_t pid, pid_t filePid, unsigned long int stack_addr){
         int write_fd;
         int read_fd;
-        char buf[BUFSIZE];
 
         write_fd = open_file(pid, "mem");
         
