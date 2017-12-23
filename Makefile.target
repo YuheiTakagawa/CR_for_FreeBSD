@@ -4,10 +4,10 @@ CFLAG = -Wall
 UNAME = ${shell uname}
 SRC_DIR = ./src
 
-INCLUDE_COMMON = ./include/common 
+INCLUDE_COMMON = ./src/include/common 
 ifeq ($(UNAME), Linux)
 # for Linux include file
-INCLUDE_DEP = ./include/linux
+INCLUDE_DEP = ./src/include/linux
 
 else
 ifeq ($(UNAME), FreeBSD)
