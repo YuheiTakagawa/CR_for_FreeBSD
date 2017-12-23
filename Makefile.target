@@ -4,7 +4,7 @@ CFLAG = -Wall
 UNAME = ${shell uname}
 SRC_DIR = ./src
 
-INCLUDE_COMMON = ./include/common
+INCLUDE_COMMON = ./include/common 
 ifeq ($(UNAME), Linux)
 # for Linux include file
 INCLUDE_DEP = ./include/linux
@@ -20,7 +20,7 @@ else
 endif
 endif
 
-INCLUDE = -I $(INCLUDE_DEP) -I $(INCLUDE_COMMON) 
+INCLUDE = -I $(INCLUDE_DEP) -I $(INCLUDE_COMMON) -I ./src 
 
 all: restore getall
 
