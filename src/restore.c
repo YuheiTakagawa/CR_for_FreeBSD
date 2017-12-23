@@ -14,6 +14,7 @@
 #include "setmem.c"
 #include "ptrace.h"
 #include "parasite_syscall.c"
+#include "mem.h"
 
 #define BUFSIZE 1024
 #define PATHBUF 30
@@ -31,7 +32,6 @@ unsigned long int change_stack(int pid, unsigned long int new_addr,
 	       	unsigned long int new_size, struct orig *orig){
 	restore_orig(pid, orig);
 	inject_syscall(pid, orig, NULL, SYSCALL_ARGS,
-		       	//9, new_addr, new_size, PROT_READ | PROT_WRITE,
 		       	9, new_addr, new_size, PROT_READ | PROT_WRITE,
 		       	MAP_PRIVATE | LINUX_MAP_ANONYMOUS, 0x0, 0x0);
 	return new_addr;
@@ -63,7 +63,6 @@ int main(int argc, char* argv[]){
 
 	filepath = argv[1];
 	filePid = atoi(argv[2]);
-	//stack_addr = 0x7ffffffdf000;
 	stack_addr = strtol(argv[3], NULL, 16);
 	stack_size = 0x20000;
 	if(stack_addr != 0x7ffffffdf000){
@@ -98,7 +97,7 @@ int main(int argc, char* argv[]){
 					printf("stopped:%d\n", WSTOPSIG(status));
 					if(flag == 1){
 						printf("finished setting registers\n");
-						prepare_change_stack(pid, 0x7ffffffde000, 0x21000, &orig);
+						prepare_change_stack(pid, STACK_INITIAL_POSITION, STACK_INITIAL_SIZE, &orig);
 						printf("prepare changed stack position in memory layout\n");
 					}else if(flag == 2){
 						change_stack(pid, stack_addr, stack_size, &orig);
@@ -110,10 +109,9 @@ int main(int argc, char* argv[]){
 						restore_orig(pid, &orig);
 						inject_syscall(pid, &orig, NULL, SYSCALL_ARGS, 8, 0x3, file_offset, SEEK_SET, 0x0, 0x0, 0x0);
 					}else if(flag == 5){
-						//restore_orig(pid, &orig);
-printf("==============saaaaaaaaa======================\n");
+						restore_orig(pid, &orig);
 						setmems(pid, filePid, stack_addr);
-					 	setregs(pid, filePid);
+						setregs(pid, filePid);
 					}
 					else{
 						print_regs(pid);
