@@ -8,7 +8,7 @@ GNUMAKE=@`sh -c \
 TARGETMAKEFILE=./Makefile.target
 
 all:
-	$(GNUMAKE) -f $(TARGETMAKEFILE) $@
+	$(GNUMAKE) --no-print-directory -f $(TARGETMAKEFILE) $@
 
 .DEFAULT:
-	$(GNUMAKE) -f $(TARGETMAKEFILE) $@
+	$(GNUMAKE) --no-print-directory -f $(TARGETMAKEFILE) $@

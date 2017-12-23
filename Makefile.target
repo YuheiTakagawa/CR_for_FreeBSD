@@ -5,19 +5,21 @@ UNAME = ${shell uname}
 SRC_DIR = ./src
 
 INCLUDE_COMMON = ./src/include/common 
+
 ifeq ($(UNAME), Linux)
 # for Linux include file
 INCLUDE_DEP = ./src/include/linux
+endif
 
-else
 ifeq ($(UNAME), FreeBSD)
 # for FreeBSD include file
 INCLUDE_DEP = ./include/freebsd
 CFLAG += -lprocstat
+endif
 
-else
+ifneq ($(UNAME), Linux)
+ifneq ($(UNAME), FreeBSD)
 	$(error ("Sorry, unsupported"))
-
 endif
 endif
 
