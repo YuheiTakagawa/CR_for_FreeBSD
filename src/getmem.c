@@ -10,6 +10,7 @@
 #include <sys/wait.h>
 
 #include "files.h"
+#include "getmap.c"
 
 #define BUFSIZE 1024 
 #define PATHBUF 30
@@ -19,7 +20,7 @@ int getmem(int read_fd, int dump_fd, long int offset, long int size);
 int getmems(pid_t pid, long int dataoffset, long int stackoffset){
 	int read_fd, dump_fd;
 	long int size;
-	
+	get_vmmap(pid);
 	read_fd = open_read_file(pid);
 	
 	dump_fd = open_dump_file(pid, "data");
