@@ -19,17 +19,15 @@ int getmem(int read_fd, int dump_fd, long int offset, long int size);
 
 int getmems(pid_t pid, long int dataoffset, long int stackoffset){
 	int read_fd, dump_fd;
-	long int size;
-	get_vmmap(pid);
+	struct vmsize size;
+	get_vmmap(pid, &size);
 	read_fd = open_read_file(pid);
 	
 	dump_fd = open_dump_file(pid, "data");
-	size = 0x28000;
-	getmem(read_fd, dump_fd, dataoffset, size);
+	getmem(read_fd, dump_fd, dataoffset, size.data);
 
 	dump_fd = open_dump_file(pid, "stack");
-	size = 0x21000;
-	getmem(read_fd, dump_fd, stackoffset, size);
+	getmem(read_fd, dump_fd, stackoffset, size.stack);
 
 	close(read_fd);
 	return 0;
