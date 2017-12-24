@@ -14,7 +14,7 @@
 #include "setmem.c"
 #include "ptrace.h"
 #include "parasite_syscall.c"
-#include "mem.h"
+#include "getmap.c"
 
 #define BUFSIZE 1024
 #define PATHBUF 30
@@ -54,6 +54,7 @@ int main(int argc, char* argv[]){
 	unsigned long int stack_size;
 	int file_offset;
 	struct orig orig;
+	struct vmds vmds;
 	char *restore_path = "/dump/hello";
 
 	if(argc < 5){
@@ -63,6 +64,7 @@ int main(int argc, char* argv[]){
 
 	filepath = argv[1];
 	filePid = atoi(argv[2]);
+
 	stack_addr = strtol(argv[3], NULL, 16);
 	stack_size = 0x20000;
 	if(stack_addr != 0x7ffffffdf000){
@@ -96,8 +98,9 @@ int main(int argc, char* argv[]){
 				else{
 					printf("stopped:%d\n", WSTOPSIG(status));
 					if(flag == 1){
+						get_vmmap(pid, &vmds);
 						printf("finished setting registers\n");
-						prepare_change_stack(pid, STACK_INITIAL_POSITION, STACK_INITIAL_SIZE, &orig);
+						prepare_change_stack(pid, vmds.saddr, vmds.ssize, &orig);
 						printf("prepare changed stack position in memory layout\n");
 					}else if(flag == 2){
 						change_stack(pid, stack_addr, stack_size, &orig);
