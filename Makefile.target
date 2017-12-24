@@ -13,7 +13,7 @@ endif
 
 ifeq ($(UNAME), FreeBSD)
 # for FreeBSD include file
-INCLUDE_DEP = ./include/freebsd
+INCLUDE_DEP = ./src/include/freebsd
 CFLAG += -lprocstat
 endif
 
