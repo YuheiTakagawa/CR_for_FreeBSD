@@ -16,24 +16,7 @@ for i in ps:
 
 print("PID: " + pid)
 
-if platform.system() == 'Linux':
-	with open("/proc/" + pid + "/maps", "r") as f:
-		mm = f.read()
-else:
-	with open("/proc/" + pid + "/map", "r") as f:
-		mm = f.read()
-
-mm = mm.split("\n")
-
-# Generally, data segment is 2nd from top
-data = mm[1].split()[0]
-print("DATA: " + data)
-
-# Generally, stack segment is 2nd from bottom  text has last line '\n'
-stack = mm[-3].split()[0]
-print("STACK: " + stack)
-
-ret = subprocess.check_output(["/CR_for_FreeBSD/getall", pid, data, stack])
+ret = subprocess.check_output(["/CR_for_FreeBSD/getall", pid])
 
 if platform.system() == 'Linux':
 # get fd information from procfs(5)

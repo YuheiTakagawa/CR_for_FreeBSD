@@ -16,25 +16,21 @@
 #define BUFSIZE 1024
 #define PATHBUF 30
 
-int tracing(pid_t pid, long int daoffset, long int stoffset);
+int tracing(pid_t pid);
 
 
 int main(int argc, char* argv[]){
 	pid_t pid;
-	long int da, st;
-	if(argc < 4){
-		printf("Usage: %s <pid to be traced> <Data address> <Stack address>\n", argv[0]);
+	if(argc < 2){
+		printf("Usage: %s <pid to be traced>\n", argv[0]);
 		exit (1);
 	}
 	pid = atoi(argv[1]);
 
-	da = strtol(argv[2], NULL, 16);
-	st = strtol(argv[3], NULL, 16);
-
-	tracing(pid, da, st);
+	tracing(pid);
 }
 
-int tracing(pid_t pid, long int daoffset, long int stoffset){
+int tracing(pid_t pid){
 	int status;
 	
 	ptrace_attach(pid);
@@ -46,7 +42,7 @@ int tracing(pid_t pid, long int daoffset, long int stoffset){
 		printf("stop %d\n", pid);
 		getfd(pid);
 		getregs(pid);
-		getmems(pid, daoffset, stoffset);
+		getmems(pid);
 	}
 	printf("Checkpoint\n");
 	ptrace_detach(pid);
