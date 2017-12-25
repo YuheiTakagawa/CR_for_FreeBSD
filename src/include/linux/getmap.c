@@ -60,7 +60,6 @@ void get_vmmap(int pid, struct vmds* vmds){
 
 		if(i == 4){
 			str = strtok(buf, " ");
-			printf("ss:%s\n", str);
 			str = strtok(NULL, " ");
 			vmds->ssize = atoi(str) * 1024;
 			i = 0;
