@@ -29,26 +29,50 @@ void get_vmmap(int pid, struct vmds* vmds){
 	FILE *fp = fopen(path, "r");
 
 	while(fgets(buf, BUF_SIZE, fp) != NULL){
+		if(strstr(buf, "rd ex") != NULL){
+			if(i == 0){
+				i++;
+			}
+			continue;
+		}
+
 		if(i == 1){
+			str = strtok(buf, "-");
+			vmds->daddr = strtoul(str, &str, 16);
+			i++;
+			continue;
+		}
+
+		if(i == 2){
 			str = strtok(buf, " ");
 			str = strtok(NULL, " ");
-			vmds->ssize = atoi(str) * 1024;
+			vmds->dsize = atoi(str) * 1024;
 			i++;
-			break;
+			continue;
 		}
 
 		if(strstr(buf, "[stack]") != NULL){
 			str = strtok(buf, "-");
 			vmds->saddr = strtoul(str, &str, 16);
 			i++;
+			continue;
 		}
+
+		if(i == 4){
+			str = strtok(buf, " ");
+			printf("ss:%s\n", str);
+			str = strtok(NULL, " ");
+			vmds->ssize = atoi(str) * 1024;
+			i = 0;
+			break;
+		}
+
 	} 	
 
-	vmds->dsize = 0x28000;
-	vmds->daddr = 0x6c9000;
-
-	printf("stack data: %lx\n", vmds->dsize);
+	printf("data size: %lx\n", vmds->dsize);
+	printf("data addr: %lx\n", vmds->daddr);
 	printf("stack size: %lx\n", vmds->ssize);
+	printf("stack addr: %lx\n", vmds->saddr);
 
 //	procstat_freevmmap(prst, (void *)kp);
 }
