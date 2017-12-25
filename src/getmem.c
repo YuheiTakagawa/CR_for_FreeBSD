@@ -36,15 +36,17 @@ int getmems(pid_t pid, long int dataoffset, long int stackoffset){
 int getmem(int read_fd, int dump_fd, long int offset){
 	char buf[BUFSIZE];
 	int rnum;
+	unsigned long int sum = 0x0;
 	
 	lseek(read_fd, offset, SEEK_SET);
 
 	while(1){	
 
 		rnum = read(read_fd, buf, sizeof(buf));
+		sum += rnum;
 //		printf("%d\n", rnum);
 
-		if(rnum > 0){
+		if(sum <= 0x21000 || rnum > 0){
 		
 			write(dump_fd, buf, rnum);
 		
