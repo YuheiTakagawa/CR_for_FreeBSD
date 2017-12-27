@@ -25,6 +25,7 @@ endif
 
 INCLUDE = -I $(INCLUDE_DEP) -I $(INCLUDE_COMMON) -I ./src 
 
+.PHONY: all
 all: restore getall
 
 restore: $(SRC_DIR) $(INCLUDE_DEP) $(INCLUDE_COMMON)
@@ -33,6 +34,7 @@ restore: $(SRC_DIR) $(INCLUDE_DEP) $(INCLUDE_COMMON)
 getall: $(SRC_DIR) $(INCLUDE_DEP) $(INCLUDE_COMMON)
 	$(CC) $(CFLAG) $(INCLUDE) -o getall $(SRC_DIR)/getall.c
 
+.PHONY: clean
 clean:
 	$(RM) restore
 	$(RM) getall
