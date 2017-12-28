@@ -6,6 +6,7 @@
 #include <string.h>
 #include <sys/user.h>
 #include <sys/reg.h>
+#include <stdint.h>
 
 #include "getmem.c"
 #include "setmem.c"
