@@ -7,48 +7,67 @@
 #include <sys/queue.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
-//#include <libprocstat.h>
+#include <dirent.h>
 
 #include "files.h"
 
 #define FD_MAX 1024
+#define BUF_SIZE 1024
+#define PATH_BUF 1024
 
 struct fd_list{
 	int fd[FD_MAX];
-	char *path[FD_MAX];
+	char path[PATH_BUF][FD_MAX];
 	unsigned long int offset[FD_MAX];
 };
 
-int *get_open_fd(int pid, struct fd_list *fdl){
-/*
-	struct procstat  *prst;
-	struct filestat_list *fstlist;
-	struct filestat *fst;
-	struct kinfo_proc *kp;
-	unsigned int mapped = 0;
+unsigned long int get_fd_pos(int pid, int fd){
+	char path[PATH_BUF];
+	char buf[BUF_SIZE];
+	FILE *fp;
+	unsigned long int pos = 0;
 
-	int i = 0;
-	sync();
-	// get struct procstat
-	prst = procstat_open_sysctl();
-	// get kinfo_proc with pid
-	kp = procstat_getprocs(prst, KERN_PROC_PID, pid, &mapped);
-	// get pid process has file list
-	fstlist = procstat_getfiles(prst, (void *)kp, mapped);
-	// separate file list
-	STAILQ_FOREACH(fst, fstlist, next) {
-		if(fst->fs_fd > 2){
-			fdl->fd[i] = fst->fs_fd;
-			fdl->path[i] = fst->fs_path;
-			fdl->offset[i] = fst->fs_offset;
-			i++;
+	snprintf(path, PATH_BUF, "/proc/%d/fdinfo/%d", pid, fd);
+	fp = fopen(path, "r");
+	while(fgets(buf, BUF_SIZE, fp) != NULL){
+		if(!strncmp(buf, "pos:", sizeof("pos"))){
+			sscanf(buf, "%*s %ld", &pos);
 		}
 	}
-	
-	procstat_freeprocs(prst, (void *)kp);
-*/	fdl->fd[0] = 32;
-	fdl->path[0] = "/dump/hello";
-	fdl->offset[0] = 400;
+	return pos;
+}
+
+int get_fd_path(int pid, int fd, char *fd_path){
+	int size;
+	char link[PATH_BUF], path[PATH_BUF];
+
+	snprintf(path, PATH_BUF, "/proc/%d/fd/%d", pid, fd);
+	size = readlink(path, link, sizeof(link));
+	link[size] = 0;
+	strncpy(fd_path, link, sizeof(link));
+	printf("path: %s\n", fd_path);
+
+	return size;
+}
+
+int *get_open_fd(int pid, struct fd_list *fdl){
+
+	char path[PATH_BUF] = {'\0'};
+	struct dirent *de;
+	DIR *fd_dir;
+
+	snprintf(path, PATH_BUF, "/proc/%d/fd", pid);
+
+	fd_dir = opendir(path);
+	if(!fd_dir){
+		perror("opendir");
+	} 
+
+	while((de = readdir(fd_dir))){
+		fdl->fd[0] = atoi(de->d_name);
+		get_fd_path(pid, fdl->fd[0], fdl->path[0]);
+		fdl->offset[0] = get_fd_pos(pid, fdl->fd[0]);
+	}
 	return 0;
 }
 
