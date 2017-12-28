@@ -21,7 +21,8 @@ struct fd_list{
 	unsigned long int offset[FD_MAX];
 };
 
-unsigned long int get_fd_pos(int pid, int fd){
+/* Get FD position(file offset) from /proc/PID/fdinfo */
+unsigned long int get_fd_pos(pid_t pid, int fd){
 	char path[PATH_BUF];
 	char buf[BUF_SIZE];
 	FILE *fp;
@@ -37,7 +38,8 @@ unsigned long int get_fd_pos(int pid, int fd){
 	return pos;
 }
 
-int get_fd_path(int pid, int fd, char *fd_path){
+/* Get actual FD path name, not symbolic link */
+int get_fd_path(pid_t pid, int fd, char *fd_path){
 	int size;
 	char link[PATH_BUF], path[PATH_BUF];
 
@@ -45,17 +47,19 @@ int get_fd_path(int pid, int fd, char *fd_path){
 	size = readlink(path, link, sizeof(link));
 	link[size] = 0;
 	strncpy(fd_path, link, sizeof(link));
-	printf("path: %s\n", fd_path);
 
 	return size;
 }
 
-int *get_open_fd(int pid, struct fd_list *fdl){
+/* Get fd infomation fd number, path, offset */
+/* This implement is used array however not increment */
+
+int *get_open_fd(pid_t pid, struct fd_list *fdl){
 
 	char path[PATH_BUF] = {'\0'};
 	struct dirent *de;
 	DIR *fd_dir;
-
+	int i = 0;
 	snprintf(path, PATH_BUF, "/proc/%d/fd", pid);
 
 	fd_dir = opendir(path);
@@ -64,14 +68,17 @@ int *get_open_fd(int pid, struct fd_list *fdl){
 	} 
 
 	while((de = readdir(fd_dir))){
-		fdl->fd[0] = atoi(de->d_name);
-		get_fd_path(pid, fdl->fd[0], fdl->path[0]);
-		fdl->offset[0] = get_fd_pos(pid, fdl->fd[0]);
+		if(atoi(de->d_name) > 2){
+			fdl->fd[i] = atoi(de->d_name);
+			get_fd_path(pid, fdl->fd[i], fdl->path[i]);
+			fdl->offset[i] = get_fd_pos(pid, fdl->fd[i]);
+			i++;
+		}
 	}
 	return 0;
 }
 
-int getfd(int pid){
+int getfd(pid_t pid){
 	struct fd_list fdl;
 	get_open_fd(pid, &fdl);
 	for(int i = 0; i < FD_MAX; i++){
