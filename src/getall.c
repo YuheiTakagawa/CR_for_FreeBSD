@@ -13,6 +13,8 @@
 #include "register.c"
 #include "getfd.c"
 
+#include <time.h>
+
 #define BUFSIZE 1024
 #define PATHBUF 30
 
@@ -21,13 +23,16 @@ int tracing(pid_t pid);
 
 int main(int argc, char* argv[]){
 	pid_t pid;
+	struct timespec begin, end;
 	if(argc < 2){
 		printf("Usage: %s <pid to be traced>\n", argv[0]);
 		exit (1);
 	}
 	pid = atoi(argv[1]);
-
+	clock_gettime(CLOCK_MONOTONIC, &begin);
 	tracing(pid);
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	printf("time-result:%ld.%09ld(s)\n", (end.tv_sec - begin.tv_sec), (end.tv_nsec - begin.tv_nsec));
 }
 
 int tracing(pid_t pid){

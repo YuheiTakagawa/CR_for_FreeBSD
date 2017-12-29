@@ -16,6 +16,8 @@
 #include "parasite_syscall.c"
 #include "getmap.c"
 
+#include <time.h>
+
 #define BUFSIZE 1024
 #define PATHBUF 30
 
@@ -56,11 +58,14 @@ int main(int argc, char* argv[]){
 	struct orig orig;
 	struct vmds vmds;
 	char *restore_path = "/dump/hello";
+	struct timespec begin, end;
 
 	if(argc < 5){
 		printf("Usage: %s <path> <file pid> <stack addr> <file offset>\n", argv[0]);
 		exit(1);
 	}
+
+	clock_gettime(CLOCK_MONOTONIC, &begin);
 
 	filepath = argv[1];
 	filePid = atoi(argv[2]);
@@ -119,9 +124,13 @@ int main(int argc, char* argv[]){
 					else{
 						print_regs(pid);
 					}
-					if(flag < 6)
+					if(flag < 6){
 						ptrace_cont(pid);
-					else{
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	printf("begin :%ld.%09ld\n", begin.tv_sec, begin.tv_nsec);
+	printf("end   :%ld.%09ld\n", end.tv_sec, end.tv_nsec);
+	printf("result:%ld.%09ld\n", end.tv_sec - begin.tv_sec, end.tv_nsec - begin.tv_nsec);
+					}else{
 						ptrace_step(pid);
 						sleep(1);
 					}
