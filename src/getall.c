@@ -32,7 +32,11 @@ int main(int argc, char* argv[]){
 	clock_gettime(CLOCK_MONOTONIC, &begin);
 	tracing(pid);
 	clock_gettime(CLOCK_MONOTONIC, &end);
-	printf("time-result:%ld.%09ld(s)\n", (end.tv_sec - begin.tv_sec), (end.tv_nsec - begin.tv_nsec));
+	if(end.tv_nsec < begin.tv_nsec){
+		printf("time0.%09ld\n", 1000000000 + (end.tv_nsec - begin.tv_nsec));
+	}else
+
+	printf("time%ld.%09ld\n", (end.tv_sec - begin.tv_sec), (end.tv_nsec - begin.tv_nsec));
 }
 
 int tracing(pid_t pid){
