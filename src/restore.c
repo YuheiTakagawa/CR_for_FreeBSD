@@ -124,12 +124,16 @@ int main(int argc, char* argv[]){
 					else{
 						print_regs(pid);
 					}
-					if(flag < 6){
+					if(flag < 5){
+						ptrace_cont(pid);
+					}else if(flag == 5){
 						ptrace_cont(pid);
 	clock_gettime(CLOCK_MONOTONIC, &end);
-	printf("begin :%ld.%09ld\n", begin.tv_sec, begin.tv_nsec);
-	printf("end   :%ld.%09ld\n", end.tv_sec, end.tv_nsec);
-	printf("result:%ld.%09ld\n", end.tv_sec - begin.tv_sec, end.tv_nsec - begin.tv_nsec);
+	if(end.tv_nsec < begin.tv_nsec){
+		printf("time0.%09ld\n", 1000000000 + (end.tv_nsec - begin.tv_nsec));}else				
+	printf("time%ld.%09ld\n", end.tv_sec - begin.tv_sec, end.tv_nsec - begin.tv_nsec);
+	kill(pid, 9);
+	break;
 					}else{
 						ptrace_step(pid);
 						sleep(1);

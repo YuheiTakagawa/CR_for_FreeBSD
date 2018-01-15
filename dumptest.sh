@@ -6,6 +6,6 @@ do
 	sleep 1
 	res=`./get.py count`
 	aa=`echo "$res" | grep time | awk '{print substr($0,5)}'`
-	echo $aa >> ooooo
+	echo $aa >> dump_time 
 done
 
