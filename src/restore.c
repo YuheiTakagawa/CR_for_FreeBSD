@@ -58,14 +58,13 @@ int main(int argc, char* argv[]){
 	struct orig orig;
 	struct vmds vmds;
 	char *restore_path = "/dump/hello";
-	struct timespec begin, end;
+	struct timespec begin, end, filebegin, fileend;
 
 	if(argc < 5){
 		printf("Usage: %s <path> <file pid> <stack addr> <file offset>\n", argv[0]);
 		exit(1);
 	}
 
-	clock_gettime(CLOCK_MONOTONIC, &begin);
 
 	filepath = argv[1];
 	filePid = atoi(argv[2]);
@@ -103,23 +102,38 @@ int main(int argc, char* argv[]){
 				else{
 					printf("stopped:%d\n", WSTOPSIG(status));
 					if(flag == 1){
+	clock_gettime(CLOCK_MONOTONIC, &begin);
 						get_vmmap(pid, &vmds);
 						printf("finished setting registers\n");
-						prepare_change_stack(pid, vmds.saddr, vmds.ssize, &orig);
+						prepare_change_stack(pid, vmds.saddr-1, vmds.ssize+1, &orig);
 						printf("prepare changed stack position in memory layout\n");
 					}else if(flag == 2){
 						change_stack(pid, stack_addr, stack_size, &orig);
 						printf("changed stack position in memory layout\n");
 						printf("stack_addr %lx\n", stack_addr);
 					}else if(flag == 3){
+	clock_gettime(CLOCK_MONOTONIC, &filebegin);
 						prepare_restore_files(pid, restore_path, &orig);
 					}else if(flag == 4){
 						restore_orig(pid, &orig);
 						inject_syscall(pid, &orig, NULL, SYSCALL_ARGS, 8, 0x3, file_offset, SEEK_SET, 0x0, 0x0, 0x0);
+	clock_gettime(CLOCK_MONOTONIC, &fileend);
+	if(fileend.tv_nsec < filebegin.tv_nsec){
+		printf("fdstime0.%09ld\n", 1000000000 + (fileend.tv_nsec - filebegin.tv_nsec));}else				
+	printf("fdstime%ld.%09ld\n", fileend.tv_sec - filebegin.tv_sec, fileend.tv_nsec - filebegin.tv_nsec);
 					}else if(flag == 5){
 						restore_orig(pid, &orig);
 						setmems(pid, filePid, stack_addr);
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	if(end.tv_nsec < begin.tv_nsec){
+		printf("memtime0.%09ld\n", 1000000000 + (end.tv_nsec - begin.tv_nsec));}else				
+	printf("memtime%ld.%09ld\n", end.tv_sec - begin.tv_sec, end.tv_nsec - begin.tv_nsec);
+	clock_gettime(CLOCK_MONOTONIC, &begin);
 						setregs(pid, filePid);
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	if(end.tv_nsec < begin.tv_nsec){
+		printf("regtime0.%09ld\n", 1000000000 + (end.tv_nsec - begin.tv_nsec));}else				
+	printf("regtime%ld.%09ld\n", end.tv_sec - begin.tv_sec, end.tv_nsec - begin.tv_nsec);
 					}
 					else{
 						print_regs(pid);
@@ -128,10 +142,6 @@ int main(int argc, char* argv[]){
 						ptrace_cont(pid);
 					}else if(flag == 5){
 						ptrace_cont(pid);
-	clock_gettime(CLOCK_MONOTONIC, &end);
-	if(end.tv_nsec < begin.tv_nsec){
-		printf("time0.%09ld\n", 1000000000 + (end.tv_nsec - begin.tv_nsec));}else				
-	printf("time%ld.%09ld\n", end.tv_sec - begin.tv_sec, end.tv_nsec - begin.tv_nsec);
 	kill(pid, 9);
 	break;
 					}else{
