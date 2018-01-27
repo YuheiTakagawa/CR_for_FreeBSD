@@ -34,31 +34,6 @@ struct orig{
 
 void restore_orig(pid_t, struct orig*);
 
-void inject_syscall_regs(int pid, struct orig *orig, int nr, 
-		unsigned long arg1,
-		unsigned long arg2,
-		unsigned long arg3,
-		unsigned long arg4,
-		unsigned long arg5,
-		unsigned long arg6)
-{
-	struct reg reg;	
-	ptrace_get_regs(pid, &reg);
-	orig->reg = reg;
-
-	reg.r_rax = (uint64_t)nr;
-	reg.r_rdi = arg1;
-	reg.r_rsi = arg2;
-	reg.r_rdx = arg3;
-	reg.r_r10 = arg4;
-	reg.r_r8  = arg5;
-	reg.r_r9  = arg6;
-
-	ptrace_set_regs(pid, &reg);
-}
-
-//int execute_syscall(struct regs *regs, 
-
 void parasite_setup_regs(unsigned long new_ip, void *stack, struct reg *regs){
 	set_user_reg(regs, r_rip, new_ip);
 	if(stack)
@@ -110,7 +85,7 @@ err:
 			
 
 
-int inject_syscall_mem(int pid, struct orig *orig, struct reg *regs){
+int compel_execute_syscall(int pid, struct orig *orig, struct reg *regs){
 	int err;
 	uint8_t code_orig[BUILTIN_SYSCALL_SIZE];
 	unsigned long rip = regs -> r_rip;
@@ -119,8 +94,7 @@ int inject_syscall_mem(int pid, struct orig *orig, struct reg *regs){
 	orig->addr = 0x0;
 	memcpy(code_orig, code_syscall, sizeof(code_orig));
 
-	/* injection syscall 0xcc050f */	
-	//ptrace_write_i(pid, rip, code_syscall);
+	/* injection syscall 0xcc050f int3 */	
 	if(ptrace_swap_area(pid, (void *)rip, (void *)code_orig, sizeof(code_orig))){
 		return -1;
 	}
@@ -134,10 +108,32 @@ int inject_syscall_mem(int pid, struct orig *orig, struct reg *regs){
 		err = -1;
 	}
 
-	/******************************/
 	return err;
 }
 
+void inject_syscall_regs(int pid, struct orig *orig, int nr, 
+		unsigned long arg1,
+		unsigned long arg2,
+		unsigned long arg3,
+		unsigned long arg4,
+		unsigned long arg5,
+		unsigned long arg6)
+{
+	struct reg reg;	
+	ptrace_get_regs(pid, &reg);
+	orig->reg = reg;
+
+	reg.r_rax = (uint64_t)nr;
+	reg.r_rdi = arg1;
+	reg.r_rsi = arg2;
+	reg.r_rdx = arg3;
+	reg.r_r10 = arg4;
+	reg.r_r8  = arg5;
+	reg.r_r9  = arg6;
+
+	ptrace_set_regs(pid, &reg);
+	compel_execute_syscall(pid, orig, &orig->reg);
+}
 void inject_syscall_buf(int pid, struct orig *orig, char *addr){
 	int *tmp = malloc(sizeof(int));
 	orig->data = ptrace_read_i(pid, (unsigned long int) addr);
@@ -165,7 +161,6 @@ void inject_syscall(int pid, struct orig *orig, char *addr, int num, ...){
 	va_end(list);
 	inject_syscall_regs(pid, orig, arg[0], arg[1],
 		       	arg[2], arg[3], arg[4], arg[5], arg[6]);
-	inject_syscall_mem(pid, orig, &orig->reg);
 	if(addr != NULL)
 		inject_syscall_buf(pid, orig, addr);
 }
