@@ -12,10 +12,14 @@
 #define BUFSIZE 1024
 #define PATHBUF 30
 #define SYSCALL_ARGS 7 
+#define BUILTIN_SYSCALL_SIZE 8
 
 #define LINUX_MAP_ANONYMOUS 0x20
 
-long code = 0xcc050f;
+const char  code_syscall[] = {
+       0x0f, 0x05,	/* syscall	*/
+       0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc	/* int 3, ... */
+}; 
 
 struct orig{
 	long text;
@@ -47,13 +51,18 @@ void inject_syscall_regs(int pid, struct orig *orig, int nr,
 	ptrace_set_regs(pid, &reg);
 }
 
+//int execute_syscall(struct regs *regs, 
+
 void inject_syscall_mem(int pid, struct orig *orig, unsigned long rip){
 	orig->text = ptrace_read_i(pid, rip);
 	orig->data = 0x0;
 	orig->addr = 0x0;
+	uint8_t code_orig[BUILTIN_SYSCALL_SIZE];
+	memcpy(code_orig, code_syscall, sizeof(code_orig));
 
 	/* injection syscall 0xcc050f */	
-	ptrace_write_i(pid, rip, code);
+	//ptrace_write_i(pid, rip, code_syscall);
+	ptrace_swap_area(pid, (void *)rip, (void *)code_orig, sizeof(code_orig));
 	/******************************/
 }
 

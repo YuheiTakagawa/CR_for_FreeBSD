@@ -1,9 +1,11 @@
 #ifndef PTRACE_H
 #define PTRACE_H
 
+#include <stdlib.h>
 #include <sys/ptrace.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <errno.h>
 
 
 int ptrace_traceme(void){
@@ -92,6 +94,52 @@ int ptrace_read_i(int pid, unsigned long int addr){
 
 int ptrace_read_d(int pid, unsigned long int addr){
 	return ptrace(PT_READ_D, pid, (caddr_t)addr, 0);
+}
+
+int ptrace_peek_area(pid_t pid, void *dst, void *addr, long bytes){
+	unsigned long w;
+	if(bytes & (sizeof(long) - 1))
+		return -1;
+	for(w = 0; w < bytes / sizeof(long); w++){
+		unsigned long *d = dst, *a = addr;
+		d[w] = ptrace(PT_READ_D, pid, (caddr_t)a + w, 0);
+	       	if(d[w] == -1U && errno)
+	       		goto err;
+	}
+	return 0;
+err:
+	return -2;
+}	
+
+int ptrace_poke_area(pid_t pid, void *src, void *addr, long bytes){
+	unsigned long w;
+	if(bytes & (sizeof(long) - 1))
+		return -1;
+	for(w = 0; w < bytes /sizeof(long); w++){
+		unsigned long *s = src, *a = addr;
+		if(ptrace(PT_WRITE_D, pid, (caddr_t)a + w, s[w]))
+			goto err;
+	}
+	return 0;
+err:
+	return -2;
+}
+
+int ptrace_swap_area(pid_t pid, void *dst, void *src, long bytes){
+	void *t = alloca(bytes);
+
+	if(ptrace_peek_area(pid, t, dst, bytes))
+		return -1;
+
+	if(ptrace_poke_area(pid, src, dst, bytes)){
+		if(ptrace_poke_area(pid, t, dst, bytes))
+			return -2;
+		return -1;
+	}
+
+	memcpy(src, t, bytes);
+
+	return 0;
 }
 
 int ptrace_step(int pid){
