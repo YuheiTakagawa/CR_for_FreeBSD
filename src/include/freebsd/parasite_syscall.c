@@ -16,6 +16,10 @@
 
 #define LINUX_MAP_ANONYMOUS 0x20
 
+#define set_user_reg(pregs, name, val)	\
+		pregs->name = (val)
+
+
 const char  code_syscall[] = {
        0x0f, 0x05,	/* syscall	*/
        0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc	/* int 3, ... */
@@ -27,6 +31,8 @@ struct orig{
 	char *addr;
 	struct reg reg;
 };
+
+void restore_orig(pid_t, struct orig*);
 
 void inject_syscall_regs(int pid, struct orig *orig, int nr, 
 		unsigned long arg1,
@@ -53,17 +59,83 @@ void inject_syscall_regs(int pid, struct orig *orig, int nr,
 
 //int execute_syscall(struct regs *regs, 
 
-void inject_syscall_mem(int pid, struct orig *orig, unsigned long rip){
+void parasite_setup_regs(unsigned long new_ip, void *stack, struct reg *regs){
+	set_user_reg(regs, r_rip, new_ip);
+	if(stack)
+		set_user_reg(regs, r_rsp, (unsigned long) stack);
+
+	set_user_reg(regs, r_rax, -1);
+}
+
+
+static int parasite_run(pid_t pid, int cmd, unsigned long ip, void *stack, struct reg *regs, struct orig *orig){
+	
+	parasite_setup_regs(ip, stack, regs);
+	if (ptrace_set_regs(pid, regs)) {
+	}
+
+	if (ptrace(cmd, pid, (caddr_t)1, 0)) {
+	}
+
+	return 0;
+}
+
+static int parasite_trap(pid_t pid, struct reg *regs, struct orig *orig){
+	int status;
+	int ret = -1;
+
+	if(wait4(pid, &status, 0, NULL) != pid){
+		goto err;
+	}
+
+	if(!WIFSTOPPED(status)){
+		goto err;
+	}
+
+	if(ptrace_get_regs(pid, regs)){
+		goto err;
+	}
+
+	if(WSTOPSIG(status) != SIGTRAP){
+		goto err;
+	}
+
+	ret = 0;
+err:
+	restore_orig(pid, orig);
+	ret = -1;
+	return ret;
+
+}
+			
+
+
+int inject_syscall_mem(int pid, struct orig *orig, struct reg *regs){
+	int err;
+	uint8_t code_orig[BUILTIN_SYSCALL_SIZE];
+	unsigned long rip = regs -> r_rip;
 	orig->text = ptrace_read_i(pid, rip);
 	orig->data = 0x0;
 	orig->addr = 0x0;
-	uint8_t code_orig[BUILTIN_SYSCALL_SIZE];
 	memcpy(code_orig, code_syscall, sizeof(code_orig));
 
 	/* injection syscall 0xcc050f */	
 	//ptrace_write_i(pid, rip, code_syscall);
-	ptrace_swap_area(pid, (void *)rip, (void *)code_orig, sizeof(code_orig));
+	if(ptrace_swap_area(pid, (void *)rip, (void *)code_orig, sizeof(code_orig))){
+		return -1;
+	}
+
+	err = parasite_run(pid, PT_CONTINUE, rip, 0, regs, orig);
+	if (!err)
+		err = parasite_trap(pid, regs, orig);
+
+	if (ptrace_poke_area(pid, (void *)code_orig,
+			     (void *)rip, sizeof(code_orig))) {
+		err = -1;
+	}
+
 	/******************************/
+	return err;
 }
 
 void inject_syscall_buf(int pid, struct orig *orig, char *addr){
@@ -93,7 +165,7 @@ void inject_syscall(int pid, struct orig *orig, char *addr, int num, ...){
 	va_end(list);
 	inject_syscall_regs(pid, orig, arg[0], arg[1],
 		       	arg[2], arg[3], arg[4], arg[5], arg[6]);
-	inject_syscall_mem(pid, orig, orig->reg.r_rip);
+	inject_syscall_mem(pid, orig, &orig->reg);
 	if(addr != NULL)
 		inject_syscall_buf(pid, orig, addr);
 }
