@@ -24,15 +24,15 @@ Elf64_Addr get_entry_point(char* filepath);
 
 void prepare_change_stack(int pid, unsigned long int old_addr,
 	        unsigned long int old_size, struct orig *orig){
-	inject_syscall(pid, orig, NULL, SYSCALL_ARGS,
+	compel_syscall(pid, orig,
 		11, old_addr, old_size, 0x0, 0x0, 0x0, 0x0);
 }
 
 unsigned long int change_stack(int pid, unsigned long int new_addr,
 	       	unsigned long int new_size, struct orig *orig){
 	restore_orig(pid, orig);
-	inject_syscall(pid, orig, NULL, SYSCALL_ARGS,
-	       	9, new_addr, new_size, PROT_READ | PROT_WRITE,
+	compel_syscall(pid, orig, 
+			9, new_addr, new_size, PROT_READ | PROT_WRITE,
 	       	MAP_PRIVATE | LINUX_MAP_ANONYMOUS, 0x0, 0x0);
 	return new_addr;
 }
@@ -40,7 +40,7 @@ unsigned long int change_stack(int pid, unsigned long int new_addr,
 void prepare_restore_files(int pid, char *path, struct orig *orig){
 	printf("PATH:%s\n", path);
 	restore_orig(pid, orig);
-	inject_syscall(pid, orig, path, SYSCALL_ARGS, 2,
+	compel_syscall(pid, orig, 2,
 		(unsigned long int)path, O_RDWR, 0x0, 0x0, 0x0, 0x0);
 }
 
@@ -110,7 +110,7 @@ int main(int argc, char* argv[]){
 						prepare_restore_files(pid, restore_path, &orig);
 					}else if(flag == 4){
 						restore_orig(pid, &orig);
-						inject_syscall(pid, &orig, NULL, SYSCALL_ARGS, 8, 0x3, file_offset, SEEK_SET, 0x0, 0x0, 0x0);
+						compel_syscall(pid, &orig, 8, 0x3, file_offset, SEEK_SET, 0x0, 0x0, 0x0);
 					}else if(flag == 5){
 						restore_orig(pid, &orig);
 						setmems(pid, filePid, stack_addr);
