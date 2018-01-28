@@ -31,6 +31,12 @@ typedef Elf32_Shdr Elf_Shdr;
 typedef Elf32_Sym  Elf_Sym;
 #endif
 
+struct restore_fd_struct{
+	char *path;
+	int fd;
+	off_t offset;
+};
+
 int target(char *path, char* argv[]);
 Elf64_Addr get_entry_point(char* filepath);
 
@@ -63,6 +69,25 @@ int prepare_restore_files(char *path, int fd, off_t foff){
 	return fd;	
 }
 
+int restore_fork(char *exec_path, struct restore_fd_struct *fds){
+	pid_t pid;
+	int fd;
+	fd = prepare_restore_files(fds->path, fds->fd, fds->offset);
+	printf("get fd: %d\n", fd);
+
+	pid = fork();
+	if(pid < 0){
+		perror("FORK");
+		exit(1);
+	}
+	if(pid != 0){
+		close(fd);
+		return pid;
+	}
+	target(exec_path, NULL);
+	return 0;
+}
+
 int main(int argc, char* argv[]){
 	int pid, filePid;
 	int status;
@@ -71,11 +96,9 @@ int main(int argc, char* argv[]){
 	Elf64_Addr entry_point;
 	unsigned long int stack_addr;
 	unsigned long int stack_size;
-	int file_offset;
+	struct restore_fd_struct fds;
 	struct orig orig;
 	struct vmds vmds;
-	char *restore_path = "/dump/hello";
-	int fd = 3;
 
 	if(argc < 5){
 		printf("Usage: %s <path> <file pid> <stack addr> <file offset>\n", argv[0]);
@@ -90,51 +113,38 @@ int main(int argc, char* argv[]){
 	if(stack_addr != 0x7ffffffdf000){
 		stack_size = 0x21000;
 	}
-	file_offset = strtol(argv[4], NULL, 16);
+	fds.offset = strtol(argv[4], NULL, 16);
 	printf("CMD : %s\n", argv[1]);
 	printf("PPID: %d\n", getpid());
 	printf("Restore file: %d\n", filePid); 
 
-	fd = prepare_restore_files(restore_path, fd, file_offset);
-	printf("return fd:%d\n", fd);
-
-	pid = fork();
-	if(pid < 0){
-		perror("FORK");
-		exit(1);
-	}
-	
-	if(pid == 0){
-		target(filepath, NULL);
-	}else{
-		close(fd);
+	fds.path = "/dump/hello";
+	fds.fd = 3;
+	pid = restore_fork(filepath, &fds);
 			waitpro(pid, &status);
 					entry_point = get_entry_point(filepath);
-			//		entry_point = 0x4009ae;
 					ptrace_read_i(pid, entry_point);
 					ptrace_write_i(pid, entry_point, 0xCC);
 					ptrace_cont(pid);
 					flag++;
 			waitpro(pid, &status);
-					//printf("stopped:%d\n", WSTOPSIG(status));
-						get_vmmap(pid, &vmds);
-						printf("finished setting registers\n");
-						prepare_change_stack(pid, vmds.saddr, vmds.ssize, &orig);
-						printf("prepare changed stack position in memory layout\n");
-						ptrace_cont(pid);
+					get_vmmap(pid, &vmds);
+					printf("finished setting registers\n");
+					prepare_change_stack(pid, vmds.saddr, vmds.ssize, &orig);
+					printf("prepare changed stack position in memory layout\n");
+					ptrace_cont(pid);
 			waitpro(pid, &status);
-						change_stack(pid, stack_addr, stack_size, &orig);
-						printf("changed stack position in memory layout\n");
-						printf("stack_addr %lx\n", stack_addr);
-						ptrace_cont(pid);
+					change_stack(pid, stack_addr, stack_size, &orig);
+					printf("changed stack position in memory layout\n");
+					printf("stack_addr %lx\n", stack_addr);
+					ptrace_cont(pid);
 			waitpro(pid, &status);
-						restore_orig(pid, &orig);
-						setmems(pid, filePid, stack_addr);
-						setregs(pid, filePid);
-						ptrace_cont(pid);
+					restore_orig(pid, &orig);
+					setmems(pid, filePid, stack_addr);
+					setregs(pid, filePid);
+					ptrace_cont(pid);
 
 		while(1){}
-	}
 	return 0;
 }
 
