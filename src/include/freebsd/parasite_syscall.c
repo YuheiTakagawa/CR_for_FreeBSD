@@ -17,10 +17,12 @@
 #define LINUX_MAP_ANONYMOUS 0x20
 
 #define set_user_reg(pregs, name, val)	\
-		pregs->name = (val)
+		(pregs->name = (val))
 
+#define get_user_reg(pregs, name)	\
+		(pregs.name)
 
-const char  code_syscall[] = {
+ char  code_syscall[] = {
        0x0f, 0x05,	/* syscall	*/
        0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc	/* int 3, ... */
 }; 
@@ -39,7 +41,8 @@ void parasite_setup_regs(unsigned long new_ip, void *stack, struct reg *regs){
 	if(stack)
 		set_user_reg(regs, r_rsp, (unsigned long) stack);
 
-	set_user_reg(regs, r_rax, -1);
+	/* on FreeBSD, this line is stop syscall */
+	//set_user_reg(regs, r_rax, -1);
 }
 
 
@@ -111,7 +114,7 @@ int compel_execute_syscall(int pid, struct orig *orig, struct reg *regs){
 	return err;
 }
 
-void compel_syscall(int pid, struct orig *orig, int nr, 
+void compel_syscall(int pid, struct orig *orig, int nr, long *ret,
 		unsigned long arg1,
 		unsigned long arg2,
 		unsigned long arg3,
@@ -131,22 +134,26 @@ void compel_syscall(int pid, struct orig *orig, int nr,
 	reg.r_r8  = arg5;
 	reg.r_r9  = arg6;
 
-	compel_execute_syscall(pid, orig, &orig->reg);
+	compel_execute_syscall(pid, orig, &reg);
+	*ret = get_user_reg(reg, r_rax);
+	printf("return: %lx\n", *ret);
 }
-/*
-void compel_execute_syscall(int pid, struct orig *orig, char *addr, int num, ...){
-	va_list list;
-	unsigned long arg[num];
+
+void *remote_mmap(pid_t pid, struct orig *orig, void *addr, size_t length, int prot, int flags, int fd, off_t offset){
+	long map;
+	int err = 0;
 	
-	va_start(list, num);
-	for(int i = 0; i < num; i++){
-		arg[i] = va_arg(list, unsigned long);
-	}
-	va_end(list);
-	compel_execute_syscall_regs(pid, orig, arg[0], arg[1],
-		       	arg[2], arg[3], arg[4], arg[5], arg[6]);
+	compel_syscall(pid, orig, 9, &map,
+			(unsigned long)addr, length, prot, flags, fd, offset);
+	if(err < 0)
+		return NULL;
+
+	if(map == -EACCES && (prot & PROT_WRITE) && (prot & PROT_EXEC))
+		return NULL;
+
+	return (void *)map;
 }
-*/
+
 void restore_setregs(int pid, struct reg orig){
 	struct reg reg;
 	
@@ -158,7 +165,6 @@ void restore_setregs(int pid, struct reg orig){
 }
 
 void restore_memory(int pid, struct orig *orig){
-	printf("orig_text: %lx\n", orig->text);
 	ptrace_write_i(pid, orig->reg.r_rip, orig->text);
 	if(orig->addr != 0x0)
 	ptrace_write_d(pid, (unsigned long int)orig->addr, orig->data);

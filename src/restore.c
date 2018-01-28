@@ -24,23 +24,27 @@ Elf64_Addr get_entry_point(char* filepath);
 
 void prepare_change_stack(int pid, unsigned long int old_addr,
 	        unsigned long int old_size, struct orig *orig){
+	long ret;
 	compel_syscall(pid, orig,
-		11, old_addr, old_size, 0x0, 0x0, 0x0, 0x0);
+		11, &ret, old_addr, old_size, 0x0, 0x0, 0x0, 0x0);
 }
 
 unsigned long int change_stack(int pid, unsigned long int new_addr,
 	       	unsigned long int new_size, struct orig *orig){
 	restore_orig(pid, orig);
-	compel_syscall(pid, orig, 
-			9, new_addr, new_size, PROT_READ | PROT_WRITE,
+	void *remote_map;
+	remote_map = remote_mmap(pid, orig, 
+			(void *)new_addr, new_size, PROT_READ | PROT_WRITE,
 	       	MAP_PRIVATE | LINUX_MAP_ANONYMOUS, 0x0, 0x0);
+	printf("remote_map:%p\n", remote_map);
 	return new_addr;
 }
 
 void prepare_restore_files(int pid, char *path, struct orig *orig){
 	printf("PATH:%s\n", path);
 	restore_orig(pid, orig);
-	compel_syscall(pid, orig, 2,
+	long ret;
+	compel_syscall(pid, orig, 2, &ret,
 		(unsigned long int)path, O_RDWR, 0x0, 0x0, 0x0, 0x0);
 }
 
@@ -53,6 +57,7 @@ int main(int argc, char* argv[]){
 	unsigned long int stack_addr;
 	unsigned long int stack_size;
 	int file_offset;
+	long ret;
 	struct orig orig;
 	struct vmds vmds;
 	char *restore_path = "/dump/hello";
@@ -84,54 +89,67 @@ int main(int argc, char* argv[]){
 	if(pid == 0){
 		target(filepath, NULL);
 	}else{
-		while(1){
+	//	while(1){
 			waitpro(pid, &status);
 			if(WIFSTOPPED(status)){
-				if(flag == 0){
+				//if(flag == 0){
 				//	entry_point = get_entry_point(filepath);
 					entry_point = 0x4009ae;
 					ptrace_read_i(pid, entry_point);
 					ptrace_write_i(pid, entry_point, 0xCC);
 					ptrace_cont(pid);
 					flag++;
-				}
-				else{
+			}
+			waitpro(pid, &status);
+			if(WIFSTOPPED(status)){
 					printf("stopped:%d\n", WSTOPSIG(status));
-					if(flag == 1){
 						get_vmmap(pid, &vmds);
 						printf("finished setting registers\n");
 						prepare_change_stack(pid, vmds.saddr, vmds.ssize, &orig);
 						printf("prepare changed stack position in memory layout\n");
-					}else if(flag == 2){
+						ptrace_cont(pid);
+			}
+			waitpro(pid, &status);
+			if(WIFSTOPPED(status)){
 						change_stack(pid, stack_addr, stack_size, &orig);
 						printf("changed stack position in memory layout\n");
 						printf("stack_addr %lx\n", stack_addr);
-					}else if(flag == 3){
+						ptrace_cont(pid);
+			}
+			waitpro(pid, &status);
+			if(WIFSTOPPED(status)){
 						prepare_restore_files(pid, restore_path, &orig);
-					}else if(flag == 4){
+						ptrace_cont(pid);
+			}
+			waitpro(pid, &status);
+			if(WIFSTOPPED(status)){
 						restore_orig(pid, &orig);
-						compel_syscall(pid, &orig, 8, 0x3, file_offset, SEEK_SET, 0x0, 0x0, 0x0);
-					}else if(flag == 5){
+						compel_syscall(pid, &orig, 8, &ret, 0x3, file_offset, SEEK_SET, 0x0, 0x0, 0x0);
+						printf("seek finished\n");
+						ptrace_cont(pid);
+			}
+			waitpro(pid, &status);
+			if(WIFSTOPPED(status)){
 						restore_orig(pid, &orig);
 						setmems(pid, filePid, stack_addr);
 						setregs(pid, filePid);
-					}
-					else{
-						print_regs(pid);
-					}
-					if(flag < 6)
 						ptrace_cont(pid);
+					/*else{
+						print_regs(pid);
+					}*/
+			/*		if(flag < 6)
 					else{
 						ptrace_step(pid);
 						sleep(1);
 					}
 					flag++;
-				}
+				}*/
 			}else if(WIFEXITED(status)){
 				perror("exited");
 				exit(1);
 			}
-		}
+		//}
+		while(1){}
 	}
 	return 0;
 }
