@@ -42,7 +42,7 @@ int *get_open_fd(int pid, struct fd_list *fdl){
 			fdl->offset[i] = fst->fs_offset;
 			i++;
 	}
-	fdl->fd[i + 1] = -2;
+	fdl->fd[i] = -2;
 	
 	procstat_freeprocs(prst, (void *)kp);
 	return 0;
