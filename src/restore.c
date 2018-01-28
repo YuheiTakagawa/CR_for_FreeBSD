@@ -99,7 +99,6 @@ int main(int argc, char* argv[]){
 		close(fd);
 			waitpro(pid, &status);
 			if(WIFSTOPPED(status)){
-				//if(flag == 0){
 				//	entry_point = get_entry_point(filepath);
 					entry_point = 0x4009ae;
 					ptrace_read_i(pid, entry_point);
@@ -108,42 +107,23 @@ int main(int argc, char* argv[]){
 					flag++;
 			}
 			waitpro(pid, &status);
-			if(WIFSTOPPED(status)){
 					printf("stopped:%d\n", WSTOPSIG(status));
 						get_vmmap(pid, &vmds);
 						printf("finished setting registers\n");
 						prepare_change_stack(pid, vmds.saddr, vmds.ssize, &orig);
 						printf("prepare changed stack position in memory layout\n");
 						ptrace_cont(pid);
-			}
 			waitpro(pid, &status);
-			if(WIFSTOPPED(status)){
 						change_stack(pid, stack_addr, stack_size, &orig);
 						printf("changed stack position in memory layout\n");
 						printf("stack_addr %lx\n", stack_addr);
 						ptrace_cont(pid);
-			}
-
 			waitpro(pid, &status);
-			if(WIFSTOPPED(status)){
 						restore_orig(pid, &orig);
 						setmems(pid, filePid, stack_addr);
 						setregs(pid, filePid);
 						ptrace_cont(pid);
-					/*else{
-						print_regs(pid);
-					}*/
-			/*		if(flag < 6)
-					else{
-						ptrace_step(pid);
-						sleep(1);
-					}
-					flag++;
-				}*/
-			}else if(WIFEXITED(status)){
-				perror("exited");
-				exit(1);
-			}
+
 		while(1){}
 	}
 	return 0;
