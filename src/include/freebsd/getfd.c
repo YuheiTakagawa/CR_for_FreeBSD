@@ -37,13 +37,12 @@ int *get_open_fd(int pid, struct fd_list *fdl){
 	fstlist = procstat_getfiles(prst, (void *)kp, mapped);
 	// separate file list
 	STAILQ_FOREACH(fst, fstlist, next) {
-		if(fst->fs_fd > 2){
 			fdl->fd[i] = fst->fs_fd;
 			fdl->path[i] = fst->fs_path;
 			fdl->offset[i] = fst->fs_offset;
 			i++;
-		}
 	}
+	fdl->fd[i + 1] = -2;
 	
 	procstat_freeprocs(prst, (void *)kp);
 	return 0;
@@ -53,10 +52,11 @@ int getfd(int pid){
 	struct fd_list fdl;
 	get_open_fd(pid, &fdl);
 	for(int i = 0; i < FD_MAX; i++){
-		if(fdl.fd[i] != 0){
+		if(fdl.fd[i] != -2){
 		printf("FD: %d, OFFSET: %lx, PATH: %s\n", fdl.fd[i], fdl.offset[i], fdl.path[i]);
-		}
-		else{ break; }
+		}else{
+		       	break;
+	       	}
 	}
 
 	printf("finished get fd\n");
