@@ -10,7 +10,7 @@ int main(char *args[]){
 	char ch[50] = {'\0'};
 	int ret;
 
-	fd = open("/dump/hello", O_RDWR);
+	fd = open("/dump/hello", O_RDWR | O_CREAT, S_IRWXU);
 	printf("opened FD: %d\n", fd);
 	for(c = 0; c < 5000; c++){
 		snprintf(ch, sizeof(ch),  "Hello %d\n", c);
