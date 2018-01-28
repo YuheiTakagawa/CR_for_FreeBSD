@@ -7,14 +7,12 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
-#include <elf.h>
 #include <sys/mman.h>
 
 #include "register.c"
 #include "setmem.c"
 #include "ptrace.h"
 #include "parasite_syscall.c"
-#include "getmap.c"
 #include "breakpoint.c"
 
 #define BUFSIZE 1024
