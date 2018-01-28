@@ -51,9 +51,11 @@ int *get_open_fd(int pid, struct fd_list *fdl){
 int getfd(int pid){
 	struct fd_list fdl;
 	get_open_fd(pid, &fdl);
+	int write_fd = open_dump_file(pid, "fds");
 	for(int i = 0; i < FD_MAX; i++){
+		/* file descriptor is range -1 ~, error code is -2 */
 		if(fdl.fd[i] != -2){
-		printf("FD: %d, OFFSET: %lx, PATH: %s\n", fdl.fd[i], fdl.offset[i], fdl.path[i]);
+			dprintf(write_fd, "FD: %d, OFFSET: %lx, PATH: %s\n", fdl.fd[i], fdl.offset[i], fdl.path[i]);
 		}else{
 		       	break;
 	       	}
