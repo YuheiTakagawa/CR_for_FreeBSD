@@ -41,24 +41,6 @@ int target(char *path, char *argv[]){
 	exit(ret);
 }
 
-void prepare_change_stack(int pid, unsigned long int old_addr,
-	        unsigned long int old_size, struct orig *orig){
-	long ret;
-	compel_syscall(pid, orig,
-		11, &ret, old_addr, old_size, 0x0, 0x0, 0x0, 0x0);
-}
-
-unsigned long int change_stack(int pid, unsigned long int new_addr,
-	       	unsigned long int new_size, struct orig *orig){
-	restore_orig(pid, orig);
-	void *remote_map;
-	remote_map = remote_mmap(pid, orig, 
-			(void *)new_addr, new_size, PROT_READ | PROT_WRITE,
-	       	MAP_PRIVATE | LINUX_MAP_ANONYMOUS, 0x0, 0x0);
-	printf("remote_map:%p\n", remote_map);
-	return new_addr;
-}
-
 int prepare_restore_files(char *path, int fd, off_t foff){
 	printf("PATH:%s\n", path);
 	int tmp = open("/dump/hello", O_RDWR);
@@ -97,7 +79,6 @@ int main(int argc, char* argv[]){
 	unsigned long int stack_size;
 	struct restore_fd_struct fds;
 	struct orig orig;
-	struct vmds vmds;
 
 	if(argc < 5){
 		printf("Usage: %s <path> <file pid> <stack addr> <file offset>\n", argv[0]);
@@ -121,22 +102,15 @@ int main(int argc, char* argv[]){
 	fds.fd = 3;
 
 	pid = restore_fork(filepath, &fds);
+	remap_vm(pid, stack_addr, stack_size, &orig);
 			waitpro(pid, &status);
-					get_vmmap(pid, &vmds);
-					printf("finished setting registers\n");
-					prepare_change_stack(pid, vmds.saddr, vmds.ssize, &orig);
-					printf("prepare changed stack position in memory layout\n");
-					ptrace_cont(pid);
-			waitpro(pid, &status);
-					change_stack(pid, stack_addr, stack_size, &orig);
-					printf("changed stack position in memory layout\n");
-					printf("stack_addr %lx\n", stack_addr);
-					ptrace_cont(pid);
-			waitpro(pid, &status);
-					restore_orig(pid, &orig);
+					//restore_orig(pid, &orig);
 					setmems(pid, filePid, stack_addr);
 					setregs(pid, filePid);
+					printf("aaaaaaaaaaaa\n");
 					ptrace_cont(pid);
+			waitpro(pid, &status);
+			print_regs(pid);
 
 		while(1){}
 	return 0;
