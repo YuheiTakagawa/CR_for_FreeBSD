@@ -21,6 +21,9 @@ typedef Elf32_Sym  Elf_Sym;
 #endif
 
 /* Reference http://d.hatena.ne.jp/rti7743/20170616/1497628434 */
+char code_int3[] = {
+	0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc
+};
 
 Elf64_Addr get_entry_point(char* filepath){
 	int fd = open(filepath, O_RDONLY);
@@ -88,11 +91,15 @@ Elf64_Addr get_entry_point(char* filepath){
 void insert_breakpoint(pid_t pid, char *elfpath){
 	int status;
 	Elf64_Addr entry_point;
+	uint8_t code_orig[BUILTIN_SYSCALL_SIZE];
+
+	memcpy(code_orig, code_int3, sizeof(code_orig));
 
 	waitpro(pid, &status);
 	entry_point = get_entry_point(elfpath);
-	ptrace_read_i(pid, entry_point);
-	ptrace_write_i(pid, entry_point, 0xCC);
+	ptrace_swap_area(pid, (void *)entry_point, (void *)code_orig, sizeof(code_orig));
+	//ptrace_poke_area(pid, (void *)code_orig,
+	//			(void *)entry_point, sizeof(code_orig));
 	ptrace_cont(pid);
 }
 	

@@ -105,10 +105,9 @@ int main(int argc, char* argv[]){
 	insert_breakpoint(pid, filepath);
 	remap_vm(pid, stack_addr, stack_size, &orig);
 			waitpro(pid, &status);
-					//restore_orig(pid, &orig);
+			//printf("sig stopped: %d\n", WSTOPSIG(status));
 					setmems(pid, filePid, stack_addr);
 					setregs(pid, filePid);
-					printf("aaaaaaaaaaaa\n");
 					ptrace_cont(pid);
 			waitpro(pid, &status);
 			print_regs(pid);

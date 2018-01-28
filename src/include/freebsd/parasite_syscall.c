@@ -22,7 +22,7 @@
 #define get_user_reg(pregs, name)	\
 		(pregs.name)
 
- char  code_syscall[] = {
+char code_syscall[] = {
        0x0f, 0x05,	/* syscall	*/
        0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc	/* int 3, ... */
 }; 
@@ -81,7 +81,7 @@ static int parasite_trap(pid_t pid, struct reg *regs, struct orig *orig){
 	ret = 0;
 err:
 	restore_orig(pid, orig);
-	ret = -1;
+	//ret = -1;
 	return ret;
 
 }

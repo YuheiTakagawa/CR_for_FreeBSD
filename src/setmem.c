@@ -65,6 +65,7 @@ void remap_mem(int pid, struct remap_vm_struct * revm, struct orig *orig){
 			11, &ret, revm->old_addr, revm->old_size, 0x0, 0x0, 0x0, 0x0);
 	ptrace_cont(pid);
 	waitpro(pid, &status);
+	printf("sig stopped: %d\n", WSTOPSIG(status));
 	remote_map = remote_mmap(pid, orig,
 			(void *)revm->new_addr, revm->new_size, PROT_READ | PROT_WRITE,
 			MAP_PRIVATE | LINUX_MAP_ANONYMOUS, 0x0, 0x0);
@@ -75,6 +76,7 @@ void remap_mem(int pid, struct remap_vm_struct * revm, struct orig *orig){
 void remap_vm(int pid, unsigned long int new_addr, unsigned long int new_size, struct orig *orig){
 	int status;
 	waitpro(pid, &status);
+	printf("sig stopped: %d\n", WSTOPSIG(status));
 	struct vmds vmds;
 	struct remap_vm_struct revm;
 	get_vmmap(pid, &vmds);
