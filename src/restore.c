@@ -40,12 +40,13 @@ unsigned long int change_stack(int pid, unsigned long int new_addr,
 	return new_addr;
 }
 
-void prepare_restore_files(int pid, char *path, struct orig *orig){
+void prepare_restore_files(char *path, int fd){
 	printf("PATH:%s\n", path);
-	restore_orig(pid, orig);
-	long ret;
-	compel_syscall(pid, orig, 2, &ret,
-		(unsigned long int)path, O_RDWR, 0x0, 0x0, 0x0, 0x0);
+	int tmp = open("/dump/hello", O_RDWR);
+	if(fd != tmp){
+		dup2(tmp, fd);
+		close(tmp);
+	}
 }
 
 int main(int argc, char* argv[]){
@@ -61,6 +62,7 @@ int main(int argc, char* argv[]){
 	struct orig orig;
 	struct vmds vmds;
 	char *restore_path = "/dump/hello";
+	int fd = 3;
 
 	if(argc < 5){
 		printf("Usage: %s <path> <file pid> <stack addr> <file offset>\n", argv[0]);
@@ -79,6 +81,8 @@ int main(int argc, char* argv[]){
 	printf("CMD : %s\n", argv[1]);
 	printf("PPID: %d\n", getpid());
 	printf("Restore file: %d\n", filePid); 
+
+	prepare_restore_files(restore_path, fd);
 
 	pid = fork();
 	if(pid < 0){
@@ -116,12 +120,12 @@ int main(int argc, char* argv[]){
 						printf("stack_addr %lx\n", stack_addr);
 						ptrace_cont(pid);
 			}
-			waitpro(pid, &status);
+	/*		waitpro(pid, &status);
 			if(WIFSTOPPED(status)){
 						prepare_restore_files(pid, restore_path, &orig);
 						ptrace_cont(pid);
 			}
-			waitpro(pid, &status);
+	*/		waitpro(pid, &status);
 			if(WIFSTOPPED(status)){
 						restore_orig(pid, &orig);
 						compel_syscall(pid, &orig, 8, &ret, 0x3, file_offset, SEEK_SET, 0x0, 0x0, 0x0);
@@ -161,7 +165,7 @@ int target(char *path, char *argv[]){
 	printf("command: %s\n", exec[0]);
 	ptrace_traceme();
 	printf("trace me\n");
-	
+
 	ret = execvp(exec[0], exec);
 	perror("execvp");
 	exit(ret);
