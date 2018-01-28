@@ -6,6 +6,7 @@
 #include <string.h>
 #include <elf.h>
 
+#include "ptrace.h"
 
 #ifdef __x86_64__
 typedef uint64_t Elf_Addr;
@@ -83,4 +84,17 @@ Elf64_Addr get_entry_point(char* filepath){
 	close(fd);
 	return 0;
 }
+
+void insert_breakpoint(pid_t pid, char *elfpath){
+	int status;
+	Elf64_Addr entry_point;
+
+	waitpro(pid, &status);
+	entry_point = get_entry_point(elfpath);
+	ptrace_read_i(pid, entry_point);
+	ptrace_write_i(pid, entry_point, 0xCC);
+	ptrace_cont(pid);
+}
+	
+
 #endif

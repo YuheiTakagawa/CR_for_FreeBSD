@@ -15,7 +15,7 @@
 #include "ptrace.h"
 #include "parasite_syscall.c"
 #include "getmap.c"
-#include "getmain.c"
+#include "breakpoint.c"
 
 #define BUFSIZE 1024
 #define PATHBUF 30
@@ -28,7 +28,6 @@ struct restore_fd_struct{
 };
 
 int target(char *path, char* argv[]);
-Elf64_Addr get_entry_point(char* filepath);
 
 int target(char *path, char *argv[]){
 	char *exec[] = {path, NULL};
@@ -93,9 +92,7 @@ int restore_fork(char *exec_path, struct restore_fd_struct *fds){
 int main(int argc, char* argv[]){
 	int pid, filePid;
 	int status;
-	int flag = 0;
 	char *filepath;
-	Elf64_Addr entry_point;
 	unsigned long int stack_addr;
 	unsigned long int stack_size;
 	struct restore_fd_struct fds;
@@ -122,13 +119,8 @@ int main(int argc, char* argv[]){
 
 	fds.path = "/dump/hello";
 	fds.fd = 3;
+
 	pid = restore_fork(filepath, &fds);
-			waitpro(pid, &status);
-					entry_point = get_entry_point(filepath);
-					ptrace_read_i(pid, entry_point);
-					ptrace_write_i(pid, entry_point, 0xCC);
-					ptrace_cont(pid);
-					flag++;
 			waitpro(pid, &status);
 					get_vmmap(pid, &vmds);
 					printf("finished setting registers\n");
