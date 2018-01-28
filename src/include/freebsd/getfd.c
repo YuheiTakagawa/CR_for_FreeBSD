@@ -54,9 +54,10 @@ int getfd(int pid){
 	int write_fd = open_dump_file(pid, "fds");
 	for(int i = 0; i < FD_MAX; i++){
 		/* file descriptor is range -1 ~, error code is -2 */
-		if(fdl.fd[i] != -2){
+		if(fdl.fd[i] > 0){
 			dprintf(write_fd, "FD: %d, OFFSET: %lx, PATH: %s\n", fdl.fd[i], fdl.offset[i], fdl.path[i]);
-		}else{
+		}
+		if(fdl.fd[i] == -2){
 		       	break;
 	       	}
 	}
