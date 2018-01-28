@@ -40,13 +40,15 @@ unsigned long int change_stack(int pid, unsigned long int new_addr,
 	return new_addr;
 }
 
-void prepare_restore_files(char *path, int fd){
+int prepare_restore_files(char *path, int fd, off_t foff){
 	printf("PATH:%s\n", path);
 	int tmp = open("/dump/hello", O_RDWR);
 	if(fd != tmp){
-		dup2(tmp, fd);
+		fd = dup2(tmp, fd);
 		close(tmp);
 	}
+	lseek(fd, foff, SEEK_SET);
+	return fd;	
 }
 
 int main(int argc, char* argv[]){
@@ -58,7 +60,7 @@ int main(int argc, char* argv[]){
 	unsigned long int stack_addr;
 	unsigned long int stack_size;
 	int file_offset;
-	long ret;
+	//long ret;
 	struct orig orig;
 	struct vmds vmds;
 	char *restore_path = "/dump/hello";
@@ -77,12 +79,13 @@ int main(int argc, char* argv[]){
 	if(stack_addr != 0x7ffffffdf000){
 		stack_size = 0x21000;
 	}
-	file_offset = atoi(argv[4]);
+	file_offset = strtol(argv[4], NULL, 16);
 	printf("CMD : %s\n", argv[1]);
 	printf("PPID: %d\n", getpid());
 	printf("Restore file: %d\n", filePid); 
 
-	prepare_restore_files(restore_path, fd);
+	fd = prepare_restore_files(restore_path, fd, file_offset);
+	printf("return fd:%d\n", fd);
 
 	pid = fork();
 	if(pid < 0){
@@ -93,7 +96,7 @@ int main(int argc, char* argv[]){
 	if(pid == 0){
 		target(filepath, NULL);
 	}else{
-	//	while(1){
+		close(fd);
 			waitpro(pid, &status);
 			if(WIFSTOPPED(status)){
 				//if(flag == 0){
@@ -120,18 +123,7 @@ int main(int argc, char* argv[]){
 						printf("stack_addr %lx\n", stack_addr);
 						ptrace_cont(pid);
 			}
-	/*		waitpro(pid, &status);
-			if(WIFSTOPPED(status)){
-						prepare_restore_files(pid, restore_path, &orig);
-						ptrace_cont(pid);
-			}
-	*/		waitpro(pid, &status);
-			if(WIFSTOPPED(status)){
-						restore_orig(pid, &orig);
-						compel_syscall(pid, &orig, 8, &ret, 0x3, file_offset, SEEK_SET, 0x0, 0x0, 0x0);
-						printf("seek finished\n");
-						ptrace_cont(pid);
-			}
+
 			waitpro(pid, &status);
 			if(WIFSTOPPED(status)){
 						restore_orig(pid, &orig);
@@ -152,7 +144,6 @@ int main(int argc, char* argv[]){
 				perror("exited");
 				exit(1);
 			}
-		//}
 		while(1){}
 	}
 	return 0;
