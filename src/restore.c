@@ -102,6 +102,7 @@ int main(int argc, char* argv[]){
 	fds.fd = 3;
 
 	pid = restore_fork(filepath, &fds);
+	insert_breakpoint(pid, filepath);
 	remap_vm(pid, stack_addr, stack_size, &orig);
 			waitpro(pid, &status);
 					//restore_orig(pid, &orig);
