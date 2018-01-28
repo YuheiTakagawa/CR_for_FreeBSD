@@ -1,6 +1,7 @@
 restore
 getall
 build/
+*.core
 #!*.c
 #!
 #!.gitignore
