@@ -20,7 +20,7 @@
 
 
 struct restore_fd_struct{
-	char *path;
+	char path[BUFSIZE];
 	int fd;
 	off_t offset;
 };
@@ -50,12 +50,35 @@ int prepare_restore_files(char *path, int fd, off_t foff){
 	return fd;	
 }
 
-int restore_fork(char *exec_path, struct restore_fd_struct *fds){
+void read_fd_list(pid_t filePid, struct restore_fd_struct *fds){
+	int read_fd;
+	char buf[BUFSIZE];
+	int i = 0;
+	read_fd = open_file(filePid, "fds");
+	while(read(read_fd, &buf[i++], sizeof(char))){
+		if(buf[i-1] == '\n'){
+			buf[i-1] = '\0';
+			fds->fd = atoi(strtok(buf, ","));
+			fds->offset = atoi(strtok(NULL, ","));
+			strncpy(fds->path, strtok(NULL, "\n"), );
+			printf("fd:%d, off:%ld, path:%s\n", fds->fd, fds->offset, fds->path);
+			fds++;
+			i = 0;
+		}
+	}
+	close(read_fd);
+}
+
+int restore_fork(int filePid, char *exec_path){
 	pid_t pid;
 	int fd;
-	fd = prepare_restore_files(fds->path, fds->fd, fds->offset);
-	printf("get fd: %d\n", fd);
-
+	int i;
+	struct restore_fd_struct fds[1024];
+	read_fd_list(filePid, fds);
+	printf("fd:%d, off:%ld, path:%s\n", fds[0].fd, fds[0].offset, fds[0].path);
+	for(i = 0; fds[i].path != NULL; i++){
+		fd = prepare_restore_files(fds[i].path, fds[i].fd, fds[i].offset);
+	}
 	pid = fork();
 	if(pid < 0){
 		perror("FORK");
@@ -75,7 +98,6 @@ int main(int argc, char* argv[]){
 	char *filepath;
 	unsigned long int stack_addr;
 	unsigned long int stack_size;
-	struct restore_fd_struct fds;
 	struct orig orig;
 
 	if(argc < 5){
@@ -91,15 +113,15 @@ int main(int argc, char* argv[]){
 	if(stack_addr != 0x7ffffffdf000){
 		stack_size = 0x21000;
 	}
-	fds.offset = strtol(argv[4], NULL, 16);
+	//fds.offset = strtol(argv[4], NULL, 16);
 	printf("CMD : %s\n", argv[1]);
 	printf("PPID: %d\n", getpid());
 	printf("Restore file: %d\n", filePid); 
 
-	fds.path = "/dump/hello";
-	fds.fd = 3;
+	//fds.path = "/dump/hello";
+	//fds.fd = 3;
 
-	pid = restore_fork(filepath, &fds);
+	pid = restore_fork(filePid, filepath);
 	insert_breakpoint(pid, filepath);
 	remap_vm(pid, stack_addr, stack_size, &orig);
 			waitpro(pid, &status);

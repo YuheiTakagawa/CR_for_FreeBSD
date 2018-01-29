@@ -55,7 +55,8 @@ int getfd(int pid){
 	for(int i = 0; i < FD_MAX; i++){
 		/* file descriptor is range -1 ~, error code is -2 */
 		if(fdl.fd[i] > 0){
-			dprintf(write_fd, "FD: %d, OFFSET: %lx, PATH: %s\n", fdl.fd[i], fdl.offset[i], fdl.path[i]);
+			printf("FD: %d, OFFSET: %lx, PATH: %s\n", fdl.fd[i], fdl.offset[i], fdl.path[i]);
+			dprintf(write_fd, "%d,%lx,%s\n", fdl.fd[i], fdl.offset[i], fdl.path[i]);
 		}
 		if(fdl.fd[i] == -2){
 		       	break;
