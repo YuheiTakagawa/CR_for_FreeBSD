@@ -61,7 +61,6 @@ void read_fd_list(pid_t filePid, struct restore_fd_struct *fds){
 			fds->fd = atoi(strtok(buf, ","));
 			fds->offset = atoi(strtok(NULL, ","));
 			strncpy(fds->path, strtok(NULL, "\0"), i);
-			printf("fd:%d, off:%ld, path:%s\n", fds->fd, fds->offset, fds->path);
 			fds++;
 			i = 0;
 		}
@@ -76,7 +75,10 @@ int restore_fork(int filePid, char *exec_path){
 	struct restore_fd_struct fds[1024];
 	read_fd_list(filePid, fds);
 	for(i = 0; fds[i].fd != -2 ; i++){
-		fd = prepare_restore_files(fds[i].path, fds[i].fd, fds[i].offset);
+		printf("fd:%d, off:%ld, path:%s\n", fds[i].fd, fds[i].offset, fds[i].path);
+		/* if restore tty info, have to implement restoring ttys*/
+		if(strstr(fds[i].path, "/dev/pts") == NULL)
+			fd = prepare_restore_files(fds[i].path, fds[i].fd, fds[i].offset);
 	}
 	pid = fork();
 	if(pid < 0){
@@ -84,7 +86,7 @@ int restore_fork(int filePid, char *exec_path){
 		exit(1);
 	}
 	if(pid != 0){
-	//	close(fd);
+		close(fd);
 		return pid;
 	}
 	target(exec_path, NULL);
@@ -99,7 +101,7 @@ int main(int argc, char* argv[]){
 	unsigned long int stack_size;
 	struct orig orig;
 
-	if(argc < 5){
+	if(argc < 4){
 		printf("Usage: %s <path> <file pid> <stack addr> <file offset>\n", argv[0]);
 		exit(1);
 	}
