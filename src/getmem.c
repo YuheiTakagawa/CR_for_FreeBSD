@@ -23,8 +23,9 @@ int getmems(pid_t pid){
 	dump_vmmap(pid, &vmds);
 	read_fd = open_read_file(pid);
 	
-	dump_fd = open_dump_file(pid, "data");
-	getmem(read_fd, dump_fd, vmds.daddr, vmds.dsize);
+	dump_fd = open_dump_file(pid, "heap");
+	getmem(read_fd, dump_fd, vmds.haddr, vmds.hsize);
+
 
 	dump_fd = open_dump_file(pid, "stack");
 	getmem(read_fd, dump_fd, vmds.saddr, vmds.ssize);

@@ -15,9 +15,9 @@
 #define DUMP_VMMAP 1
 
 struct vmds{
-	unsigned long int dsize;
+	unsigned long int hsize;
 	unsigned long int ssize;
-	unsigned long int daddr;
+	unsigned long int haddr;
 	unsigned long int saddr;
 };
 
@@ -50,25 +50,28 @@ void get_vmmap(int pid, struct vmds *vmds, int flag){
 			size = snprintf(tmp, sizeof(tmp), "%lx,%lx,%x,%x,%s\n", kv->kve_start, kv->kve_end, kv->kve_flags, kv->kve_protection, buf);
 			write(write_fd, tmp, size);
 		}
-		if(i == 1){
-			vmds->daddr = kv->kve_start;
+		if(kv->kve_flags == 0x0 && kv->kve_protection == 0x3){
+			vmds->haddr = kv->kve_start;
+			vmds->hsize = kv->kve_end - kv->kve_start;
 			continue;
 		}
 
 		if(kv->kve_flags & KVME_FLAG_GROWS_DOWN){
 			vmds->saddr = kv->kve_start;
+			vmds->ssize = kv->kve_end - kv->kve_start;
 			continue;
 		}
 		
 	}
 	/************************************************/
+	/*
 	vmds->dsize = kp->ki_dsize * page_size;
 	vmds->ssize = kp->ki_ssize * page_size;
 
 	printf("stack text: %lx\n", kp->ki_tsize * page_size);
 	printf("stack data: %lx\n", vmds->dsize);
 	printf("stack size: %lx\n", vmds->ssize);
-
+*/
 	procstat_freevmmap(prst, (void *)kp);
 }
 
