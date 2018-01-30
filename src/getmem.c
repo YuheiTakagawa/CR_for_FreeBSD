@@ -20,7 +20,7 @@ int getmem(int read_fd, int dump_fd, long int offset, long int size);
 int getmems(pid_t pid){
 	int read_fd, dump_fd;
 	struct vmds vmds;
-	get_vmmap(pid, &vmds);
+	dump_vmmap(pid, &vmds);
 	read_fd = open_read_file(pid);
 	
 	dump_fd = open_dump_file(pid, "data");

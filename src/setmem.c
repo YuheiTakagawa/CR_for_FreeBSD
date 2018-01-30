@@ -79,7 +79,7 @@ void remap_vm(int pid, unsigned long int new_addr, unsigned long int new_size, s
 	printf("sig stopped: %d\n", WSTOPSIG(status));
 	struct vmds vmds;
 	struct remap_vm_struct revm;
-	get_vmmap(pid, &vmds);
+	show_vmmap(pid, &vmds);
 	revm.old_addr = vmds.saddr;
 	revm.old_size = vmds.ssize;
 	revm.new_addr = new_addr;
