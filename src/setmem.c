@@ -11,27 +11,39 @@
 #define PATHBUF 30
 
 struct remap_vm_struct{
-	unsigned long int old_addr;
-	unsigned long int old_size;
 	unsigned long int new_addr;
-	unsigned long int new_size;
+	unsigned long int new_end;
+	char path[BUFSIZE];
+	int flags;
+	int protection;
 };
 
-int setmems(pid_t, pid_t, unsigned long int);
+struct remap_vm_old{
+	unsigned long int old_addr;
+	unsigned long int old_size;
+};
+
+int setmems(pid_t, pid_t, struct remap_vm_struct*);
 int write_mem(int, int, long int);
 
-int setmems(pid_t pid, pid_t filePid, unsigned long int stack_addr){
+int setmems(pid_t pid, pid_t filePid, struct remap_vm_struct *revm){
         int write_fd;
         int read_fd;
 
         write_fd = open_file(pid, "mem");
         
+	while(revm->flags != 0x1){
+		revm++;
+	}
 
         read_fd = open_file(filePid, "data");
-        write_mem(read_fd, write_fd, 0x6c9000); 
+        write_mem(read_fd, write_fd, revm->new_addr); 
 
+	while(revm->flags != 0x20){
+		revm++;
+	}
         read_fd = open_file(filePid, "stack");
-        write_mem(read_fd, write_fd, stack_addr);
+        write_mem(read_fd, write_fd, revm->new_addr);
 
         close(write_fd);
         return 0;
@@ -56,35 +68,56 @@ int write_mem(int read_fd, int write_fd, long int offset){
         return rnum;
 }
 
-void remap_mem(int pid, struct remap_vm_struct * revm, struct orig *orig){
+void remap_mem(int pid, struct remap_vm_struct *revm, struct remap_vm_old *revm_old, struct orig *orig){
 	long ret;
 	int status;
 	void *remote_map;
-
+	while(revm->flags != 0x20){
+		revm++;
+	}
 	compel_syscall(pid, orig,
-			11, &ret, revm->old_addr, revm->old_size, 0x0, 0x0, 0x0, 0x0);
+			11, &ret, revm_old->old_addr, revm_old->old_size, 0x0, 0x0, 0x0, 0x0);
 	ptrace_cont(pid);
 	waitpro(pid, &status);
 	printf("sig stopped: %d\n", WSTOPSIG(status));
 	remote_map = remote_mmap(pid, orig,
-			(void *)revm->new_addr, revm->new_size, PROT_READ | PROT_WRITE,
-			MAP_PRIVATE | LINUX_MAP_ANONYMOUS, 0x0, 0x0);
+			(void *)revm->new_addr, revm->new_end - revm->new_addr, revm->protection, LINUX_MAP_ANONYMOUS | MAP_SHARED, 0x0, 0x0);
 	printf("remote_map:%p\n", remote_map);
 	ptrace_cont(pid);
 }
 
-void remap_vm(int pid, unsigned long int new_addr, unsigned long int new_size, struct orig *orig){
+void read_vmmap_list(pid_t filePid, struct remap_vm_struct *revm){
+	int read_fd;
+	char buf[BUFSIZE];
+	int i = 0;
+	read_fd = open_file(filePid, "map");
+	while(read(read_fd, &buf[i++], sizeof(char))){
+		if(buf[i-1] == '\n'){
+			buf[i-1] = '\0';
+			revm->new_addr = strtol(strtok(buf, ","), NULL, 16);
+			revm->new_end = strtol(strtok(NULL, ","), NULL ,16);
+		       	revm->flags = strtol(strtok(NULL, ","), NULL, 16);
+			revm->protection = strtol(strtok(NULL, ","), NULL, 16);
+			strncpy(revm->path, strtok(NULL, ","), i);
+			printf("read begin: %lx, end: %lx, flag: %x, prot: %x, path: %s\n", revm->new_addr, revm->new_end, revm->flags, revm->protection, revm->path);
+			revm++;
+			i = 0;
+		}
+	}
+	close(read_fd);
+}
+
+void remap_vm(pid_t pid, pid_t filePid, struct remap_vm_struct *revm, struct orig *orig){
 	int status;
 	waitpro(pid, &status);
 	printf("sig stopped: %d\n", WSTOPSIG(status));
 	struct vmds vmds;
-	struct remap_vm_struct revm;
+	struct remap_vm_old revm_old;
+	read_vmmap_list(filePid, revm);
 	show_vmmap(pid, &vmds);
-	revm.old_addr = vmds.saddr;
-	revm.old_size = vmds.ssize;
-	revm.new_addr = new_addr;
-	revm.new_size = new_size;
-	remap_mem(pid, &revm, orig);
+	revm_old.old_addr = vmds.saddr;
+	revm_old.old_size = vmds.ssize;
+	remap_mem(pid, revm, &revm_old, orig);
 }
 
 #endif

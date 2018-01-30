@@ -97,11 +97,10 @@ int main(int argc, char* argv[]){
 	int pid, filePid;
 	int status;
 	char *filepath;
-	unsigned long int stack_addr;
-	unsigned long int stack_size;
 	struct orig orig;
+	struct remap_vm_struct revm[BUFSIZE];
 
-	if(argc < 4){
+	if(argc < 3){
 		printf("Usage: %s <path> <file pid> <stack addr> <file offset>\n", argv[0]);
 		exit(1);
 	}
@@ -109,11 +108,6 @@ int main(int argc, char* argv[]){
 	filepath = argv[1];
 	filePid = atoi(argv[2]);
 
-	stack_addr = strtol(argv[3], NULL, 16);
-	stack_size = 0x20000;
-	if(stack_addr != 0x7ffffffdf000){
-		stack_size = 0x21000;
-	}
 	//fds.offset = strtol(argv[4], NULL, 16);
 	printf("CMD : %s\n", argv[1]);
 	printf("PPID: %d\n", getpid());
@@ -124,10 +118,11 @@ int main(int argc, char* argv[]){
 
 	pid = restore_fork(filePid, filepath);
 	insert_breakpoint(pid, filepath);
-	remap_vm(pid, stack_addr, stack_size, &orig);
+//	remap_vm(pid, stack_addr, stack_size, &orig);
+	remap_vm(pid, filePid, revm, &orig);
 			waitpro(pid, &status);
 			//printf("sig stopped: %d\n", WSTOPSIG(status));
-					setmems(pid, filePid, stack_addr);
+					setmems(pid, filePid, revm);
 					setregs(pid, filePid);
 					ptrace_cont(pid);
 			waitpro(pid, &status);
