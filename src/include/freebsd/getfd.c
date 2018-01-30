@@ -59,6 +59,7 @@ int getfd(int pid){
 			dprintf(write_fd, "%d,%lx,%s\n", fdl.fd[i], fdl.offset[i], fdl.path[i]);
 		}
 		if(fdl.fd[i] == -2){
+			dprintf(write_fd, "%d,%lx,%s\n", -2, -1, NULL);
 		       	break;
 	       	}
 	}

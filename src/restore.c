@@ -41,7 +41,7 @@ int target(char *path, char *argv[]){
 
 int prepare_restore_files(char *path, int fd, off_t foff){
 	printf("PATH:%s\n", path);
-	int tmp = open("/dump/hello", O_RDWR);
+	int tmp = open(path, O_RDWR);
 	if(fd != tmp){
 		fd = dup2(tmp, fd);
 		close(tmp);
@@ -60,7 +60,7 @@ void read_fd_list(pid_t filePid, struct restore_fd_struct *fds){
 			buf[i-1] = '\0';
 			fds->fd = atoi(strtok(buf, ","));
 			fds->offset = atoi(strtok(NULL, ","));
-			strncpy(fds->path, strtok(NULL, "\n"), );
+			strncpy(fds->path, strtok(NULL, "\0"), i);
 			printf("fd:%d, off:%ld, path:%s\n", fds->fd, fds->offset, fds->path);
 			fds++;
 			i = 0;
@@ -75,8 +75,7 @@ int restore_fork(int filePid, char *exec_path){
 	int i;
 	struct restore_fd_struct fds[1024];
 	read_fd_list(filePid, fds);
-	printf("fd:%d, off:%ld, path:%s\n", fds[0].fd, fds[0].offset, fds[0].path);
-	for(i = 0; fds[i].path != NULL; i++){
+	for(i = 0; fds[i].fd != -2 ; i++){
 		fd = prepare_restore_files(fds[i].path, fds[i].fd, fds[i].offset);
 	}
 	pid = fork();
@@ -85,7 +84,7 @@ int restore_fork(int filePid, char *exec_path){
 		exit(1);
 	}
 	if(pid != 0){
-		close(fd);
+	//	close(fd);
 		return pid;
 	}
 	target(exec_path, NULL);
