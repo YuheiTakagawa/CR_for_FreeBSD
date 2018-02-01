@@ -9,6 +9,7 @@
 #include <string.h>
 #include <sys/mman.h>
 
+#include "fds.c"
 #include "register.c"
 #include "setmem.c"
 #include "ptrace.h"
@@ -18,12 +19,6 @@
 #define BUFSIZE 1024
 #define PATHBUF 30
 
-
-struct restore_fd_struct{
-	char path[BUFSIZE];
-	int fd;
-	off_t offset;
-};
 
 int target(char *path, char* argv[]);
 
@@ -37,35 +32,6 @@ int target(char *path, char *argv[]){
 	ret = execvp(exec[0], exec);
 	perror("execvp");
 	exit(ret);
-}
-
-int prepare_restore_files(char *path, int fd, off_t foff){
-	printf("PATH:%s\n", path);
-	int tmp = open(path, O_RDWR);
-	if(fd != tmp){
-		fd = dup2(tmp, fd);
-		close(tmp);
-	}
-	lseek(fd, foff, SEEK_SET);
-	return fd;	
-}
-
-void read_fd_list(pid_t filePid, struct restore_fd_struct *fds){
-	int read_fd;
-	char buf[BUFSIZE];
-	int i = 0;
-	read_fd = open_file(filePid, "fds");
-	while(read(read_fd, &buf[i++], sizeof(char))){
-		if(buf[i-1] == '\n'){
-			buf[i-1] = '\0';
-			fds->fd = atoi(strtok(buf, ","));
-			fds->offset = strtol(strtok(NULL, ","), NULL, 16);
-			strncpy(fds->path, strtok(NULL, "\0"), i);
-			fds++;
-			i = 0;
-		}
-	}
-	close(read_fd);
 }
 
 int restore_fork(int filePid, char *exec_path){
