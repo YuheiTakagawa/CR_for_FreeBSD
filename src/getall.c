@@ -11,7 +11,7 @@
 
 #include "getmem.c"
 #include "register.c"
-#include "getfd.c"
+#include "fds.c"
 
 #define BUFSIZE 1024
 #define PATHBUF 30
