@@ -59,7 +59,7 @@ void read_fd_list(pid_t filePid, struct restore_fd_struct *fds){
 		if(buf[i-1] == '\n'){
 			buf[i-1] = '\0';
 			fds->fd = atoi(strtok(buf, ","));
-			fds->offset = atoi(strtok(NULL, ","));
+			fds->offset = strtol(strtok(NULL, ","), NULL, 16);
 			strncpy(fds->path, strtok(NULL, "\0"), i);
 			fds++;
 			i = 0;
