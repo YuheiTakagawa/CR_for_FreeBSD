@@ -4,9 +4,10 @@
 #include <unistd.h>
 #include <stdarg.h>
 #include <string.h>
+#include <sys/mman.h>
 
-#include "getmem.c"
-#include "setmem.c"
+//#include "getmem.c"
+//#include "setmem.c"
 #include "ptrace.h"
 
 #define BUFSIZE 1024
