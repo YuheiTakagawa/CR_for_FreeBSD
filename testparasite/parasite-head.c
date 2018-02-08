@@ -1,5 +1,5 @@
-#include <unistd.h>
-
-void parasite_service(void){
-	write(1, "Hello Injection\n", 17);
+int parasite_service(void){
+	int i = 0;
+	i = 100;
+	return i*i;
 }

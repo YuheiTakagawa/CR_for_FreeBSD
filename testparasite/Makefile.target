@@ -1,0 +1,41 @@
+CC = gcc
+CFLAG = -Wall
+LD = ld
+ASFLAG := -c
+ASFLAG += -fpie
+ASFLAG += -Wstrict-prototypes
+ASFLAG += -D__ASSEMBLY__
+ASFLAG += -nostdlib
+ASFLAG += -fomit-frame-pointer
+ASFLAG += -fno-stack-protector
+
+UNAME = ${shell uname}
+
+INCLUDE_COMMON = ../src/include/common
+
+INCLUDE_DEP = ../src/include/freebsd
+
+INCLUDE = -I $(INCLUDE_DEP) -I $(INCLUDE_COMMON)
+
+.PHONY: all
+all: parasite-head.h injection
+
+parasite-head.h: $(INCLUDE_DEP) $(INCLUDE_COMMON)
+
+	$(CC) $(ASFLAG) -o writecall.o writecall.S
+
+	$(CC) -fpie -c -o parasite-head.o parasite-head.c
+
+	$(LD) -pie parasite-head.o writecall.o -o parasite-head
+	${shell rm parasite-head.h}
+	${shell xxd -i parasite-head > parasite-head.h}
+
+
+injection: $(INCLUDE_DEP) $(INCLUDE_COMMON) parasite-head.h
+	$(CC) $(CFLAG) $(INCLUDE) -o injection injection.c
+
+
+.PHONY: clean
+clean:
+	$(RM) injection
+	$(RM) parasite-head.h
