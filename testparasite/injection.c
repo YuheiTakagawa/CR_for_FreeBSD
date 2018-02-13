@@ -19,7 +19,7 @@ void inject_syscall_buf(int pid, char *buf, unsigned long int addr, int size){
 	for(int i = 0; i < size /4 + 1; i++){
 		memset(tmp, 0, 4 + 1);
 		memcpy(tmp, buf + i * 4, 4);
-		printf("add:%lx, tmp:%x\n", (unsigned long int)addr + i * 4, *tmp);
+	//	printf("add:%lx, tmp:%x\n", (unsigned long int)addr + i * 4, *tmp);
 		ptrace_write_i(pid, (unsigned long int)addr + i * 4, *tmp);
 	}
 	free(tmp);
