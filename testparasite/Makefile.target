@@ -18,30 +18,29 @@ INCLUDE_DEP = ../src/include/freebsd
 INCLUDE = -I $(INCLUDE_DEP) -I $(INCLUDE_COMMON)
 
 .PHONY: all
-all: parasite-head.h injection
+all: injection
 
 parasite += writecall.o
 parasite += syscall.o
 parasite += parasite-head.o
 
-parasite-head.h: $(INCLUDE_DEP) $(INCLUDE_COMMON) $(parasite) 
+parasite-head.h: $(INCLUDE_DEP) $(INCLUDE_COMMON) parasite-head 
 
-	$(CC) $(ASFLAG) -o writecall.o writecall.S
-	$(CC) $(ASFLAG) -o syscall.o syscall.S
-
-	$(CC) -fpie -c -o parasite-head.o parasite-head.c
-
-	$(LD) -pie parasite-head.o writecall.o syscall.o -o parasite-head
 	${shell rm parasite-head.h}
 	${shell xxd -i parasite-head > parasite-head.h}
 
+parasite-head: $(parasite)
+	$(LD) -pie writecall.o syscall.o parasite-head.o -o $@
+
+
+
 %.o: %.S
-	$(CC) $(ASFLAG) -o $@ $%
+	$(CC) $(ASFLAG) -o $@ $^
 
 %.o: %.c
-	$(CC) $(ASFLAG) -o $@ $%
+	$(CC) -fpie -c -o $@ $^
 
-injection: $(INCLUDE_DEP) $(INCLUDE_COMMON) parasite-head.h
+injection: $(INCLUDE_DEP) $(INCLUDE_COMMON) parasite-head.h injection.c
 	$(CC) $(CFLAG) $(INCLUDE) -o injection injection.c
 
 
@@ -49,3 +48,5 @@ injection: $(INCLUDE_DEP) $(INCLUDE_COMMON) parasite-head.h
 clean:
 	$(RM) injection
 	$(RM) parasite-head.h
+	$(RM) *.o
+	$(RM) parasite-head

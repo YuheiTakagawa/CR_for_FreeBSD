@@ -7,7 +7,7 @@ GNUMAKE=@`sh -c \
 
 TARGETMAKEFILE=./Makefile.target
 
-all:
+all: Makefile.target
 	$(GNUMAKE) --no-print-directory -f $(TARGETMAKEFILE) $@
 
 .DEFAULT:

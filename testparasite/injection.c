@@ -67,15 +67,17 @@ int main(int argc, char *argv[]){
 	//msync(local_map, 0x0, MS_SYNC);
 	ptrace_get_regs(pid, &reg);
 	memcpy(&orireg, &reg, sizeof(reg));
-	reg.r_rip = (unsigned long int)remote_fd_map + 0x2e8;
+	reg.r_rip = (unsigned long int)remote_fd_map + 0x26c;
 	ptrace_set_regs(pid, &reg);
 	ptrace_cont(pid);
 	printf("waiting stop\n");
 	waitpro(pid, &status);
 	print_regs(pid);
 	printf("stop: %d\n", WSTOPSIG(status));
-	compel_syscall(pid, &orig, 0xb, &ret, (unsigned long)remote_fd_map, 0x0, 0x0, 0x0, 0x0, 0x0);
-	compel_syscall(pid, &orig, 0xb, &ret, (unsigned long)remote_map, 0x0, 0x0, 0x0, 0x0, 0x0);
+	/*  want to munmap allocated memory size. compel_syscall() use remote_map, so can't unmap address remote_map. Please, munmap in Parasite engine itself   */
+	/* maybe, I think restore memory in compel_syscall, this routine is bad. */
+	//compel_syscall(pid, &orig, 0xb, &ret, (unsigned long)remote_fd_map, 0x1000, 0x0, 0x0, 0x0, 0x0);
+	//compel_syscall(pid, &orig, 0xb, &ret, (unsigned long)remote_map, 0x0, 0x0, 0x0, 0x0, 0x0);
 	ptrace_set_regs(pid, &orireg);
 	printf("restore reg\n");
 
