@@ -2,6 +2,7 @@ restore
 getall
 build/
 *.core
+*.swp
 #!*.c
 #!
 #!.gitignore
