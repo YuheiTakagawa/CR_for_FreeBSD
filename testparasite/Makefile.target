@@ -20,7 +20,11 @@ INCLUDE = -I $(INCLUDE_DEP) -I $(INCLUDE_COMMON)
 .PHONY: all
 all: parasite-head.h injection
 
-parasite-head.h: $(INCLUDE_DEP) $(INCLUDE_COMMON)
+parasite += writecall.o
+parasite += syscall.o
+parasite += parasite-head.o
+
+parasite-head.h: $(INCLUDE_DEP) $(INCLUDE_COMMON) $(parasite) 
 
 	$(CC) $(ASFLAG) -o writecall.o writecall.S
 	$(CC) $(ASFLAG) -o syscall.o syscall.S
@@ -31,6 +35,11 @@ parasite-head.h: $(INCLUDE_DEP) $(INCLUDE_COMMON)
 	${shell rm parasite-head.h}
 	${shell xxd -i parasite-head > parasite-head.h}
 
+%.o: %.S
+	$(CC) $(ASFLAG) -o $@ $%
+
+%.o: %.c
+	$(CC) $(ASFLAG) -o $@ $%
 
 injection: $(INCLUDE_DEP) $(INCLUDE_COMMON) parasite-head.h
 	$(CC) $(CFLAG) $(INCLUDE) -o injection injection.c
