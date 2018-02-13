@@ -29,8 +29,8 @@ parasite-head.h: $(INCLUDE_DEP) $(INCLUDE_COMMON) parasite-head
 	${shell rm parasite-head.h}
 	${shell xxd -i parasite-head > parasite-head.h}
 
-parasite-head: $(parasite)
-	$(LD) -pie writecall.o syscall.o parasite-head.o -o $@
+parasite-head: $(parasite) compel-pack.lds.S
+	$(LD) -pie writecall.o syscall.o parasite-head.o -o $@ -T compel-pack.lds.S
 
 
 
