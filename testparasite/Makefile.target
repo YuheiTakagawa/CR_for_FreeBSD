@@ -23,10 +23,11 @@ all: parasite-head.h injection
 parasite-head.h: $(INCLUDE_DEP) $(INCLUDE_COMMON)
 
 	$(CC) $(ASFLAG) -o writecall.o writecall.S
+	$(CC) $(ASFLAG) -o syscall.o syscall.S
 
 	$(CC) -fpie -c -o parasite-head.o parasite-head.c
 
-	$(LD) -pie parasite-head.o writecall.o -o parasite-head
+	$(LD) -pie parasite-head.o writecall.o syscall.o -o parasite-head
 	${shell rm parasite-head.h}
 	${shell xxd -i parasite-head > parasite-head.h}
 

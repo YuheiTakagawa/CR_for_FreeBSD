@@ -40,6 +40,7 @@ int main(int argc, char *argv[]){
 	int fd;
 	long remote_fd;
 	struct reg reg, orireg;
+	long ret;
 	
 	remote_map = remote_mmap(pid, &orig, (void *) 0x0, 0x1000, PROT_EXEC | PROT_READ | PROT_WRITE, LINUX_MAP_ANONYMOUS | MAP_SHARED, 0x0, 0x0);
 	printf("remote_map:%lx\n", (off_t)remote_map);
@@ -66,17 +67,21 @@ int main(int argc, char *argv[]){
 	//msync(local_map, 0x0, MS_SYNC);
 	ptrace_get_regs(pid, &reg);
 	memcpy(&orireg, &reg, sizeof(reg));
-	reg.r_rip = (unsigned long int)remote_fd_map + 0x284;
+	reg.r_rip = (unsigned long int)remote_fd_map + 0x2e8;
 	ptrace_set_regs(pid, &reg);
 	ptrace_cont(pid);
 	printf("waiting stop\n");
 	waitpro(pid, &status);
 	print_regs(pid);
 	printf("stop: %d\n", WSTOPSIG(status));
+	compel_syscall(pid, &orig, 0xb, &ret, (unsigned long)remote_fd_map, 0x0, 0x0, 0x0, 0x0, 0x0);
+	compel_syscall(pid, &orig, 0xb, &ret, (unsigned long)remote_map, 0x0, 0x0, 0x0, 0x0, 0x0);
 	ptrace_set_regs(pid, &orireg);
 	printf("restore reg\n");
-	ptrace_cont(pid);
-	while(1){}
+
+	//ptrace_cont(pid);
+	//while(1){}
+	ptrace_detach(pid);
 
 	return 0;
 }
