@@ -18,6 +18,7 @@ int connection(void *data){
 	struct parasite_init_args *args = data;
 	int tsock = sys_socket(PF_UNIX, SOCK_SEQPACKET, 0);
 	sys_connect(tsock, (struct sockaddr *)&args->h_addr, args->h_addr_len);
+	sys_write(tsock, &st[3], 1);
 	return 0;
 }
 

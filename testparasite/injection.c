@@ -4,12 +4,16 @@
 #include <sys/mman.h>
 #include <sys/user.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include "parasite_syscall.c"
 #include "ptrace.h"
 #include "register.c"
 #include "parasite-head.h"
 
 #define LINUX_MAP_ANONYMOUS 0x20
+
+#define UNIX_PATH_MAX 1024
 
 void inject_syscall_buf(int pid, char *buf, unsigned long int addr, int size){
 	int *tmp = malloc(sizeof(int));
@@ -93,6 +97,23 @@ int main(int argc, char *argv[]){
 	//ptrace_cont(pid);
 	//while(1){}
 	ptrace_detach(pid);
+	
+	struct sockaddr_un saddr;
+	int sockfd = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_NONBLOCK, 0);
+	saddr.sun_family = AF_UNIX;
+	snprintf(saddr.sun_path, UNIX_PATH_MAX,
+			"crtools-pr-%d", getpid());
+	int socklen = sizeof(saddr);
 
+	bind(sockfd, (struct sockaddr *)&saddr, socklen);
+
+	listen(sockfd, 1);
+
+	int clsock = accept(sockfd, NULL, 0); 
+	char ch;
+	while(1){
+		read(clsock, &ch, 1);
+		write(1, &ch, 1);
+	}
 	return 0;
 }
