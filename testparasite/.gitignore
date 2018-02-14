@@ -1,4 +1,6 @@
 injection
 parasite-head
 parasite-head.h
+headgen
+a.out
 *.o
