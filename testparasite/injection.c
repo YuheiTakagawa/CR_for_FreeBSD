@@ -62,9 +62,8 @@ int main(int argc, char *argv[]){
 		perror("mmap(2)");
 	}
 	printf("local_map:%p\n", local_map);
-	inject_syscall_buf(pid, (char *)parasite_blob, (unsigned long int)remote_fd_map, sizeof(parasite_blob));
-	//memcpy(remote_map, writecall_o, 0x1000);
-	//msync(local_map, 0x0, MS_SYNC);
+	//inject_syscall_buf(pid, (char *)parasite_blob, (unsigned long int)remote_fd_map, sizeof(parasite_blob));
+	memcpy(local_map, parasite_blob, sizeof(parasite_blob));
 	ptrace_get_regs(pid, &reg);
 	memcpy(&orireg, &reg, sizeof(reg));
 	reg.r_rip = (unsigned long int)remote_fd_map;
