@@ -36,7 +36,7 @@ int main(int argc, char *argv[]){
 	ptrace_attach(pid);
 	waitpro(pid, &status);
 	void *remote_map, *remote_fd_map, *local_map;
-	char buf[] = "/dump/XXXXX";
+	char buf[] = "/tmp/shm";
 	int fd;
 	long remote_fd;
 	struct reg reg, orireg;
@@ -53,8 +53,8 @@ int main(int argc, char *argv[]){
 	printf("p:%p, lx%lx\n", buf, (unsigned long int)buf);
 	compel_syscall(pid, &orig, 0x2, &remote_fd, (unsigned long)remote_map, O_RDWR, 0x0, 0x0, 0x0, 0x0);
 	printf("remote_fd:%ld\n", remote_fd);
-	remote_fd_map = remote_mmap(pid, &orig, (void *) 0x0, sizeof(parasite_blob), PROT_EXEC | PROT_READ | PROT_WRITE, MAP_SHARED | LINUX_MAP_ANONYMOUS, 0x0, 0x0);
-	//remote_fd_map = remote_mmap(pid, &orig, (void *) 0x0, 0x1000, PROT_EXEC | PROT_READ | PROT_WRITE, MAP_SHARED, remote_fd, 0x0);
+	//remote_fd_map = remote_mmap(pid, &orig, (void *) 0x0, sizeof(parasite_blob), PROT_EXEC | PROT_READ | PROT_WRITE, MAP_SHARED | LINUX_MAP_ANONYMOUS, 0x0, 0x0);
+	remote_fd_map = remote_mmap(pid, &orig, (void *) 0x0, sizeof(parasite_blob), PROT_EXEC | PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FILE, remote_fd, 0x0);
 	printf("remote_fd_map:%lx\n", (unsigned long int)remote_fd_map);
 	
 	local_map = mmap(0x0, sizeof(parasite_blob), PROT_EXEC | PROT_WRITE |PROT_READ, MAP_SHARED, fd, 0);

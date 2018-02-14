@@ -43,9 +43,11 @@ headgen: headgen.c
 %.o: %.c
 	$(CC) -fpie -c -o $@ $^
 
-injection: $(INCLUDE_DEP) $(INCLUDE_COMMON) parasite-head.h injection.c
+injection: $(INCLUDE_DEP) $(INCLUDE_COMMON) parasite-head.h injection.c /tmp/shm
 	$(CC) $(CFLAG) $(INCLUDE) -o injection injection.c
 
+/tmp/shm:
+	${shell dd if=/dev/zero of=/tmp/shm bs=4096 count=1}
 
 .PHONY: clean
 clean:
