@@ -40,7 +40,7 @@ headgen: headgen.c
 %.o: %.S 
 	$(CC) $(ASFLAG) -o $@ $^
 
-%.o: %.c {$(CC) -M %.c}
+%.o: %.c 
 	$(CC) -fpie -c -o $@ $^
 
 injection: $(INCLUDE_DEP) $(INCLUDE_COMMON) parasite-head.h injection.c /tmp/shm
