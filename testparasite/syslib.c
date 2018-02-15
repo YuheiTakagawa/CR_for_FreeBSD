@@ -1,6 +1,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <stdarg.h>
 
 extern long sys_write(int fd, const void *buf, unsigned long count);
 extern long sys_socket(int domain, int type, int protocol);
@@ -12,13 +13,155 @@ struct parasite_init_args{
 	struct sockaddr_un h_addr;
 };
 
+
+
+
+static const char conv_tab[] = "0123456789abcdefghijklmnopqrstuvwxyz";
+void std_dputc(int fd, char c)
+{
+	sys_write(fd, &c, 1);
+}
+
+void std_dputs(int fd, const char *s)
+{
+	for (; *s; s++)
+		std_dputc(fd, *s);
+}
+
+static size_t __std_vprint_long_hex(char *buf, size_t blen, unsigned long num, char **ps)
+{
+	char *s = &buf[blen - 2];
+
+	buf[blen - 1] = '\0';
+
+	if (num == 0) {
+		*s = '0', s--;
+		goto done;
+	}
+
+	while (num > 0) {
+		*s = conv_tab[num % 16], s--;
+		num /= 16;
+	}
+
+done:
+	s++;
+	*ps = s;
+	return blen - (s - buf);
+}
+
+static size_t __std_vprint_long(char *buf, size_t blen, long num, char **ps)
+{
+	char *s = &buf[blen - 2];
+	int neg = 0;
+
+	buf[blen - 1] = '\0';
+
+	if (num < 0) {
+		neg = 1;
+		num = -num;
+	} else if (num == 0) {
+		*s = '0';
+		s--;
+		goto done;
+	}
+
+	while (num > 0) {
+		*s = (num % 10) + '0';
+		s--;
+		num /= 10;
+	}
+
+	if (neg) {
+		*s = '-';
+		s--;
+	}
+done:
+	s++;
+	*ps = s;
+	return blen - (s - buf);
+}
+
+void std_vdprintf(int fd, const char *format, va_list args)
+{
+	const char *s = format;
+
+	for (; *s != '\0'; s++) {
+		char buf[32], *t;
+		int along = 0;
+
+		if (*s != '%') {
+			std_dputc(fd, *s);
+			continue;
+		}
+
+		s++;
+		if (*s == 'l') {
+			along = 1;
+			s++;
+			if (*s == 'l')
+				s++;
+		}
+
+		switch (*s) {
+		case 's':
+			std_dputs(fd, va_arg(args, char *));
+			break;
+		case 'd':
+			__std_vprint_long(buf, sizeof(buf),
+					  along ?
+					  va_arg(args, long) :
+					  (long)va_arg(args, int),
+					  &t);
+			std_dputs(fd, t);
+			break;
+		case 'x':
+			__std_vprint_long_hex(buf, sizeof(buf),
+					      along ?
+					      va_arg(args, long) :
+					      (long)va_arg(args, int),
+					      &t);
+			std_dputs(fd, t);
+			break;
+		}
+	}
+}
+
+void std_dprintf(int fd, const char *format, ...)
+{
+	va_list args;
+
+	va_start(args, format);
+	std_vdprintf(fd, format, args);
+	va_end(args);
+}
+
+#define STDOUT_FILENO 1
+#define std_printf(fmt, ...)	std_dprintf(1, fmt, ##__VA_ARGS__)
+
 int connection(void *data){
 	char st[] = "I'M TAKAGAWA!\n";
 	sys_write(1, st, 15);
 	struct parasite_init_args *args = data;
+	//for(int i = 0; i < 0x10000000; i++){}
 	int tsock = sys_socket(PF_UNIX, SOCK_SEQPACKET, 0);
-	sys_connect(tsock, (struct sockaddr *)&args->h_addr, args->h_addr_len);
-	sys_write(tsock, &st[3], 1);
+	if(tsock < 0){
+		st[4] = 'O';
+		sys_write(1, st, 15);
+	}
+	int i = 0;
+	sys_write(1, args->h_addr.sun_path, 17);
+	std_printf("sun_path:%s\n", args->h_addr.sun_path);
+	std_printf("family:%d\n", args->h_addr.sun_family);
+	std_printf("size%d\n", args->h_addr_len);
+	//while(1){
+		if(sys_connect(tsock, (struct sockaddr *)&args->h_addr, args->h_addr_len) < 0){
+		//st[3] = 'K';
+		//sys_write(1, st, 15);
+	}
+		char ch[] = "Hi, LOCAL\n I'm REMOTE";
+		sys_write(tsock, &ch, 1024);
+	//}
 	return 0;
 }
 

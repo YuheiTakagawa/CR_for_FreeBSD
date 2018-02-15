@@ -15,6 +15,16 @@
 
 #define UNIX_PATH_MAX 1024
 
+struct linux_sockaddr_un{
+	unsigned short sun_family;
+	char sun_path[108];
+};
+
+struct parasite_init_args{
+	int32_t h_addr_len;
+	struct linux_sockaddr_un h_addr;
+};
+
 void inject_syscall_buf(int pid, char *buf, unsigned long int addr, int size){
 	int *tmp = malloc(sizeof(int));
 	if(size == 0){
@@ -82,11 +92,49 @@ int main(int argc, char *argv[]){
 		waitpro(pid, &status);
 	}
 */
+	struct sockaddr_un saddr;
+	//int sockfd = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_NONBLOCK, 0);
+	int sockfd = socket(PF_LOCAL, SOCK_SEQPACKET, 0);
+	saddr.sun_family = PF_LOCAL;
+	snprintf(saddr.sun_path, UNIX_PATH_MAX, "crtools-pr-%d", getpid());
+	//strncpy(saddr.sun_path, "testpath", 108);
+	//strcpy(saddr.sun_path, "testpath");
+	int socklen = sizeof(saddr);
+
+	if(bind(sockfd, (struct sockaddr *)&saddr, socklen) < 0)
+		perror("bind");
+	
+	if(listen(sockfd, 5) < 0)
+		perror("listen");
+	struct parasite_init_args args;
+	//args.h_addr_len = sizeof(args.h_addr);
+	args.h_addr_len = socklen;
+	args.h_addr.sun_family = saddr.sun_family;
+	strncpy(args.h_addr.sun_path, saddr.sun_path, sizeof(saddr.sun_path));
+	//memcpy((void *)&args.h_addr, (void *)&saddr, sizeof(saddr));
+
+	memcpy(local_map + parasite_sym__export_parasite_args, (void *)&args, sizeof(args));
+	printf("%s\n", args.h_addr.sun_path);
+
+	struct sockaddr_un caddr;
+	socklen_t clen = sizeof(caddr);
+	int clsock;
 	ptrace_cont(pid);
+	printf("waiting\n");
+	clsock = accept(sockfd, NULL, 0); 
+	//int clsock = accept(sockfd, NULL, 0); 
+	if(clsock < 0){
+		perror("accept");
+		sleep(1);
+	}
+	char ch[1024];
+	read(clsock, ch, sizeof(ch));
+	printf("client msg: %s\n", ch);
 	printf("waiting stop\n");
 	waitpro(pid, &status);
 	print_regs(pid);
 	printf("stop: %d\n", WSTOPSIG(status));
+	
 	/*  want to munmap allocated memory size. compel_syscall() use remote_map, so can't unmap address remote_map. Please, munmap in Parasite engine itself   */
 	/* maybe, I think restore memory in compel_syscall, this routine is bad. */
 	//compel_syscall(pid, &orig, 0xb, &ret, (unsigned long)remote_fd_map, 0x1000, 0x0, 0x0, 0x0, 0x0);
@@ -97,23 +145,5 @@ int main(int argc, char *argv[]){
 	//ptrace_cont(pid);
 	//while(1){}
 	ptrace_detach(pid);
-	
-	struct sockaddr_un saddr;
-	int sockfd = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_NONBLOCK, 0);
-	saddr.sun_family = AF_UNIX;
-	snprintf(saddr.sun_path, UNIX_PATH_MAX,
-			"crtools-pr-%d", getpid());
-	int socklen = sizeof(saddr);
-
-	bind(sockfd, (struct sockaddr *)&saddr, socklen);
-
-	listen(sockfd, 1);
-
-	int clsock = accept(sockfd, NULL, 0); 
-	char ch;
-	while(1){
-		read(clsock, &ch, 1);
-		write(1, &ch, 1);
-	}
 	return 0;
 }
