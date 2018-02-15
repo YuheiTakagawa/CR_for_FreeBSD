@@ -130,10 +130,12 @@ int main(int argc, char *argv[]){
 	char ch[1024];
 	read(clsock, ch, sizeof(ch));
 	printf("client msg: %s\n", ch);
+	strncpy(ch, "HELLO, I'm LOCAL\n", sizeof(ch));
+	write(clsock, ch, sizeof(ch));
 	printf("waiting stop\n");
 	waitpro(pid, &status);
-	print_regs(pid);
 	printf("stop: %d\n", WSTOPSIG(status));
+	print_regs(pid);
 	
 	/*  want to munmap allocated memory size. compel_syscall() use remote_map, so can't unmap address remote_map. Please, munmap in Parasite engine itself   */
 	/* maybe, I think restore memory in compel_syscall, this routine is bad. */

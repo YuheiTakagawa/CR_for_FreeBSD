@@ -4,6 +4,7 @@
 #include <stdarg.h>
 
 extern long sys_write(int fd, const void *buf, unsigned long count);
+extern long sys_read(int fd, const void *buf, unsigned long count);
 extern long sys_socket(int domain, int type, int protocol);
 extern long sys_connect(int sockfd, struct sockaddr *addr, int addrlen);
 extern long sys_sendto(int sockfd, void *buff, size_t len, unsigned int flags, struct sockaddr *addr, int addr_len);
@@ -159,8 +160,11 @@ int connection(void *data){
 		//st[3] = 'K';
 		//sys_write(1, st, 15);
 	}
-		char ch[] = "Hi, LOCAL\n I'm REMOTE";
-		sys_write(tsock, &ch, 1024);
+		char ch[100] = "Hi, LOCAL\n I'm REMOTE";
+		sys_write(tsock, ch, 100);
+		sys_read(tsock, ch, 100);
+		std_printf("local msg: %s\n", ch);
+
 	//}
 	return 0;
 }
