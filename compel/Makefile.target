@@ -24,14 +24,17 @@ parasite += writecall.o
 parasite += syscall.o
 parasite += parasite-head.o
 
-parasite-head.h: $(INCLUDE_DEP) $(INCLUDE_COMMON) parasite-head headgen 
+inject += infect-rpc.o
+inject += injection.o
+
+parasite-head.h: parasite-head headgen 
 
 	${shell rm parasite-head.h}
 	${shell ./headgen parasite-head parasite-head.h}
 #	${shell xxd -i parasite-head > parasite-head.h}
 
 parasite-head: $(parasite) compel-pack.lds.S
-	$(LD) -pie writecall.o syscall.o parasite-head.o -o $@ -T compel-pack.lds.S
+	$(LD) -pie $(parasite) -o $@ -T compel-pack.lds.S
 
 headgen: headgen.c
 	$(CC) -o $@ $^
@@ -41,10 +44,10 @@ headgen: headgen.c
 	$(CC) $(ASFLAG) -o $@ $^
 
 %.o: %.c 
-	$(CC) -fpie -c -o $@ $^
+	$(CC) $(INCLUDE) -fpie -c -o $@ $^
 
-injection: $(INCLUDE_DEP) $(INCLUDE_COMMON) parasite-head.h injection.c /tmp/shm
-	$(CC) $(CFLAG) $(INCLUDE) -o injection injection.c
+injection: parasite-head.h $(inject) /tmp/shm
+	$(CC) $(CFLAG) $(INCLUDE) $(inject) -o $@
 
 /tmp/shm:
 	${shell dd if=/dev/zero of=/tmp/shm bs=4096 count=1}

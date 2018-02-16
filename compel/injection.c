@@ -14,7 +14,7 @@
 #include "rpc-pie-priv.h"
 #include "parasite.h"
 #include "infect-rpc.h"
-#include "infect-rpc.c"
+#include "infect-priv.h"
 
 #define LINUX_MAP_ANONYMOUS 0x20
 
