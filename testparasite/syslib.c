@@ -5,62 +5,18 @@
 
 #include "syscall.h"
 #include "string.c"
-
-struct ctl_msg {
-	uint32_t	cmd;			/* command itself */
-	uint32_t	ack;			/* ack on command */
-	int32_t		err;			/* error code on reply */
-};
-
-#define ctl_msg_cmd(_cmd)		\
-	(struct ctl_msg){.cmd = _cmd, }
-
-#define ctl_msg_ack(_cmd, _err)	\
-	(struct ctl_msg){.cmd = _cmd, .ack = _cmd, .err = _err, }
+#include "rpc-pie-priv.h"
+#include "parasite.h"
+#include "infect-rpc.h"
 
 #define NULL ((void *)0)
-
-enum {
-	PARASITE_CMD_IDLE		= 0,
-	PARASITE_CMD_ACK,
-
-	PARASITE_CMD_INIT_DAEMON,
-
-	/*
-	 * This must be greater than INITs.
-	 */
-	PARASITE_CMD_FINI,
-
-	__PARASITE_END_CMDS,
-};
-
-#define PARASITE_USER_CMDS 64
-enum {
-	PARASITE_CMD_DUMP_THREAD = PARASITE_USER_CMDS,
-	PARASITE_CMD_MPROTECT_VMAS,
-	PARASITE_CMD_DUMPPAGES,
-
-	PARASITE_CMD_DUMP_SIGACTS,
-	PARASITE_CMD_DUMP_ITIMERS,
-	PARASITE_CMD_DUMP_POSIX_TIMERS,
-	PARASITE_CMD_DUMP_MISC,
-	PARASITE_CMD_DRAIN_FDS,
-	PARASITE_CMD_GET_PROC_FD,
-	PARASITE_CMD_DUMP_TTY,
-	PARASITE_CMD_CHECK_VDSO_MARK,
-	PARASITE_CMD_CHECK_AIOS,
-	PARASITE_CMD_DUMP_CGROUP,
-	PARASITE_CMD_GET_PID,
-
-	PARASITE_CMD_MAX,
-};
 
 struct hello_pid{
 	char hello[256];
 	int pid;
 };
 
-struct parasite_init_args{
+struct parasite_init{
 	int32_t h_addr_len;
 	struct sockaddr_un h_addr;
 };
@@ -114,7 +70,7 @@ static int hp(struct hello_pid *hellop){
 int connection(void *data){
 	char st[] = "I'M TAKAGAWA!\n";
 	int i = 0;
-	struct parasite_init_args *args = data;
+	struct parasite_init *args = data;
 	int tsock = sys_socket(PF_UNIX, SOCK_SEQPACKET, 0);
 	struct ctl_msg m;
 	int ret = 0;
