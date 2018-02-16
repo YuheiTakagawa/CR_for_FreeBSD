@@ -18,8 +18,6 @@
 
 #define LINUX_MAP_ANONYMOUS 0x20
 
-#define memzero(p, size)	memset(p, 0, size)
-
 struct hello_pid{
 	char hello[256];
 	int pid;
