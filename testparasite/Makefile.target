@@ -56,3 +56,4 @@ clean:
 	$(RM) *.o
 	$(RM) parasite-head
 	$(RM) headgen
+	$(RM) crtools-pr-*
