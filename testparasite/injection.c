@@ -42,7 +42,6 @@ enum {
 
 	__PARASITE_END_CMDS,
 };
-
 #define PARASITE_USER_CMDS 64
 enum {
 	PARASITE_CMD_DUMP_THREAD = PARASITE_USER_CMDS,
@@ -59,9 +58,11 @@ enum {
 	PARASITE_CMD_CHECK_VDSO_MARK,
 	PARASITE_CMD_CHECK_AIOS,
 	PARASITE_CMD_DUMP_CGROUP,
+	PARASITE_CMD_GET_PID,
 
 	PARASITE_CMD_MAX,
 };
+
 
 struct linux_sockaddr_un{
 	unsigned short sun_family;
@@ -282,6 +283,7 @@ int main(int argc, char *argv[]){
 	parasite_wait_ack(clsock, PARASITE_CMD_INIT_DAEMON, &m);
 	compel_rpc_call_sync(PARASITE_CMD_DUMP_THREAD, clsock);
 	compel_rpc_call_sync(PARASITE_CMD_DUMP_ITIMERS, clsock);
+	compel_rpc_call_sync(PARASITE_CMD_GET_PID, clsock);
 	compel_rpc_call_sync(PARASITE_CMD_FINI, clsock);
 	printf("waiting stop\n");
 	waitpro(pid, &status);

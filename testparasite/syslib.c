@@ -31,9 +31,31 @@ enum {
 	__PARASITE_END_CMDS,
 };
 
+#define PARASITE_USER_CMDS 64
+enum {
+	PARASITE_CMD_DUMP_THREAD = PARASITE_USER_CMDS,
+	PARASITE_CMD_MPROTECT_VMAS,
+	PARASITE_CMD_DUMPPAGES,
+
+	PARASITE_CMD_DUMP_SIGACTS,
+	PARASITE_CMD_DUMP_ITIMERS,
+	PARASITE_CMD_DUMP_POSIX_TIMERS,
+	PARASITE_CMD_DUMP_MISC,
+	PARASITE_CMD_DRAIN_FDS,
+	PARASITE_CMD_GET_PROC_FD,
+	PARASITE_CMD_DUMP_TTY,
+	PARASITE_CMD_CHECK_VDSO_MARK,
+	PARASITE_CMD_CHECK_AIOS,
+	PARASITE_CMD_DUMP_CGROUP,
+	PARASITE_CMD_GET_PID,
+
+	PARASITE_CMD_MAX,
+};
+
 extern long sys_write(int fd, const void *buf, unsigned long count);
 extern long sys_read(int fd, const void *buf, unsigned long count);
 extern long sys_close(int fd);
+extern long sys_getpid(void);
 extern long sys_socket(int domain, int type, int protocol);
 extern long sys_connect(int sockfd, struct sockaddr *addr, int addrlen);
 extern long sys_sendto(int sockfd, void *buff, size_t len, unsigned int flags, struct sockaddr *addr, int addr_len);
@@ -210,26 +232,29 @@ static int fini(int tsock){
 
 int connection(void *data){
 	char st[] = "I'M TAKAGAWA!\n";
-	sys_write(1, st, 15);
+	int i = 0;
 	struct parasite_init_args *args = data;
-	//for(int i = 0; i < 0x10000000; i++){}
 	int tsock = sys_socket(PF_UNIX, SOCK_SEQPACKET, 0);
+	struct ctl_msg m;
+	int ret = 0;
+
+	sys_write(1, st, 15);
+	//for(int i = 0; i < 0x10000000; i++){}
 	if(tsock < 0){
 		st[4] = 'O';
 		sys_write(1, st, 15);
 	}
-	int i = 0;
+	/*
 	sys_write(1, args->h_addr.sun_path, 17);
 	std_printf("sun_path:%s\n", args->h_addr.sun_path);
 	std_printf("family:%d\n", args->h_addr.sun_family);
 	std_printf("size%d\n", args->h_addr_len);
+	*/
 	if(sys_connect(tsock, (struct sockaddr *)&args->h_addr, args->h_addr_len) < 0){
 		//st[3] = 'K';
 		//sys_write(1, st, 15);
 	}
 	//char ch[100] = "Hi, LOCAL\n I'm REMOTE";
-	struct ctl_msg m;
-	int ret = 0;
 	__parasite_daemon_reply_ack(tsock, PARASITE_CMD_INIT_DAEMON, 0);
 	while(1){
 		__parasite_daemon_wait_msg(tsock, &m);
@@ -237,6 +262,12 @@ int connection(void *data){
 		if(m.cmd == PARASITE_CMD_FINI){
 			fini(tsock);
 			break;
+		}
+		switch(m.cmd){
+			case PARASITE_CMD_GET_PID:
+				ret = sys_getpid();
+				std_printf("my pid: %d\n", ret);
+				break;
 		}
 		__parasite_daemon_reply_ack(tsock, m.cmd, ret); 
 	}
