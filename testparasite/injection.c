@@ -229,10 +229,6 @@ int main(int argc, char *argv[]){
 	printf("local_map:%p\n", local_map);
 	//inject_syscall_buf(pid, (char *)parasite_blob, (unsigned long int)remote_fd_map, sizeof(parasite_blob));
 	memcpy(local_map, parasite_blob, sizeof(parasite_blob));
-	ptrace_get_regs(pid, &reg);
-	memcpy(&orireg, &reg, sizeof(reg));
-	reg.r_rip = (unsigned long int)remote_fd_map;
-	ptrace_set_regs(pid, &reg);
 
 /*// steping debug
  * while(1){
@@ -270,7 +266,18 @@ int main(int argc, char *argv[]){
 	struct sockaddr_un caddr;
 	socklen_t clen = sizeof(caddr);
 	int clsock;
+	//ptrace_cont(pid);
+	ptrace_get_regs(pid, &reg);
+	memcpy(&orireg, &reg, sizeof(reg));
+	reg.r_rip = (unsigned long int)remote_fd_map;
+	#define PARASITE_STACK_SIZE	(16 << 10)
+	#define RESTORE_STACK_SIGFRAME 0 // Please Calc
+	reg.r_rbp = (unsigned long int)remote_fd_map + sizeof(parasite_blob);
+	reg.r_rbp += RESTORE_STACK_SIGFRAME;
+	reg.r_rbp += PARASITE_STACK_SIZE;
+	ptrace_set_regs(pid, &reg);
 	ptrace_cont(pid);
+	//parasite_run(pid, PT_CONTINUE, reg.r_rip, (void *)reg.r_rsp, &reg, &orig);
 	printf("waiting\n");
 	clsock = accept(sockfd, NULL, 0); 
 	//int clsock = accept(sockfd, NULL, 0); 
