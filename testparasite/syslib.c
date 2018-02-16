@@ -52,6 +52,11 @@ enum {
 	PARASITE_CMD_MAX,
 };
 
+struct hello_pid{
+	char hello[256];
+	int pid;
+};
+
 extern long sys_write(int fd, const void *buf, unsigned long count);
 extern long sys_read(int fd, const void *buf, unsigned long count);
 extern long sys_close(int fd);
@@ -189,6 +194,46 @@ void std_dprintf(int fd, const char *format, ...)
 	va_end(args);
 }
 
+void *memcpy(void *to, const void *from, size_t n)
+{
+	size_t i;
+	unsigned char *cto = to;
+	const unsigned char *cfrom = from;
+
+	for (i = 0; i < n; ++i, ++cto, ++cfrom)
+		*cto = *cfrom;
+
+	return to;
+}
+
+int std_strcmp(const char *cs, const char *ct)
+{
+	unsigned char c1, c2;
+
+	while (1) {
+		c1 = *cs++;
+		c2 = *ct++;
+		if (c1 != c2)
+			return c1 < c2 ? -1 : 1;
+		if (!c1)
+			break;
+	}
+	return 0;
+}
+
+int std_strncmp(const char *cs, const char *ct, size_t count)
+{
+	size_t i;
+
+	for (i = 0; i < count; i++) {
+		if (cs[i] != ct[i])
+			return cs[i] < ct[i] ? -1 : 1;
+		if (!cs[i])
+			break;
+	}
+	return 0;
+}
+
 static int __parasite_daemon_reply_ack(int tsock, unsigned int cmd, int err)
 {
 	struct ctl_msg m;
@@ -227,6 +272,14 @@ static int fini(int tsock){
 	return -1;
 }
 
+static int hp(struct hello_pid *hellop){
+	char ch[] = "Hi, LOCAL. I'm DEAMON";
+	memcpy(hellop->hello, ch, sizeof(ch));
+	hellop->pid = sys_getpid();
+	return 0;
+}
+
+
 #define STDOUT_FILENO 1
 #define std_printf(fmt, ...)	std_dprintf(1, fmt, ##__VA_ARGS__)
 
@@ -239,7 +292,6 @@ int connection(void *data){
 	int ret = 0;
 
 	sys_write(1, st, 15);
-	//for(int i = 0; i < 0x10000000; i++){}
 	if(tsock < 0){
 		st[4] = 'O';
 		sys_write(1, st, 15);
@@ -267,6 +319,7 @@ int connection(void *data){
 			case PARASITE_CMD_GET_PID:
 				ret = sys_getpid();
 				std_printf("my pid: %d\n", ret);
+				hp(data);
 				break;
 		}
 		__parasite_daemon_reply_ack(tsock, m.cmd, ret); 
@@ -274,4 +327,3 @@ int connection(void *data){
 
 	return 0;
 }
-

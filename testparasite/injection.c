@@ -63,6 +63,11 @@ enum {
 	PARASITE_CMD_MAX,
 };
 
+struct hello_pid{
+	char hello[256];
+	int pid;
+};
+
 
 struct linux_sockaddr_un{
 	unsigned short sun_family;
@@ -284,6 +289,10 @@ int main(int argc, char *argv[]){
 	compel_rpc_call_sync(PARASITE_CMD_DUMP_THREAD, clsock);
 	compel_rpc_call_sync(PARASITE_CMD_DUMP_ITIMERS, clsock);
 	compel_rpc_call_sync(PARASITE_CMD_GET_PID, clsock);
+	usleep(20);
+	struct hello_pid *hellop = local_map + parasite_sym__export_parasite_args;
+	printf("hello: %s\n", hellop->hello);
+	printf("pid: %d\n", hellop->pid);
 	compel_rpc_call_sync(PARASITE_CMD_FINI, clsock);
 	printf("waiting stop\n");
 	waitpro(pid, &status);
