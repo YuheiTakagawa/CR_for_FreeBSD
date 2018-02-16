@@ -3,6 +3,9 @@
 #include <sys/un.h>
 #include <stdarg.h>
 
+#include "syscall.h"
+#include "string.c"
+
 struct ctl_msg {
 	uint32_t	cmd;			/* command itself */
 	uint32_t	ack;			/* ack on command */
@@ -57,182 +60,10 @@ struct hello_pid{
 	int pid;
 };
 
-extern long sys_write(int fd, const void *buf, unsigned long count);
-extern long sys_read(int fd, const void *buf, unsigned long count);
-extern long sys_close(int fd);
-extern long sys_getpid(void);
-extern long sys_socket(int domain, int type, int protocol);
-extern long sys_connect(int sockfd, struct sockaddr *addr, int addrlen);
-extern long sys_sendto(int sockfd, void *buff, size_t len, unsigned int flags, struct sockaddr *addr, int addr_len);
-extern long sys_recvfrom(int sockfd, void *buf, size_t len, unsigned int flags, struct sockaddr *addr, int addr_len);
-
 struct parasite_init_args{
 	int32_t h_addr_len;
 	struct sockaddr_un h_addr;
 };
-
-
-
-
-static const char conv_tab[] = "0123456789abcdefghijklmnopqrstuvwxyz";
-void std_dputc(int fd, char c)
-{
-	sys_write(fd, &c, 1);
-}
-
-void std_dputs(int fd, const char *s)
-{
-	for (; *s; s++)
-		std_dputc(fd, *s);
-}
-
-static size_t __std_vprint_long_hex(char *buf, size_t blen, unsigned long num, char **ps)
-{
-	char *s = &buf[blen - 2];
-
-	buf[blen - 1] = '\0';
-
-	if (num == 0) {
-		*s = '0', s--;
-		goto done;
-	}
-
-	while (num > 0) {
-		*s = conv_tab[num % 16], s--;
-		num /= 16;
-	}
-
-done:
-	s++;
-	*ps = s;
-	return blen - (s - buf);
-}
-
-static size_t __std_vprint_long(char *buf, size_t blen, long num, char **ps)
-{
-	char *s = &buf[blen - 2];
-	int neg = 0;
-
-	buf[blen - 1] = '\0';
-
-	if (num < 0) {
-		neg = 1;
-		num = -num;
-	} else if (num == 0) {
-		*s = '0';
-		s--;
-		goto done;
-	}
-
-	while (num > 0) {
-		*s = (num % 10) + '0';
-		s--;
-		num /= 10;
-	}
-
-	if (neg) {
-		*s = '-';
-		s--;
-	}
-done:
-	s++;
-	*ps = s;
-	return blen - (s - buf);
-}
-
-void std_vdprintf(int fd, const char *format, va_list args)
-{
-	const char *s = format;
-
-	for (; *s != '\0'; s++) {
-		char buf[32], *t;
-		int along = 0;
-
-		if (*s != '%') {
-			std_dputc(fd, *s);
-			continue;
-		}
-
-		s++;
-		if (*s == 'l') {
-			along = 1;
-			s++;
-			if (*s == 'l')
-				s++;
-		}
-
-		switch (*s) {
-		case 's':
-			std_dputs(fd, va_arg(args, char *));
-			break;
-		case 'd':
-			__std_vprint_long(buf, sizeof(buf),
-					  along ?
-					  va_arg(args, long) :
-					  (long)va_arg(args, int),
-					  &t);
-			std_dputs(fd, t);
-			break;
-		case 'x':
-			__std_vprint_long_hex(buf, sizeof(buf),
-					      along ?
-					      va_arg(args, long) :
-					      (long)va_arg(args, int),
-					      &t);
-			std_dputs(fd, t);
-			break;
-		}
-	}
-}
-
-void std_dprintf(int fd, const char *format, ...)
-{
-	va_list args;
-
-	va_start(args, format);
-	std_vdprintf(fd, format, args);
-	va_end(args);
-}
-
-void *memcpy(void *to, const void *from, size_t n)
-{
-	size_t i;
-	unsigned char *cto = to;
-	const unsigned char *cfrom = from;
-
-	for (i = 0; i < n; ++i, ++cto, ++cfrom)
-		*cto = *cfrom;
-
-	return to;
-}
-
-int std_strcmp(const char *cs, const char *ct)
-{
-	unsigned char c1, c2;
-
-	while (1) {
-		c1 = *cs++;
-		c2 = *ct++;
-		if (c1 != c2)
-			return c1 < c2 ? -1 : 1;
-		if (!c1)
-			break;
-	}
-	return 0;
-}
-
-int std_strncmp(const char *cs, const char *ct, size_t count)
-{
-	size_t i;
-
-	for (i = 0; i < count; i++) {
-		if (cs[i] != ct[i])
-			return cs[i] < ct[i] ? -1 : 1;
-		if (!cs[i])
-			break;
-	}
-	return 0;
-}
 
 static int __parasite_daemon_reply_ack(int tsock, unsigned int cmd, int err)
 {
@@ -279,9 +110,6 @@ static int hp(struct hello_pid *hellop){
 	return 0;
 }
 
-
-#define STDOUT_FILENO 1
-#define std_printf(fmt, ...)	std_dprintf(1, fmt, ##__VA_ARGS__)
 
 int connection(void *data){
 	char st[] = "I'M TAKAGAWA!\n";
