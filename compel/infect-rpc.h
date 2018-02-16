@@ -5,12 +5,17 @@
 #include <sys/un.h>
 #include <stdint.h>
 
+/*// Tmporarily, use arguments (int tsock) instead of (struct parasite_ctl *)
 struct parasite_ctl;
 extern int compel_rpc_sync(unsigned int cmd, struct parasite_ctl *ctl);
 extern int compel_rpc_call(unsigned int cmd, struct parasite_ctl *ctl);
 extern int compel_rpc_call_sync(unsigned int cmd, struct parasite_ctl *ctl);
 extern int compel_rpc_sock(struct parasite_ctl *ctl);
-
+*/
+extern int compel_rpc_sync(unsigned int cmd, int tsock);
+extern int compel_rpc_call(unsigned int cmd, int tsock);
+extern int compel_rpc_call_sync(unsigned int cmd, int tsock);
+//extern int compel_rpc_sock(struct parasite_ctl *ctl);
 #define PARASITE_USER_CMDS	64
 
 

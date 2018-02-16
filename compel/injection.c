@@ -6,62 +6,17 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+
 #include "parasite_syscall.c"
 #include "ptrace.h"
 #include "register.c"
 #include "parasite-head.h"
+#include "rpc-pie-priv.h"
+#include "parasite.h"
 
 #define LINUX_MAP_ANONYMOUS 0x20
 
-#define UNIX_PATH_MAX 1024
-
-struct ctl_msg {
-	uint32_t	cmd;			/* command itself */
-	uint32_t	ack;			/* ack on command */
-	int32_t		err;			/* error code on reply */
-};
-
-#define ctl_msg_cmd(_cmd)		\
-	(struct ctl_msg){.cmd = _cmd, }
-
-#define ctl_msg_ack(_cmd, _err)	\
-	(struct ctl_msg){.cmd = _cmd, .ack = _cmd, .err = _err, }
-
 #define memzero(p, size)	memset(p, 0, size)
-
-enum {
-	PARASITE_CMD_IDLE		= 0,
-	PARASITE_CMD_ACK,
-
-	PARASITE_CMD_INIT_DAEMON,
-
-	/*
-	 * This must be greater than INITs.
-	 */
-	PARASITE_CMD_FINI,
-
-	__PARASITE_END_CMDS,
-};
-#define PARASITE_USER_CMDS 64
-enum {
-	PARASITE_CMD_DUMP_THREAD = PARASITE_USER_CMDS,
-	PARASITE_CMD_MPROTECT_VMAS,
-	PARASITE_CMD_DUMPPAGES,
-
-	PARASITE_CMD_DUMP_SIGACTS,
-	PARASITE_CMD_DUMP_ITIMERS,
-	PARASITE_CMD_DUMP_POSIX_TIMERS,
-	PARASITE_CMD_DUMP_MISC,
-	PARASITE_CMD_DRAIN_FDS,
-	PARASITE_CMD_GET_PROC_FD,
-	PARASITE_CMD_DUMP_TTY,
-	PARASITE_CMD_CHECK_VDSO_MARK,
-	PARASITE_CMD_CHECK_AIOS,
-	PARASITE_CMD_DUMP_CGROUP,
-	PARASITE_CMD_GET_PID,
-
-	PARASITE_CMD_MAX,
-};
 
 struct hello_pid{
 	char hello[256];
@@ -74,7 +29,7 @@ struct linux_sockaddr_un{
 	char sun_path[108];
 };
 
-struct parasite_init_args{
+struct parasite_init{
 	int32_t h_addr_len;
 	struct linux_sockaddr_un h_addr;
 };
@@ -223,7 +178,7 @@ int main(int argc, char *argv[]){
 	printf("remote_fd_map:%lx\n", (unsigned long int)remote_fd_map);
 	
 	local_map = mmap(0x0, sizeof(parasite_blob), PROT_EXEC | PROT_WRITE |PROT_READ, MAP_SHARED, fd, 0);
-	if((int)local_map < 0){
+	if((int *)&local_map < 0){
 		perror("mmap(2)");
 	}
 	printf("local_map:%p\n", local_map);
@@ -253,7 +208,7 @@ int main(int argc, char *argv[]){
 	
 	if(listen(sockfd, 5) < 0)
 		perror("listen");
-	struct parasite_init_args args;
+	struct parasite_init args;
 	//args.h_addr_len = sizeof(args.h_addr);
 	args.h_addr_len = socklen;
 	args.h_addr.sun_family = saddr.sun_family;
@@ -263,8 +218,6 @@ int main(int argc, char *argv[]){
 	memcpy(local_map + parasite_sym__export_parasite_args, (void *)&args, sizeof(args));
 	printf("%s\n", args.h_addr.sun_path);
 
-	struct sockaddr_un caddr;
-	socklen_t clen = sizeof(caddr);
 	int clsock;
 	//ptrace_cont(pid);
 	ptrace_get_regs(pid, &reg);
@@ -277,7 +230,7 @@ int main(int argc, char *argv[]){
 	reg.r_rbp += PARASITE_STACK_SIZE;
 	ptrace_set_regs(pid, &reg);
 	ptrace_cont(pid);
-	//parasite_run(pid, PT_CONTINUE, reg.r_rip, (void *)reg.r_rsp, &reg, &orig);
+	//parasite_run(pid, PT_CONTINUE, reg.r_rip, (void *)reg.r_rbp, &reg, &orig);
 	printf("waiting\n");
 	clsock = accept(sockfd, NULL, 0); 
 	//int clsock = accept(sockfd, NULL, 0); 
