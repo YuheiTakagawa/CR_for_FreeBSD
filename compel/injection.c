@@ -16,7 +16,8 @@
 #include "infect-rpc.h"
 #include "infect-priv.h"
 
-#define LINUX_MAP_ANONYMOUS 0x20
+#define LINUX_MAP_ANONYMOUS 0x20 //ANONYMOUS of FreeBSD is 0x200, ANONYMOUS of Linux is 0x20
+#define (PROT_ALL PROT_EXEC | PROT_WRITE | PROT_READ) 
 
 struct hello_pid{
 	char hello[256];
@@ -42,46 +43,57 @@ void inject_syscall_buf(int pid, char *buf, unsigned long int addr, int size){
 	for(int i = 0; i < size /4 + 1; i++){
 		memset(tmp, 0, 4 + 1);
 		memcpy(tmp, buf + i * 4, 4);
-	//	printf("add:%lx, tmp:%x\n", (unsigned long int)addr + i * 4, *tmp);
 		ptrace_write_i(pid, (unsigned long int)addr + i * 4, *tmp);
 	}
 	free(tmp);
 }
 
 int main(int argc, char *argv[]){
+
 	if(argc < 2){
+
 		printf("usage: ./injection <PID>\n");
 		exit(1);
+
 	}
+
+
 	struct orig orig;
-	int status;
-	int pid = atoi(argv[1]);
-	ptrace_attach(pid);
-	waitpro(pid, &status);
+	struct reg reg, orireg;
+
+	
 	void *remote_map, *remote_fd_map, *local_map;
 	char buf[] = "/tmp/shm";
+
 	int fd;
 	long remote_fd;
-	struct reg reg, orireg;
+
 	long ret;
-	
-	remote_map = remote_mmap(pid, &orig, (void *) 0x0, 0x1000, PROT_EXEC | PROT_READ | PROT_WRITE, LINUX_MAP_ANONYMOUS | MAP_SHARED, 0x0, 0x0);
+
+	int status;
+	int pid;
+
+       	pid = atoi(argv[1]);
+
+	ptrace_attach(pid);
+	waitpro(pid, &status);
+
+	remote_map = remote_mmap(pid, &orig, (void *) 0x0, PAGE_SIZE, PROT_ALL, LINUX_MAP_ANONYMOUS | MAP_SHARED, 0x0, 0x0);
 	printf("remote_map:%lx\n", (off_t)remote_map);
 
 	fd = open(buf, O_RDWR);
 	printf("open: %s, fd: %d\n", buf, fd);
 	
-	//ptrace_poke_area(pid, buf, (void *)buf, sizeof(buf));
 	inject_syscall_buf(pid, buf, (unsigned long int)remote_map, 0);
 	printf("p:%p, lx%lx\n", buf, (unsigned long int)buf);
 	compel_syscall(pid, &orig, 0x2, &remote_fd, (unsigned long)remote_map, O_RDWR, 0x0, 0x0, 0x0, 0x0);
 	printf("remote_fd:%ld\n", remote_fd);
-	//remote_fd_map = remote_mmap(pid, &orig, (void *) 0x0, sizeof(parasite_blob), PROT_EXEC | PROT_READ | PROT_WRITE, MAP_SHARED | LINUX_MAP_ANONYMOUS, 0x0, 0x0);
-	remote_fd_map = remote_mmap(pid, &orig, (void *) 0x0, sizeof(parasite_blob), PROT_EXEC | PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FILE, remote_fd, 0x0);
+
+	remote_fd_map = remote_mmap(pid, &orig, (void *) 0x0, sizeof(parasite_blob), PROT_ALL, MAP_SHARED | MAP_FILE, remote_fd, 0x0);
 	compel_syscall(pid, &orig, 0x3, &ret, (unsigned long)remote_fd, 0x0, 0x0, 0x0, 0x0, 0x0); 
 	printf("remote_fd_map:%lx\n", (unsigned long int)remote_fd_map);
 	
-	local_map = mmap(0x0, sizeof(parasite_blob), PROT_EXEC | PROT_WRITE |PROT_READ, MAP_SHARED, fd, 0);
+	local_map = mmap(0x0, sizeof(parasite_blob), PROT_ALL, MAP_SHARED, fd, 0);
 	if((int *)&local_map < 0){
 		perror("mmap(2)");
 	}
