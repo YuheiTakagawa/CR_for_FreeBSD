@@ -11,8 +11,9 @@
 #include "ptrace.h"
 #include "register.c"
 #include "parasite-head.h"
-#include "rpc-pie-priv.h"
 #include "parasite.h"
+#include "infect.h"
+#include "rpc-pie-priv.h"
 #include "infect-rpc.h"
 #include "infect-priv.h"
 
@@ -66,16 +67,11 @@ void curing(struct parasite_ctl *ctl){
 	compel_rpc_call_sync(PARASITE_CMD_FINI, ctl);
 }
 
-#define compel_parasite_args(ctl, type)		\
-	({	\
-	 void *___ret;		\
-	 ___ret = compel_parasite_args_p(ctl);	\
-	 ___ret;	\
-	 })
-
 void *compel_parasite_args_p(struct parasite_ctl *ctl){
 	return ctl->addr_args;
 }
+
+
 
 static int parasite_init_daemon(struct parasite_ctl *ctl){
 	struct parasite_init *args;
