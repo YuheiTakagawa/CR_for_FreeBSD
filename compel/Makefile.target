@@ -18,14 +18,14 @@ INCLUDE_DEP = ../src/include/freebsd
 INCLUDE = -I $(INCLUDE_DEP) -I $(INCLUDE_COMMON)
 
 .PHONY: all
-all: injection
+all: infect
 
 parasite += writecall.o
 parasite += syscall.o
 parasite += parasite-head.o
 
 inject += infect-rpc.o
-inject += injection.o
+inject += infect.o
 
 parasite-head.h: parasite-head headgen 
 
@@ -46,7 +46,7 @@ headgen: headgen.c
 %.o: %.c 
 	$(CC) $(INCLUDE) -fpie -c -o $@ $^
 
-injection: parasite-head.h $(inject) /tmp/shm
+infect: parasite-head.h $(inject) /tmp/shm
 	$(CC) $(CFLAG) $(INCLUDE) $(inject) -o $@
 
 /tmp/shm:
@@ -54,7 +54,7 @@ injection: parasite-head.h $(inject) /tmp/shm
 
 .PHONY: clean
 clean:
-	$(RM) injection
+	$(RM) infect
 	$(RM) parasite-head.h
 	$(RM) *.o
 	$(RM) parasite-head
