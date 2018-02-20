@@ -103,18 +103,22 @@ int main(int argc, char *argv[]){
 	 * Third, local process run mmap syscall to share memory.
 	 */
 
-	remote_map = remote_mmap(pid, &orig, (void *) 0x0, PAGE_SIZE, PROT_ALL, LINUX_MAP_ANONYMOUS | MAP_SHARED, 0x0, 0x0);
+	remote_map = remote_mmap(pid, &orig, (void *) 0x0,
+		       	PAGE_SIZE, PROT_ALL, LINUX_MAP_ANONYMOUS | MAP_SHARED, 0x0, 0x0);
 	printf("remote_map:%lx\n", (off_t)remote_map);
 
 	fd = open(buf, O_RDWR);
 	printf("open file for shared memory: %s, fd: %d\n", buf, fd);
 	
 	inject_syscall_buf(pid, buf, (unsigned long int)remote_map, 0);
-	compel_syscall(pid, &orig, 0x2, &remote_fd, (unsigned long)remote_map, O_RDWR, 0x0, 0x0, 0x0, 0x0);
+	compel_syscall(pid, &orig, 0x2, &remote_fd,
+		       	(unsigned long)remote_map, O_RDWR, 0x0, 0x0, 0x0, 0x0);
 	printf("remote_fd:%ld\n", remote_fd);
 
-	remote_fd_map = remote_mmap(pid, &orig, (void *) 0x0, sizeof(parasite_blob), PROT_ALL, MAP_SHARED | MAP_FILE, remote_fd, 0x0);
-	compel_syscall(pid, &orig, 0x3, &ret, (unsigned long)remote_fd, 0x0, 0x0, 0x0, 0x0, 0x0); 
+	remote_fd_map = remote_mmap(pid, &orig, (void *) 0x0, sizeof(parasite_blob),
+		       	PROT_ALL, MAP_SHARED | MAP_FILE, remote_fd, 0x0);
+	compel_syscall(pid, &orig, 0x3, &ret, (unsigned long)remote_fd,
+		       	0x0, 0x0, 0x0, 0x0, 0x0); 
 	printf("remote_fd_map:%lx\n", (unsigned long int)remote_fd_map);
 	
 	local_map = mmap(0x0, sizeof(parasite_blob), PROT_ALL, MAP_SHARED, fd, 0);
