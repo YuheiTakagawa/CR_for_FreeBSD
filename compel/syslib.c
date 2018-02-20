@@ -68,37 +68,40 @@ static int hp(struct hello_pid *hellop){
 
 
 int connection(void *data){
+	struct parasite_init *args = data;
+	struct ctl_msg m;
 	char st[] = "I'M TAKAGAWA!\n";
 	int i = 0;
-	struct parasite_init *args = data;
-	int tsock = sys_socket(PF_UNIX, SOCK_SEQPACKET, 0);
-	struct ctl_msg m;
+	int tsock;
 	int ret = 0;
 
-	sys_write(1, st, 15);
+	sys_write(1, st, 15); 
+
+	tsock = sys_socket(PF_UNIX, SOCK_SEQPACKET, 0);
 	if(tsock < 0){
 		st[4] = 'O';
 		sys_write(1, st, 15);
 	}
-	/*
-	sys_write(1, args->h_addr.sun_path, 17);
-	std_printf("sun_path:%s\n", args->h_addr.sun_path);
-	std_printf("family:%d\n", args->h_addr.sun_family);
-	std_printf("size%d\n", args->h_addr_len);
-	*/
+
 	if(sys_connect(tsock, (struct sockaddr *)&args->h_addr, args->h_addr_len) < 0){
-		//st[3] = 'K';
-		//sys_write(1, st, 15);
 	}
-	//char ch[100] = "Hi, LOCAL\n I'm REMOTE";
+
 	__parasite_daemon_reply_ack(tsock, PARASITE_CMD_INIT_DAEMON, 0);
+
+
+	/* 
+	 * waiting receive command from CRIU
+	 * If getting command is PARASITE_CMD_FINI, closing and cure
+	 */
 	while(1){
 		__parasite_daemon_wait_msg(tsock, &m);
 		std_printf("local msg: %d\n", m.cmd);
+
 		if(m.cmd == PARASITE_CMD_FINI){
 			fini(tsock);
 			break;
 		}
+
 		switch(m.cmd){
 			case PARASITE_CMD_GET_PID:
 				ret = sys_getpid();
