@@ -111,8 +111,8 @@ static int parasite_init_daemon(struct parasite_ctl *ctl){
 	
 	printf("connection waiting\n");
 
-	clsock = accept(sockfd, NULL, 0); 
-	if(clsock < 0){
+	ctl->tsock = accept(sockfd, NULL, 0); 
+	if(ctl->tsock < 0){
 		perror("accept");
 		sleep(1);
 	}
@@ -120,9 +120,9 @@ static int parasite_init_daemon(struct parasite_ctl *ctl){
 	/*
 	 * waiting receive PARASITE_CMD_INIT_DAEMON from Parasite Engine
 	 */
-	parasite_wait_ack(clsock, PARASITE_CMD_INIT_DAEMON, &m);
-	return clsock;
+	parasite_wait_ack(ctl->tsock, PARASITE_CMD_INIT_DAEMON, &m);
 
+	return 0;
 }
 
 
@@ -168,6 +168,13 @@ int main(int argc, char *argv[]){
 	 * Third, local process run mmap syscall to share memory.
 	 */
 
+	/*
+	 * TODO
+	 * remote_mmap and compel_syscall are passed arguments 'struct parasite_ctl', 
+	 * however current implementation is passing value of pid. This is bad.
+	 * If you want to fix this, you should changed
+	 * CR_for_FreeBSD/src/include/freebsd/parasite_syscall.c
+	 * and introduce struct parasite_ctl to getall.c, restore.c and etc...  */
 	remote_map = remote_mmap(ctl->rpid, &orig, (void *) 0x0,
 		       	PAGE_SIZE, PROT_ALL, LINUX_MAP_ANONYMOUS | MAP_SHARED, 0x0, 0x0);
 	printf("remote_map:%lx\n", (off_t)remote_map);
@@ -211,7 +218,7 @@ int main(int argc, char *argv[]){
 	 *
 	 */
 	ctl->addr_args = ctl->local_map + parasite_sym__export_parasite_args;
-	ctl->tsock = parasite_init_daemon(ctl);
+	parasite_init_daemon(ctl);
 
 	/*
 	 * send CMD and wait ACK against CMD
@@ -250,7 +257,7 @@ int main(int argc, char *argv[]){
 	printf("waiting stop\n");
 	waitpro(ctl->rpid, &status);
 	printf("stop: %d\n", WSTOPSIG(status));
-	print_regs(ctl->rpid);
+	//print_regs(ctl->rpid);
 
 	
 	/*  want to munmap allocated memory size.
