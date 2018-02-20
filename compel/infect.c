@@ -66,13 +66,27 @@ void curing(struct parasite_ctl *ctl){
 	compel_rpc_call_sync(PARASITE_CMD_FINI, ctl);
 }
 
+#define compel_parasite_args(ctl, type)		\
+	({	\
+	 void *___ret;		\
+	 ___ret = compel_parasite_args_p(ctl);	\
+	 ___ret;	\
+	 })
+
+void *compel_parasite_args_p(struct parasite_ctl *ctl){
+	return ctl->addr_args;
+}
+
 static int parasite_init_daemon(struct parasite_ctl *ctl){
-	struct parasite_init args;
+	struct parasite_init *args;
 	struct sockaddr_un saddr;
 	int sockfd, clsock;
 	int socklen;
 	struct ctl_msg m = { };
 	struct reg reg;
+
+	*ctl->addr_cmd = PARASITE_CMD_INIT_DAEMON;
+	args = compel_parasite_args(ctl, struct parasite_init_args);
 
 	//sockfd = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_NONBLOCK, 0); //SOCK_NONBLOCK 
 	sockfd = socket(PF_LOCAL, SOCK_SEQPACKET, 0);
@@ -88,11 +102,9 @@ static int parasite_init_daemon(struct parasite_ctl *ctl){
 	if(listen(sockfd, 5) < 0)
 		perror("listen");
 
-	args.h_addr_len = socklen;
-	args.h_addr.sun_family = saddr.sun_family;
-	strncpy(args.h_addr.sun_path, saddr.sun_path, sizeof(saddr.sun_path));
-
-	memcpy(ctl->addr_args, (void *)&args, sizeof(args));
+	args->h_addr_len = socklen;
+	args->h_addr.sun_family = saddr.sun_family;
+	strncpy(args->h_addr.sun_path, saddr.sun_path, sizeof(saddr.sun_path));
 
 	ptrace_get_regs(ctl->rpid, &reg);
 
@@ -217,6 +229,7 @@ int main(int argc, char *argv[]){
 	 * Prepare communicate to Parasite Engine via socket
 	 *
 	 */
+	ctl->addr_cmd = ctl->local_map + parasite_sym__export_parasite_args;
 	ctl->addr_args = ctl->local_map + parasite_sym__export_parasite_args;
 	parasite_init_daemon(ctl);
 
