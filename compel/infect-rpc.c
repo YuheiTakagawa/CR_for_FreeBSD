@@ -4,7 +4,7 @@
 //#include "common/lock.h"
 
 //#include "infect.h"
-//#include "infect-priv.h"
+#include "infect-priv.h"
 #include "infect-rpc.h"
 #include "rpc-pie-priv.h"
 
@@ -46,13 +46,11 @@ int parasite_wait_ack(int sockfd, unsigned int cmd, struct ctl_msg *m)
 	return -1;
 }
 
-//int compel_rpc_sync(unsigned int cmd, struct parasite_ctl *ctl)
-int compel_rpc_sync(unsigned int cmd, int tsock)
+int compel_rpc_sync(unsigned int cmd, struct parasite_ctl *ctl)
 {
 	struct ctl_msg m;
 
-	//if (parasite_wait_ack(ctl->tsock, cmd, &m))
-	if (parasite_wait_ack(tsock, cmd, &m))
+	if (parasite_wait_ack(ctl->tsock, cmd, &m))
 		return -1;
 
 	if (m.err != 0) {
@@ -62,34 +60,27 @@ int compel_rpc_sync(unsigned int cmd, int tsock)
 	return 0;
 }
 
-//int compel_rpc_call(unsigned int cmd, struct parasite_ctl *ctl)
-int compel_rpc_call(unsigned int cmd, int tsock)
+int compel_rpc_call(unsigned int cmd, struct parasite_ctl *ctl)
 {
 	struct ctl_msg m;
 
 	m = ctl_msg_cmd(cmd);
-	//return __parasite_send_cmd(ctl->tsock, &m);
-	return __parasite_send_cmd(tsock, &m);
+	return __parasite_send_cmd(ctl->tsock, &m);
 }
 
-//int compel_rpc_call_sync(unsigned int cmd, struct parasite_ctl *ctl)
-int compel_rpc_call_sync(unsigned int cmd, int tsock)
+int compel_rpc_call_sync(unsigned int cmd, struct parasite_ctl *ctl)
 {
 	int ret;
 
-	//ret = compel_rpc_call(cmd, ctl->tsock);
-	ret = compel_rpc_call(cmd, tsock);
+	ret = compel_rpc_call(cmd, ctl);
 	if (!ret)
-		//ret = compel_rpc_sync(cmd, ctl->tsock);
-		ret = compel_rpc_sync(cmd, tsock);
+		ret = compel_rpc_sync(cmd, ctl);
 
 	return ret;
 }
 
-/* //Temporarily, commentout until use (struct parasite_ctl)
 int compel_rpc_sock(struct parasite_ctl *ctl)
 {
 	return ctl->tsock;
 }
-*/
 

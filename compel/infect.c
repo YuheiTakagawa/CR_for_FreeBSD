@@ -63,7 +63,7 @@ void step_debug(int pid){
 }
 
 void curing(struct parasite_ctl *ctl){
-	compel_rpc_call_sync(PARASITE_CMD_FINI, ctl->tsock);
+	compel_rpc_call_sync(PARASITE_CMD_FINI, ctl);
 }
 
 static int parasite_init_daemon(struct parasite_ctl *ctl){
@@ -177,7 +177,7 @@ int main(int argc, char *argv[]){
 	 * and introduce struct parasite_ctl to getall.c, restore.c and etc...  */
 	tmp_map = remote_mmap(ctl->rpid, &orig, (void *) 0x0,
 		       	PAGE_SIZE, PROT_ALL, LINUX_MAP_ANONYMOUS | MAP_SHARED, 0x0, 0x0);
-	printf("remote_map:%lx\n", (off_t)tmp_map);
+	printf("remote_map:%p\n", tmp_map);
 
 	fd = open(buf, O_RDWR);
 	printf("open file for shared memory: %s, fd: %d\n", buf, fd);
@@ -191,7 +191,7 @@ int main(int argc, char *argv[]){
 		       	PROT_ALL, MAP_SHARED | MAP_FILE, remote_fd, 0x0);
 	compel_syscall(ctl->rpid, &orig, 0x3, &ret, (unsigned long)remote_fd,
 		       	0x0, 0x0, 0x0, 0x0, 0x0); 
-	printf("remote_fd_map:%lx\n", (unsigned long int)ctl->remote_map);
+	printf("remote_fd_map:%p\n", ctl->remote_map);
 	
 	ctl->local_map = mmap(0x0, sizeof(parasite_blob), PROT_ALL, MAP_SHARED, fd, 0);
 	printf("local_map:%p\n", ctl->local_map);
@@ -223,9 +223,9 @@ int main(int argc, char *argv[]){
 	/*
 	 * send CMD and wait ACK against CMD
 	 */
-	compel_rpc_call_sync(PARASITE_CMD_DUMP_THREAD, ctl->tsock);
-	compel_rpc_call_sync(PARASITE_CMD_DUMP_ITIMERS, ctl->tsock);
-	compel_rpc_call_sync(PARASITE_CMD_GET_PID, ctl->tsock);
+	compel_rpc_call_sync(PARASITE_CMD_DUMP_THREAD, ctl);
+	compel_rpc_call_sync(PARASITE_CMD_DUMP_ITIMERS, ctl);
+	compel_rpc_call_sync(PARASITE_CMD_GET_PID, ctl);
 
 
 	/*
