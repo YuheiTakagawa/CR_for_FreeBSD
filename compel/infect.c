@@ -62,7 +62,7 @@ void step_debug(int pid){
 	}
 }
 
-static int parasite_init_daemon(int pid, void *local_map, void *remote_fd_map, struct reg *orireg){
+static int parasite_init_daemon(int pid, void *local_map, void *remote_fd_map){
 	struct parasite_init args;
 	struct sockaddr_un saddr;
 	int sockfd, clsock;
@@ -92,7 +92,6 @@ static int parasite_init_daemon(int pid, void *local_map, void *remote_fd_map, s
 	memcpy(local_map + parasite_sym__export_parasite_args, (void *)&args, sizeof(args));
 
 	ptrace_get_regs(pid, &reg);
-	memcpy(orireg, &reg, sizeof(*orireg));
 
 	reg.r_rip = (unsigned long int)remote_fd_map;
 	reg.r_rbp = (unsigned long int)remote_fd_map + sizeof(parasite_blob);
@@ -163,7 +162,7 @@ int main(int argc, char *argv[]){
 
 
 	struct orig orig;
-	struct reg reg, orireg;
+	struct reg reg;
 
 	
 	void *remote_map, *remote_fd_map, *local_map;
@@ -237,7 +236,7 @@ int main(int argc, char *argv[]){
 	 * Prepare communicate to Parasite Engine via socket
 	 *
 	 */
-	parasite_init_daemon(pid, local_map, remote_fd_map, &orireg);
+	parasite_init_daemon(pid, local_map, remote_fd_map);
 
 	/*
 	 * the last command of Parasite Daemon is int3.
@@ -256,7 +255,7 @@ int main(int argc, char *argv[]){
 	/* maybe, I think restore memory in compel_syscall, this routine is bad. */
 	//compel_syscall(pid, &orig, 0xb, &ret, (unsigned long)remote_fd_map, 0x1000, 0x0, 0x0, 0x0, 0x0);
 	//compel_syscall(pid, &orig, 0xb, &ret, (unsigned long)remote_map, 0x0, 0x0, 0x0, 0x0, 0x0);
-	ptrace_set_regs(pid, &orireg);
+	ptrace_set_regs(pid, &orig.reg);
 	printf("restore reg\n");
 
 	//ptrace_cont(pid);
