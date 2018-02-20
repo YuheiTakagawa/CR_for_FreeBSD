@@ -62,7 +62,7 @@ void step_debug(int pid){
 	}
 }
 
-static int parasite_init_daemon(int pid, unsigned long int local_map, unsigned long int remote_fd_map, struct reg *orireg){
+static int parasite_init_daemon(int pid, void *local_map, void *remote_fd_map, struct reg *orireg){
 	struct parasite_init args;
 	struct sockaddr_un saddr;
 	int sockfd, clsock;
@@ -89,13 +89,13 @@ static int parasite_init_daemon(int pid, unsigned long int local_map, unsigned l
 	args.h_addr.sun_family = saddr.sun_family;
 	strncpy(args.h_addr.sun_path, saddr.sun_path, sizeof(saddr.sun_path));
 
-	memcpy((void *)(local_map + parasite_sym__export_parasite_args), (void *)&args, sizeof(args));
+	memcpy(local_map + parasite_sym__export_parasite_args, (void *)&args, sizeof(args));
 
 	ptrace_get_regs(pid, &reg);
 	memcpy(orireg, &reg, sizeof(*orireg));
 
-	reg.r_rip = remote_fd_map;
-	reg.r_rbp = remote_fd_map + sizeof(parasite_blob);
+	reg.r_rip = (unsigned long int)remote_fd_map;
+	reg.r_rbp = (unsigned long int)remote_fd_map + sizeof(parasite_blob);
 	reg.r_rbp += RESTORE_STACK_SIGFRAME;
 	reg.r_rbp += PARASITE_STACK_SIZE;
 
@@ -138,7 +138,7 @@ static int parasite_init_daemon(int pid, unsigned long int local_map, unsigned l
 	/* 
 	 * return address is shared memory + args address
 	 */
-	hellop = (void *)(local_map + parasite_sym__export_parasite_args);
+	hellop = local_map + parasite_sym__export_parasite_args;
 
 	printf("hello: %s\n", hellop->hello);
 	printf("pid: %d\n", hellop->pid);
@@ -237,7 +237,7 @@ int main(int argc, char *argv[]){
 	 * Prepare communicate to Parasite Engine via socket
 	 *
 	 */
-	parasite_init_daemon(pid, (unsigned long int)local_map, (unsigned long int)remote_fd_map, &orireg);
+	parasite_init_daemon(pid, local_map, remote_fd_map, &orireg);
 
 	/*
 	 * the last command of Parasite Daemon is int3.
