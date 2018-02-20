@@ -62,6 +62,95 @@ void step_debug(int pid){
 	}
 }
 
+static int parasite_init_daemon(int pid, unsigned long int local_map, unsigned long int remote_fd_map, struct reg *orireg){
+	struct parasite_init args;
+	struct sockaddr_un saddr;
+	int sockfd, clsock;
+	int socklen;
+	struct ctl_msg m = { };
+	struct hello_pid *hellop; 
+	struct reg reg;
+
+	//sockfd = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_NONBLOCK, 0); //SOCK_NONBLOCK 
+	sockfd = socket(PF_LOCAL, SOCK_SEQPACKET, 0);
+
+	saddr.sun_family = PF_LOCAL;
+	snprintf(saddr.sun_path, UNIX_PATH_MAX, "crtools-pr-%d", getpid());
+	
+	socklen = sizeof(saddr);
+
+	if(bind(sockfd, (struct sockaddr *)&saddr, socklen) < 0)
+		perror("bind");
+	
+	if(listen(sockfd, 5) < 0)
+		perror("listen");
+
+	args.h_addr_len = socklen;
+	args.h_addr.sun_family = saddr.sun_family;
+	strncpy(args.h_addr.sun_path, saddr.sun_path, sizeof(saddr.sun_path));
+
+	memcpy((void *)(local_map + parasite_sym__export_parasite_args), (void *)&args, sizeof(args));
+
+	ptrace_get_regs(pid, &reg);
+	memcpy(orireg, &reg, sizeof(*orireg));
+
+	reg.r_rip = remote_fd_map;
+	reg.r_rbp = remote_fd_map + sizeof(parasite_blob);
+	reg.r_rbp += RESTORE_STACK_SIGFRAME;
+	reg.r_rbp += PARASITE_STACK_SIZE;
+
+	ptrace_set_regs(pid, &reg);
+	ptrace_cont(pid);
+	/*
+	 *  parasite_run include ptrace SETREGS and CONTINUE, 
+	 *  but this function does not work properly. 
+	 */
+	//parasite_run(pid, PT_CONTINUE, reg.r_rip, (void *)reg.r_rbp, &reg, &orig);
+	
+	printf("connection waiting\n");
+
+	clsock = accept(sockfd, NULL, 0); 
+	if(clsock < 0){
+		perror("accept");
+		sleep(1);
+	}
+
+	/*
+	 * waiting receive PARASITE_CMD_INIT_DAEMON from Parasite Engine
+	 */
+	parasite_wait_ack(clsock, PARASITE_CMD_INIT_DAEMON, &m);
+
+	/*
+	 * send CMD and wait ACK against CMD
+	 */
+	compel_rpc_call_sync(PARASITE_CMD_DUMP_THREAD, clsock);
+	compel_rpc_call_sync(PARASITE_CMD_DUMP_ITIMERS, clsock);
+	compel_rpc_call_sync(PARASITE_CMD_GET_PID, clsock);
+
+
+	/*
+	 * Wait for Parasite Engine finishes writing to memory.
+	 * Good method is sync, lock, futex.
+	 * Now implement is sleeping process
+	 */
+	usleep(20);
+
+	/* 
+	 * return address is shared memory + args address
+	 */
+	hellop = (void *)(local_map + parasite_sym__export_parasite_args);
+
+	printf("hello: %s\n", hellop->hello);
+	printf("pid: %d\n", hellop->pid);
+
+
+	/*
+	 * send PARASITE_CMD_FINI to Parasite Daemon,
+	 * Parasite Daemon run socket closing and curing.
+	 */
+	compel_rpc_call_sync(PARASITE_CMD_FINI, clsock);
+}
+
 
 int main(int argc, char *argv[]){
 
@@ -148,94 +237,7 @@ int main(int argc, char *argv[]){
 	 * Prepare communicate to Parasite Engine via socket
 	 *
 	 */
-
-	struct parasite_init args;
-	struct sockaddr_un saddr;
-	int sockfd, clsock;
-	int socklen;
-	struct ctl_msg m = { };
-	struct hello_pid *hellop; 
-
-	//sockfd = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_NONBLOCK, 0); //SOCK_NONBLOCK 
-	sockfd = socket(PF_LOCAL, SOCK_SEQPACKET, 0);
-
-	saddr.sun_family = PF_LOCAL;
-	snprintf(saddr.sun_path, UNIX_PATH_MAX, "crtools-pr-%d", getpid());
-	
-	socklen = sizeof(saddr);
-
-	if(bind(sockfd, (struct sockaddr *)&saddr, socklen) < 0)
-		perror("bind");
-	
-	if(listen(sockfd, 5) < 0)
-		perror("listen");
-
-	args.h_addr_len = socklen;
-	args.h_addr.sun_family = saddr.sun_family;
-	strncpy(args.h_addr.sun_path, saddr.sun_path, sizeof(saddr.sun_path));
-
-	memcpy(local_map + parasite_sym__export_parasite_args, (void *)&args, sizeof(args));
-
-	ptrace_get_regs(pid, &reg);
-	memcpy(&orireg, &reg, sizeof(reg));
-
-	reg.r_rip = (unsigned long int)remote_fd_map;
-	reg.r_rbp = (unsigned long int)remote_fd_map + sizeof(parasite_blob);
-	reg.r_rbp += RESTORE_STACK_SIGFRAME;
-	reg.r_rbp += PARASITE_STACK_SIZE;
-
-
-	ptrace_set_regs(pid, &reg);
-	ptrace_cont(pid);
-	/*
-	 *  parasite_run include ptrace SETREGS and CONTINUE, 
-	 *  but this function does not work properly. 
-	 */
-	//parasite_run(pid, PT_CONTINUE, reg.r_rip, (void *)reg.r_rbp, &reg, &orig);
-	
-	printf("connection waiting\n");
-
-	clsock = accept(sockfd, NULL, 0); 
-	if(clsock < 0){
-		perror("accept");
-		sleep(1);
-	}
-
-	/*
-	 * waiting receive PARASITE_CMD_INIT_DAEMON from Parasite Engine
-	 */
-	parasite_wait_ack(clsock, PARASITE_CMD_INIT_DAEMON, &m);
-
-	/*
-	 * send CMD and wait ACK against CMD
-	 */
-	compel_rpc_call_sync(PARASITE_CMD_DUMP_THREAD, clsock);
-	compel_rpc_call_sync(PARASITE_CMD_DUMP_ITIMERS, clsock);
-	compel_rpc_call_sync(PARASITE_CMD_GET_PID, clsock);
-
-
-	/*
-	 * Wait for Parasite Engine finishes writing to memory.
-	 * Good method is sync, lock, futex.
-	 * Now implement is sleeping process
-	 */
-	usleep(20);
-
-	/* 
-	 * return address is shared memory + args address
-	 */
-	hellop = local_map + parasite_sym__export_parasite_args;
-
-	printf("hello: %s\n", hellop->hello);
-	printf("pid: %d\n", hellop->pid);
-
-
-	/*
-	 * send PARASITE_CMD_FINI to Parasite Daemon,
-	 * Parasite Daemon run socket closing and curing.
-	 */
-	compel_rpc_call_sync(PARASITE_CMD_FINI, clsock);
-
+	parasite_init_daemon(pid, (unsigned long int)local_map, (unsigned long int)remote_fd_map, &orireg);
 
 	/*
 	 * the last command of Parasite Daemon is int3.
