@@ -33,7 +33,7 @@ struct linux_sockaddr_un{
 	char sun_path[108];
 };
 
-struct parasite_init{
+struct parasite_init_args_linux{
 	int32_t h_addr_len;
 	struct linux_sockaddr_un h_addr;
 };
@@ -86,58 +86,71 @@ static int gen_parasite_saddr(struct sockaddr_un *saddr, int key){
 			"X/crtools-pr-%d", key);
 
 	sun_len = SUN_LEN(saddr);
-	*saddr->sun_path = '\0';
+	*(saddr->sun_path + sun_len) = '\0';
 
 	return sun_len;
 }
 
 static int prepare_tsock(struct parasite_ctl *ctl, pid_t pid, 
-		struct parasite_init_args *args){
-		int ssock = -1;
-		socklen_t sk_len;
-		struct sockaddr_un addr;
+	struct parasite_init_args_linux *args){
+	int ssock = -1;
+	socklen_t sk_len;
+	struct sockaddr_un addr, naddr;
 
-		args->h_addr_len = gen_parasite_saddr(&args->h_addr, getpid());
+	args->h_addr_len = gen_parasite_saddr(&addr, getpid());
 
-		ssock = ctl->ictx.sock;
-		sk_len = sizeof(addr);
+	ssock = ctl->ictx.sock;
+	sk_len = sizeof(addr);
+		
+	if(ssock == -1){
+		printf("err: No socket in ictx\n");
+		goto err;
+	}
 
-		if(ssock == -1){
-			printf("err: No socket in ictx\n");
-			goto err;
-		}
+	/* CRIU use getsockname and compare sizeof(naddr.sun_family) to sk_len.
+	 * In FreeBSD, sizeof(naddr.sun_family) and sk_len are not equal,
+	 * so getsockname is don't use in FreeBSD
+	 */
 
-		if(getsockname(ssock, (struct sockaddr *) &addr, &sk_len) < 0){
-			perror("Unable to get name for a socket");
-			return -1;
-		}
+	/*
+	if(getsockname(ssock, (struct sockaddr *) &naddr, &sk_len) < 0){
+		perror("Unable to get name for a socket");
+		return -1;
+	}
+	*/
 
-		if(sk_len == sizeof(addr.sun_family)){
-			if(bind(ssock, (struct sockaddr *) &args->h_addr,
-						args->h_addr_len) < 0){
-				perror("Can't  bind socket");
-				goto err;
-			}
+	if(bind(ssock, (struct sockaddr *) &addr, args->h_addr_len) < 0){
+		perror("Can't  bind socket");
+		goto err;
+	}
 
-			if(listen(ssock, 1)){
-				perror("Can't listen on transport socket");
-				goto err;
-			}
-		}
+	if(listen(ssock, 1)){
+		perror("Can't listen on transport socket");
+		goto err;
+	}
 
-			if(ctl->ictx.flags & INFECT_FAIL_CONNECT)
-				args->h_addr_len = gen_parasite_saddr(&args->h_addr, getpid() + 1);
+	if(ctl->ictx.flags & INFECT_FAIL_CONNECT)
+		args->h_addr_len = gen_parasite_saddr(&addr, getpid() + 1);
 
-			ctl->tsock = -ssock;
-			return 0;
+	/*
+	 * For FreeBSD Linuxulator, 
+	 * struct sockaddr_un is different between Linux and FreeBSD
+	 */	
+
+	args->h_addr.sun_family = addr.sun_family;
+	strncpy(args->h_addr.sun_path, addr.sun_path, sizeof(addr.sun_path));
+
+	//ctl->tsock = -ssock;
+	ctl->tsock = ssock;
+	return 0;
 err:
-			close_safe(&ssock);
-			return -1;
+	close_safe(&ssock);
+	return -1;
 }
 
-
 static int parasite_init_daemon(struct parasite_ctl *ctl){
-	struct parasite_init *args;
+	struct parasite_init_args_linux *args;
+	pid_t pid = ctl->rpid;
 	struct sockaddr_un saddr;
 	int sockfd, clsock;
 	int socklen;
@@ -145,35 +158,20 @@ static int parasite_init_daemon(struct parasite_ctl *ctl){
 	struct reg reg;
 
 	*ctl->addr_cmd = PARASITE_CMD_INIT_DAEMON;
-	args = compel_parasite_args(ctl, struct parasite_init_args);
+	args = compel_parasite_args(ctl, struct parasite_init_args_linux);
 
-	//sockfd = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_NONBLOCK, 0); //SOCK_NONBLOCK 
-	sockfd = socket(PF_LOCAL, SOCK_SEQPACKET, 0);
+	sockfd = ctl->ictx.sock;
+	prepare_tsock(ctl, pid, args);
 
-	saddr.sun_family = PF_LOCAL;
-	snprintf(saddr.sun_path, UNIX_PATH_MAX, "crtools-pr-%d", getpid());
-	
-	socklen = sizeof(saddr);
-
-	if(bind(sockfd, (struct sockaddr *)&saddr, socklen) < 0)
-		perror("bind");
-	
-	if(listen(sockfd, 5) < 0)
-		perror("listen");
-
-	args->h_addr_len = socklen;
-	args->h_addr.sun_family = saddr.sun_family;
-	strncpy(args->h_addr.sun_path, saddr.sun_path, sizeof(saddr.sun_path));
-
-	ptrace_get_regs(ctl->rpid, &reg);
+	ptrace_get_regs(pid, &reg);
 
 	reg.r_rip = (unsigned long int)ctl->remote_map;
 	reg.r_rbp = (unsigned long int)ctl->remote_map + sizeof(parasite_blob);
 	reg.r_rbp += RESTORE_STACK_SIGFRAME;
 	reg.r_rbp += PARASITE_STACK_SIZE;
 
-	ptrace_set_regs(ctl->rpid, &reg);
-	ptrace_cont(ctl->rpid);
+	ptrace_set_regs(pid, &reg);
+	ptrace_cont(pid);
 	/*
 	 *  parasite_run include ptrace SETREGS and CONTINUE, 
 	 *  but this function does not work properly. 
@@ -196,6 +194,22 @@ static int parasite_init_daemon(struct parasite_ctl *ctl){
 	return 0;
 }
 
+static int make_sock_for(int pid){
+	int ret, mfd, fd, sk = -1;
+	char p[32];
+
+	/*
+	 * This function is prepare injection parasite engine about networking.
+	 * Ex) network namespace, setns
+	 */
+
+
+	//sk = socket(PF_LOCAL, SOCK_SEQPACKET | SOCK_NONBLOCK, 0);
+	sk = socket(PF_LOCAL, SOCK_SEQPACKET, 0);
+
+	return sk;
+}
+
 
 int main(int argc, char *argv[]){
 
@@ -206,12 +220,11 @@ int main(int argc, char *argv[]){
 
 	}
 
-
 	struct orig orig;
 	struct reg reg;
 	struct parasite_ctl *ctl;
+	struct infect_ctx *ictx;
 
-	
 	void *tmp_map;
 	char buf[] = "/tmp/shm";
 
@@ -221,11 +234,19 @@ int main(int argc, char *argv[]){
 	long ret;
 
 	int status;
+	int pid;
 
 	ctl = (struct parasite_ctl *) malloc(sizeof(struct parasite_ctl));
 
-       	ctl->rpid = atoi(argv[1]);
+       	pid = atoi(argv[1]);
+	ctl->rpid = pid;
 
+	/*
+	 * move make_sock_for to function compel_prepare
+	 */
+	ictx = &ctl->ictx;
+	ictx->sock = make_sock_for(pid);
+	
 	ptrace_attach(ctl->rpid);
 	waitpro(ctl->rpid, &status);
 
