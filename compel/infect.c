@@ -37,7 +37,7 @@ struct parasite_init{
 	struct linux_sockaddr_un h_addr;
 };
 
-void inject_syscall_buf(int pid, char *buf, unsigned long int addr, int size){
+void inject_syscall_buf(int pid, char *buf, void *addr, int size){
 	int *tmp = malloc(sizeof(int));
 	if(size == 0){
 		size = strlen(buf);
@@ -141,7 +141,7 @@ int main(int argc, char *argv[]){
 	struct parasite_ctl *ctl;
 
 	
-	void *remote_map, *remote_fd_map, *local_map;
+	void *tmp_map;
 	char buf[] = "/tmp/shm";
 
 	int fd;
@@ -175,16 +175,16 @@ int main(int argc, char *argv[]){
 	 * If you want to fix this, you should changed
 	 * CR_for_FreeBSD/src/include/freebsd/parasite_syscall.c
 	 * and introduce struct parasite_ctl to getall.c, restore.c and etc...  */
-	remote_map = remote_mmap(ctl->rpid, &orig, (void *) 0x0,
+	tmp_map = remote_mmap(ctl->rpid, &orig, (void *) 0x0,
 		       	PAGE_SIZE, PROT_ALL, LINUX_MAP_ANONYMOUS | MAP_SHARED, 0x0, 0x0);
-	printf("remote_map:%lx\n", (off_t)remote_map);
+	printf("remote_map:%lx\n", (off_t)tmp_map);
 
 	fd = open(buf, O_RDWR);
 	printf("open file for shared memory: %s, fd: %d\n", buf, fd);
 	
-	inject_syscall_buf(ctl->rpid, buf, (unsigned long int)remote_map, 0);
+	inject_syscall_buf(ctl->rpid, buf, tmp_map, 0);
 	compel_syscall(ctl->rpid, &orig, 0x2, &remote_fd,
-		       	(unsigned long)remote_map, O_RDWR, 0x0, 0x0, 0x0, 0x0);
+		       	(unsigned long)tmp_map, O_RDWR, 0x0, 0x0, 0x0, 0x0);
 	printf("remote_fd:%ld\n", remote_fd);
 
 	ctl->remote_map = remote_mmap(ctl->rpid, &orig, (void *) 0x0, sizeof(parasite_blob),
