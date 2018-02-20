@@ -67,10 +67,73 @@ void curing(struct parasite_ctl *ctl){
 	compel_rpc_call_sync(PARASITE_CMD_FINI, ctl);
 }
 
+static inline void close_safe(int *pfd){
+	if(*pfd > -1){
+		close(*pfd);
+		*pfd = -1;
+	}
+}
+
 void *compel_parasite_args_p(struct parasite_ctl *ctl){
 	return ctl->addr_args;
 }
 
+static int gen_parasite_saddr(struct sockaddr_un *saddr, int key){
+	int sun_len;
+
+	saddr->sun_family = PF_LOCAL;
+	snprintf(saddr->sun_path, UNIX_PATH_MAX,
+			"X/crtools-pr-%d", key);
+
+	sun_len = SUN_LEN(saddr);
+	*saddr->sun_path = '\0';
+
+	return sun_len;
+}
+
+static int prepare_tsock(struct parasite_ctl *ctl, pid_t pid, 
+		struct parasite_init_args *args){
+		int ssock = -1;
+		socklen_t sk_len;
+		struct sockaddr_un addr;
+
+		args->h_addr_len = gen_parasite_saddr(&args->h_addr, getpid());
+
+		ssock = ctl->ictx.sock;
+		sk_len = sizeof(addr);
+
+		if(ssock == -1){
+			printf("err: No socket in ictx\n");
+			goto err;
+		}
+
+		if(getsockname(ssock, (struct sockaddr *) &addr, &sk_len) < 0){
+			perror("Unable to get name for a socket");
+			return -1;
+		}
+
+		if(sk_len == sizeof(addr.sun_family)){
+			if(bind(ssock, (struct sockaddr *) &args->h_addr,
+						args->h_addr_len) < 0){
+				perror("Can't  bind socket");
+				goto err;
+			}
+
+			if(listen(ssock, 1)){
+				perror("Can't listen on transport socket");
+				goto err;
+			}
+		}
+
+			if(ctl->ictx.flags & INFECT_FAIL_CONNECT)
+				args->h_addr_len = gen_parasite_saddr(&args->h_addr, getpid() + 1);
+
+			ctl->tsock = -ssock;
+			return 0;
+err:
+			close_safe(&ssock);
+			return -1;
+}
 
 
 static int parasite_init_daemon(struct parasite_ctl *ctl){

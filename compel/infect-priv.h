@@ -10,7 +10,7 @@ struct parasite_ctl{
 	void *sigreturn_addr;
 	unsigned long map_length;
 
-	//struct infect_ctx ictx;
+	struct infect_ctx ictx;
 	
 	bool daemonized;
 

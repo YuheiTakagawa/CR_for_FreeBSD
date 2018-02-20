@@ -3,7 +3,7 @@
 #include "xmalloc.h"
 //#include "common/lock.h"
 
-//#include "infect.h"
+#include "infect.h"
 #include "infect-priv.h"
 #include "infect-rpc.h"
 #include "rpc-pie-priv.h"
