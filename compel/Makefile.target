@@ -45,10 +45,10 @@ infect: parasite-head.h $(inject) /tmp/shm ./X
 	$(CC) $(CFLAG) $(INCLUDE) $(inject) -o $@
 
 /tmp/shm:
-	${shell dd if=/dev/zero of=/tmp/shm bs=4096 count=1}
+	dd if=/dev/zero of=/tmp/shm bs=4096 count=1
 
 ./X:
-	${shell mkdir X}
+	mkdir X
 
 .PHONY: clean
 clean:
