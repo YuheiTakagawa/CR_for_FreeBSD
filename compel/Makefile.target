@@ -7,7 +7,9 @@ CFLAG = -Wall
 CFLAG += -c
 LD = ld
 
-UNAME = ${shell uname}
+include ../scripts/msg.mk
+
+UNAME := ${shell uname}
 
 INCLUDE_COMMON = ../src/include/common
 
@@ -22,37 +24,44 @@ USE_FILES += /tmp/shm
 all: infect
 
 parasite-head.h: pie/parasite-head headgen
-	$(RM) $@
-	./headgen $< $@
+	$(call msg-gen, $@)
+	@$(RM) $@
+	$(Q) ./headgen $< $@
 
 headgen: headgen.c
-	$(CC) -o $@ $^
+	$(call msg-gen, $@)
+	$(Q) $(CC) -o $@ $^
 
 pie/parasite-head:
-	$(GNUMAKE) -e -C pie -f Makefile.pie parasite-head 
+	$(GNUMAKE) -e -C pie 
 
 inject += infect-rpc.o
 inject += infect.o
 
 
 %.o: %.c 
-	$(CC) $(INCLUDE) $(CFLAG) -o $@ $^
+	$(call msg-cc, $@)
+	$(Q) $(CC) $(INCLUDE) $(CFLAG) -o $@ $^
 	
 infect: parasite-head.h $(inject) $(USE_FILES)
-	$(CC) -Wall $(INCLUDE) $(inject) -o $@
+	$(call msg-gen, $@)
+	$(Q) $(CC) -Wall $(INCLUDE) $(inject) -o $@
 
 /tmp/shm:
-	dd if=/dev/zero of=/tmp/shm bs=4096 count=1
+	$(call msg-gen, $@)
+	$(Q) dd if=/dev/zero of=/tmp/shm bs=4096 count=1 status=none
 
 ./X:
-	mkdir X
+	$(call msg-gen, $@)
+	$(Q) mkdir X
 
 .PHONY: clean
 clean:
-	$(RM) infect
-	$(RM) parasite-head.h
-	$(RM) ./*.o
-	$(RM) ./*/*.o
-	$(RM) pie/parasite-head
-	$(RM) headgen
-	$(RM) X/crtools-pr-*
+	$(call msg-clean, "compel")
+	$(Q) $(RM) infect
+	$(Q) $(RM) parasite-head.h
+	$(Q) $(RM) ./*.o
+	$(Q) $(RM) ./*/*.o
+	$(Q) $(RM) pie/parasite-head
+	$(Q) $(RM) headgen
+	$(Q) $(RM) X/crtools-pr-*

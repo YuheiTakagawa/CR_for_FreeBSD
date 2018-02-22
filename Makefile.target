@@ -1,7 +1,7 @@
 CC = gcc
 CFLAG = -Wall
 
-UNAME = ${shell uname}
+UNAME := ${shell uname}
 SRC_DIR = ./src
 
 INCLUDE_COMMON = ./src/include/common 
@@ -23,18 +23,23 @@ ifneq ($(UNAME), FreeBSD)
 endif
 endif
 
+include scripts/msg.mk
+
 INCLUDE = -I $(INCLUDE_DEP) -I $(INCLUDE_COMMON) -I ./src 
 
 .PHONY: all
 all: restore getall
 
 restore: $(SRC_DIR) $(INCLUDE_DEP) $(INCLUDE_COMMON)
-	$(CC) $(CFLAG) $(INCLUDE) -o restore $(SRC_DIR)/restore.c
+	$(call msg-gen, $@)
+	$(Q) $(CC) $(CFLAG) $(INCLUDE) -o $@ $(SRC_DIR)/restore.c
 
 getall: $(SRC_DIR) $(INCLUDE_DEP) $(INCLUDE_COMMON)
-	$(CC) $(CFLAG) $(INCLUDE) -o getall $(SRC_DIR)/getall.c
+	$(call msg-gen, $@)
+	$(CC) $(CFLAG) $(INCLUDE) -o $@ $(SRC_DIR)/getall.c
 
 .PHONY: clean
 clean:
-	$(RM) restore
-	$(RM) getall
+	$(call msg-clean, "criu")
+	$(Q) $(RM) restore
+	$(Q) $(RM) getall
