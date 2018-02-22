@@ -1,14 +1,11 @@
+export CC
+export CFLAG
+export LD
+
 CC = gcc
 CFLAG = -Wall
+CFLAG += -c
 LD = ld
-ASFLAG += -c
-ASFLAG += -fpie
-ASFLAG += -Wstrict-prototypes
-ASFLAG += -D__ASSEMBLY__
-ASFLAG += -nostdlib
-ASFLAG += -fomit-frame-pointer
-ASFLAG += -fno-stack-protector
-MAKE = gmake
 
 UNAME = ${shell uname}
 
@@ -17,6 +14,9 @@ INCLUDE_COMMON = ../src/include/common
 INCLUDE_DEP = ../src/include/freebsd
 
 INCLUDE = -I $(INCLUDE_DEP) -I $(INCLUDE_COMMON)
+
+USE_FILES = ./X
+USE_FILES += /tmp/shm
 
 .PHONY: all
 all: infect
@@ -34,15 +34,12 @@ pie/parasite-head:
 inject += infect-rpc.o
 inject += infect.o
 
-%.o: %.S 
-	$(CC) $(ASFLAG) -o $@ $^
-
 
 %.o: %.c 
-	$(CC) $(INCLUDE) -fpie -c -o $@ $^
+	$(CC) $(INCLUDE) $(CFLAG) -o $@ $^
 	
-infect: parasite-head.h $(inject) /tmp/shm ./X
-	$(CC) $(CFLAG) $(INCLUDE) $(inject) -o $@
+infect: parasite-head.h $(inject) $(USE_FILES)
+	$(CC) -Wall $(INCLUDE) $(inject) -o $@
 
 /tmp/shm:
 	dd if=/dev/zero of=/tmp/shm bs=4096 count=1
@@ -54,7 +51,8 @@ infect: parasite-head.h $(inject) /tmp/shm ./X
 clean:
 	$(RM) infect
 	$(RM) parasite-head.h
-	$(RM) *.o
+	$(RM) ./*.o
+	$(RM) ./*/*.o
 	$(RM) pie/parasite-head
 	$(RM) headgen
 	$(RM) X/crtools-pr-*

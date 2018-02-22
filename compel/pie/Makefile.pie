@@ -1,8 +1,5 @@
-CC = gcc
-CFLAG = -Wall
-LD = ld
+COMPELFLAG := -fpie
 ASFLAG := -c
-ASFLAG += -fpie
 ASFLAG += -Wstrict-prototypes
 ASFLAG += -D__ASSEMBLY__
 ASFLAG += -nostdlib
@@ -19,12 +16,7 @@ parasite-head: $(parasite) ../compel-pack.lds.S
 	$(LD) -pie $(parasite) -o $@ -T ../compel-pack.lds.S
 
 %.o: %.S
-	$(CC) $(INCLUDE) $(ASFLAG) -o $@ $^
+	$(CC) $(INCLUDE) $(COMPELFLAG) $(ASFLAG) -o $@ $^
 
 %.o: %.c
-	$(CC) $(INCLUDE) -fpie -c -o $@ $^
-
-.PHONY: clean
-clean:
-	$(RM) *.o
-	$(RM) parasite-head
+	$(CC) $(INCLUDE) $(COMPELFLAG) $(CFLAG) -o $@ $^
