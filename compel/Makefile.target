@@ -16,6 +16,7 @@ INCLUDE_COMMON = ../src/include/common
 INCLUDE_DEP = ../src/include/freebsd
 
 INCLUDE = -I $(INCLUDE_DEP) -I $(INCLUDE_COMMON)
+INCLUDE += -I ./include
 
 USE_FILES = ./X
 USE_FILES += /tmp/shm

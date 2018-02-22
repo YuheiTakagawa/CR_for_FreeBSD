@@ -1,3 +1,5 @@
+/* CRIU source */
+
 #ifndef COMPEL_ARCH_SYSCALL_TYPES_H__
 #define COMPEL_ARCH_SYSCALL_TYPES_H__
 

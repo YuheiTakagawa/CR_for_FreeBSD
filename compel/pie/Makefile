@@ -1,16 +1,18 @@
-COMPELFLAG := -fpie
-ASFLAG := -c
-ASFLAG += -Wstrict-prototypes
-ASFLAG += -D__ASSEMBLY__
-ASFLAG += -nostdlib
-ASFLAG += -fomit-frame-pointer
-ASFLAG += -fno-stack-protector
+COMPELFLAG	:= -fpie
+ASFLAG		:= -c
+ASFLAG		+= -Wstrict-prototypes
+ASFLAG		+= -D__ASSEMBLY__
+ASFLAG		+= -nostdlib
+ASFLAG		+= -fomit-frame-pointer
+ASFLAG		+= -fno-stack-protector
 
-parasite += infect.o
-parasite += syscall.o
-parasite += parasite-head.o
+parasite	+= infect.o
+parasite	+= syscall.o
+parasite	+= parasite-head.o
 
-INCLUDE := -I ../
+INCLUDE		:= -I ../ -I ../include
+
+LDS		:= ../compel-pack.lds.S
 
 include ../../scripts/msg.mk
 
@@ -19,7 +21,7 @@ all: parasite-head
 
 parasite-head: $(parasite) ../compel-pack.lds.S
 	$(call msg-link, $@)
-	$(Q) $(LD) -pie $(parasite) -o $@ -T ../compel-pack.lds.S
+	$(Q) $(LD) -pie $(parasite) -o $@ -T $(LDS)
 
 %.o: %.S
 	$(call msg-cc, $@)
