@@ -309,7 +309,7 @@ int main(int argc, char *argv[]){
 	 * Prepare communicate to Parasite Engine via socket
 	 *
 	 */
-	ctl->addr_cmd = ctl->local_map + parasite_sym__export_parasite_args;
+	ctl->addr_cmd = ctl->local_map + parasite_sym__export_parasite_cmd;
 	ctl->addr_args = ctl->local_map + parasite_sym__export_parasite_args;
 	parasite_init_daemon(ctl);
 
