@@ -95,13 +95,13 @@ static int gen_parasite_saddr(struct sockaddr_un *saddr, int key){
 static int prepare_tsock(struct parasite_ctl *ctl, pid_t pid, 
 	struct parasite_init_args_linux *args){
 	int ssock = -1;
-	socklen_t sk_len;
-	struct sockaddr_un addr, naddr;
+	//socklen_t sk_len;
+	struct sockaddr_un addr;
 
 	args->h_addr_len = gen_parasite_saddr(&addr, getpid());
 
 	ssock = ctl->ictx.sock;
-	sk_len = sizeof(addr);
+	//sk_len = sizeof(addr);
 		
 	if(ssock == -1){
 		printf("err: No socket in ictx\n");
@@ -152,9 +152,7 @@ err:
 static int parasite_init_daemon(struct parasite_ctl *ctl){
 	struct parasite_init_args_linux *args;
 	pid_t pid = ctl->rpid;
-	struct sockaddr_un saddr;
-	int sockfd, clsock;
-	int socklen;
+	int sockfd;
 	struct ctl_msg m = { };
 	struct reg reg;
 
@@ -196,8 +194,7 @@ static int parasite_init_daemon(struct parasite_ctl *ctl){
 }
 
 static int make_sock_for(int pid){
-	int ret, mfd, fd, sk = -1;
-	char p[32];
+	int sk = -1;
 
 	/*
 	 * This function is prepare injection parasite engine about networking.
@@ -222,7 +219,6 @@ int main(int argc, char *argv[]){
 	}
 
 	struct orig orig;
-	struct reg reg;
 	struct parasite_ctl *ctl;
 	struct infect_ctx *ictx;
 

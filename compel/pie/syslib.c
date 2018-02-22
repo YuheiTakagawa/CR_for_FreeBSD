@@ -72,7 +72,6 @@ int connection(void *data){
 	struct parasite_init *args = data;
 	struct ctl_msg m;
 	char st[] = "I'M TAKAGAWA!\n";
-	int i = 0;
 	int tsock;
 	int ret = 0;
 
