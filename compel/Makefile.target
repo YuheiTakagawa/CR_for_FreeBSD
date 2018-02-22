@@ -46,11 +46,14 @@ headgen: headgen.c
 %.o: %.c 
 	$(CC) $(INCLUDE) -fpie -c -o $@ $^
 
-infect: parasite-head.h $(inject) /tmp/shm
+infect: parasite-head.h $(inject) /tmp/shm ./X
 	$(CC) $(CFLAG) $(INCLUDE) $(inject) -o $@
 
 /tmp/shm:
 	${shell dd if=/dev/zero of=/tmp/shm bs=4096 count=1}
+
+./X:
+	${shell mkdir X}
 
 .PHONY: clean
 clean:
@@ -59,4 +62,4 @@ clean:
 	$(RM) *.o
 	$(RM) parasite-head
 	$(RM) headgen
-	$(RM) crtools-pr-*
+	$(RM) X/crtools-pr-*
