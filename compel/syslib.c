@@ -60,9 +60,10 @@ static int fini(int tsock){
 }
 
 static int hp(struct hello_pid *hellop){
-	char ch[] = "Hi, LOCAL. I'm DEAMON";
+	char ch[] = "Hi, LOCAL. I'm DAEMON";
 	memcpy(hellop->hello, ch, sizeof(ch));
 	hellop->pid = sys_getpid();
+
 	return 0;
 }
 
@@ -107,6 +108,7 @@ int connection(void *data){
 				ret = sys_getpid();
 				std_printf("my pid: %d\n", ret);
 				hp(data);
+
 				break;
 		}
 		__parasite_daemon_reply_ack(tsock, m.cmd, ret); 
