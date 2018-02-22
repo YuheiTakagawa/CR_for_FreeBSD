@@ -6,6 +6,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <ctype.h>
 
 #include "parasite_syscall.c"
 #include "ptrace.h"
@@ -324,15 +325,31 @@ int main(int argc, char *argv[]){
 	/*
 	 * Wait for Parasite Engine finishes writing to memory.
 	 * Good method is sync, lock, futex.
-	 * Now implement is sleeping process
+	 * Initial implementation is sleeping process.
+	 * Second implementation is checking data as necessary,
+	 * please implement per CMD.
+	 * I want to implement as polling which especially
+	 * value is changed.
 	 */
-	usleep(20);
+	//usleep(20);
+	//sleep(1);
+	//while((int)*ctl->addr_cmd != PARASITE_CMD_GET_PID + 1024){
+	//int *a = (int *) ctl->addr_cmd;
+	//printf("ctl->addr_cmd %d\n", *a);
+	//}
 
 	/* 
 	 * return address is shared memory + args address
+	 * 
 	 */
 	struct hello_pid *hellop; 
 	hellop = (struct hello_pid*) ctl->addr_args;
+
+	/*
+	 * This is checking data as necessary
+	 */
+	while(!(isdigit(hellop->hello[0]) ||
+			       	isalpha(hellop->hello[0])));
 
 	printf("hello: %s\n", hellop->hello);
 	printf("pid: %d\n", hellop->pid);
