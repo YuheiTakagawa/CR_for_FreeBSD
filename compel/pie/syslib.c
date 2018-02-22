@@ -54,7 +54,7 @@ static int __parasite_daemon_wait_msg(int tsock, struct ctl_msg *m)
 }
 
 static int fini(int tsock){
-	//unsigned long new_sp;
+//	//unsigned long new_sp;
 	sys_close(tsock);
 	return -1;
 }

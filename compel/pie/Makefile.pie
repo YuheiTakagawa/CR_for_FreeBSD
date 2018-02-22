@@ -1,0 +1,30 @@
+CC = gcc
+CFLAG = -Wall
+LD = ld
+ASFLAG := -c
+ASFLAG += -fpie
+ASFLAG += -Wstrict-prototypes
+ASFLAG += -D__ASSEMBLY__
+ASFLAG += -nostdlib
+ASFLAG += -fomit-frame-pointer
+ASFLAG += -fno-stack-protector
+
+parasite += writecall.o
+parasite += syscall.o
+parasite += parasite-head.o
+
+INCLUDE := -I ../
+
+parasite-head: $(parasite) ../compel-pack.lds.S
+	$(LD) -pie $(parasite) -o $@ -T ../compel-pack.lds.S
+
+%.o: %.S
+	$(CC) $(INCLUDE) $(ASFLAG) -o $@ $^
+
+%.o: %.c
+	$(CC) $(INCLUDE) -fpie -c -o $@ $^
+
+.PHONY: clean
+clean:
+	$(RM) *.o
+	$(RM) parasite-head

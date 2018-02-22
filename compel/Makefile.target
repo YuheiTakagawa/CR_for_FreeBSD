@@ -1,13 +1,14 @@
 CC = gcc
 CFLAG = -Wall
 LD = ld
-ASFLAG := -c
+ASFLAG += -c
 ASFLAG += -fpie
 ASFLAG += -Wstrict-prototypes
 ASFLAG += -D__ASSEMBLY__
 ASFLAG += -nostdlib
 ASFLAG += -fomit-frame-pointer
 ASFLAG += -fno-stack-protector
+MAKE = gmake
 
 UNAME = ${shell uname}
 
@@ -20,32 +21,26 @@ INCLUDE = -I $(INCLUDE_DEP) -I $(INCLUDE_COMMON)
 .PHONY: all
 all: infect
 
-parasite += writecall.o
-parasite += syscall.o
-parasite += parasite-head.o
-
-inject += infect-rpc.o
-inject += infect.o
-
-parasite-head.h: parasite-head headgen 
-
-	${shell rm parasite-head.h}
-	${shell ./headgen parasite-head parasite-head.h}
-#	${shell xxd -i parasite-head > parasite-head.h}
-
-parasite-head: $(parasite) compel-pack.lds.S
-	$(LD) -pie $(parasite) -o $@ -T compel-pack.lds.S
+parasite-head.h: pie/parasite-head headgen
+	$(RM) $@
+	./headgen $< $@
 
 headgen: headgen.c
 	$(CC) -o $@ $^
 
+pie/parasite-head:
+	$(GNUMAKE) -e -C pie -f Makefile.pie parasite-head 
+
+inject += infect-rpc.o
+inject += infect.o
 
 %.o: %.S 
 	$(CC) $(ASFLAG) -o $@ $^
 
+
 %.o: %.c 
 	$(CC) $(INCLUDE) -fpie -c -o $@ $^
-
+	
 infect: parasite-head.h $(inject) /tmp/shm ./X
 	$(CC) $(CFLAG) $(INCLUDE) $(inject) -o $@
 
@@ -60,6 +55,6 @@ clean:
 	$(RM) infect
 	$(RM) parasite-head.h
 	$(RM) *.o
-	$(RM) parasite-head
+	$(RM) pie/parasite-head
 	$(RM) headgen
 	$(RM) X/crtools-pr-*
