@@ -3,6 +3,7 @@ getall
 build/
 *.core
 *.swp
+*.o
 #!*.c
 #!
 #!.gitignore
