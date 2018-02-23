@@ -4,3 +4,4 @@ parasite-head.h
 headgen
 a.out
 *.o
+*.a
