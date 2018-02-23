@@ -9,6 +9,7 @@ TARGETMAKEFILE=./Makefile.target
 
 all: Makefile.target
 	$(GNUMAKE) -e --no-print-directory -f $(TARGETMAKEFILE) $@
+.PHONY: all
 
 .DEFAULT:
 	$(GNUMAKE) -e --no-print-directory -f $(TARGETMAKEFILE) $@

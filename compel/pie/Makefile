@@ -10,7 +10,7 @@ parasite	+= infect.o
 parasite	+= syscall.o
 parasite	+= parasite-head.o
 
-INCLUDE		:= -I ../ -I ../include
+INCLUDE		:= -I ./std -I ./ -I ../ -I ../include
 
 LDS		:= ../compel-pack.lds.S
 
@@ -19,7 +19,7 @@ include ../../scripts/msg.mk
 all: parasite-head
 .PHONY: all
 
-parasite-head: $(parasite) ../compel-pack.lds.S
+parasite-head: $(parasite) $(LDS)
 	$(call msg-link, $@)
 	$(Q) $(LD) -pie $(parasite) -o $@ -T $(LDS)
 
