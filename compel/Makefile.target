@@ -65,8 +65,12 @@ test-obj += $(INCLUDE_DEP)/ptrace.o
 test-obj += $(INCLUDE_DEP)/parasite_syscall.o
 
 .PHONY: test
-test: inject-test/inject-test.c infect.a
-	$(CC) -Wall $(INCLUDE_TEST) $^ -o inject-test/inject-test
+test: inject-test/inject-test
+
+inject-test/inject-test: $(test-obj)
+	$(call msg-gen, $@)
+	$(Q) $(CC) -Wall $(INCLUDE_TEST) $^ -o $@
+
 
 .PHONY: clean
 clean:

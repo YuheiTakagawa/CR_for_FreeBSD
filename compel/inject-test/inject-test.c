@@ -12,7 +12,7 @@
 #include <sys/wait.h>
 #include <sys/ptrace.h>
 
-#include "parasite_syscall.c"
+#include "parasite_syscall.h"
 #include "ptrace.h"
 #include "register.c"
 #include "parasite-head.h"
