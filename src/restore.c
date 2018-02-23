@@ -13,7 +13,7 @@
 #include "register.c"
 #include "setmem.c"
 #include "ptrace.h"
-#include "parasite_syscall.c"
+#include "parasite_syscall.h"
 #include "breakpoint.c"
 
 #define BUFSIZE 1024

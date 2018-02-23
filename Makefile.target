@@ -26,18 +26,31 @@ endif
 endif
 
 
-INCLUDE = -I $(INCLUDE_DEP) -I $(INCLUDE_COMMON) -I ./src 
+INCLUDE = -I $(INCLUDE_DEP) -I $(INCLUDE_COMMON) 
+
+OBJ += compel/infect.a
+OBJ += $(INCLUDE_DEP)/ptrace.o
+OBJ += $(INCLUDE_DEP)/parasite_syscall.o
+
+%.o: %.c
+	$(Q) $(CC) $(INCLUDE) $(CFALG) -c -o $@ $^
+
+compel/infect.a:
+	$(GNUMAKE) -e -C compel
 
 .PHONY: all
 all: restore getall
 
-restore: $(SRC_DIR) $(INCLUDE_DEP) $(INCLUDE_COMMON)
-	$(call msg-gen, $@)
-	$(Q) $(CC) $(CFLAG) $(INCLUDE) -o $@ $(SRC_DIR)/restore.c
 
-getall: $(SRC_DIR) $(INCLUDE_DEP) $(INCLUDE_COMMON)
+restore: $(SRC_DIR) $(INCLUDE_DEP) $(INCLUDE_COMMON) $(OBJ)
 	$(call msg-gen, $@)
-	$(CC) $(CFLAG) $(INCLUDE) -o $@ $(SRC_DIR)/getall.c
+	$(Q) $(CC) $(CFLAG) $(INCLUDE) $(SRC_DIR)/restore.c $(OBJ) -o $@
+
+
+getall: $(SRC_DIR) $(INCLUDE_DEP) $(INCLUDE_COMMON) $(OBJ)
+	$(call msg-gen, $@)
+	$(Q) $(CC) $(CFLAG) $(INCLUDE) $(SRC_DIR)/getall.c $(OBJ) -o $@
+
 
 .PHONY: clean
 clean:

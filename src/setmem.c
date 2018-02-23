@@ -5,10 +5,14 @@
 
 #include "files.h"
 #include "getmap.c"
-#include "parasite_syscall.c"
+#include "parasite_syscall.h"
 
 #define BUFSIZE 1024
 #define PATHBUF 30
+
+#define BUILTIN_SYSCALL_SIZE 8
+
+#define LINUX_MAP_ANONYMOUS 0x20
 
 struct remap_vm_struct{
 	unsigned long int new_addr;

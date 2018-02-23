@@ -58,6 +58,12 @@ infect.a: parasite-head.h $(inject) $(USE_FILES)
 	$(call msg-gen, $@)
 	$(Q) mkdir $@
 
+
+test-obj := inject-test/inject-test.c
+test-obj += infect.a
+test-obj += $(INCLUDE_DEP)/ptrace.o
+test-obj += $(INCLUDE_DEP)/parasite_syscall.o
+
 .PHONY: test
 test: inject-test/inject-test.c infect.a
 	$(CC) -Wall $(INCLUDE_TEST) $^ -o inject-test/inject-test

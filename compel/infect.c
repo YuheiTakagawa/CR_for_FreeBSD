@@ -18,30 +18,14 @@
 #include "rpc-pie-priv.h"
 #include "infect-rpc.h"
 #include "infect-priv.h"
+#include "parasite_syscall.h"
+#include "ptrace.h"
 
 #define LINUX_MAP_ANONYMOUS 0x20 //ANONYMOUS of FreeBSD is 0x200, ANONYMOUS of Linux is 0x20
 #define PROT_ALL (PROT_EXEC | PROT_WRITE | PROT_READ) 
 #define PARASITE_STACK_SIZE	(16 << 10)
 #define RESTORE_STACK_SIGFRAME 0 // TODO Calc SIGFRAMESIZE
 #define SHARED_FILE_PATH "/tmp/shm"
-
-struct orig{
-	long text;
-	long data;
-	char *addr;
-	struct reg reg;
-};
-extern int ptrace_write_i(int, unsigned long int, int);
-extern void step_debug(int);
-extern int ptrace_step(int);
-extern int ptrace_get_regs(int, struct reg*);
-extern int print_regs(int);
-extern int ptrace_set_regs(int, struct reg*);
-extern int ptrace_cont(int);
-extern int ptrace_attach(int);
-extern int waitpro(int, int*);
-extern void *remote_mmap(int, struct orig*, void*, int, unsigned long int, unsigned long int, unsigned long int, unsigned long int);
-extern void compel_syscall(int, struct orig*, int, long int*, unsigned long int, unsigned long int, unsigned long int, unsigned long int, unsigned long int, unsigned long int);
 
 struct hello_pid{
 	char hello[256];
@@ -232,7 +216,7 @@ static int make_sock_for(int pid){
 	return sk;
 }
 
-int injection(int pid){
+int injection(pid_t pid){
 	struct orig orig;
 	struct parasite_ctl *ctl;
 	struct infect_ctx *ictx;

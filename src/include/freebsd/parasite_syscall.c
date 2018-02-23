@@ -1,13 +1,12 @@
-#ifndef PARASITE_SYSCALL
-#define PARASITE_SYSCALL
-
+#include <stdio.h>
 #include <unistd.h>
 #include <stdarg.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <errno.h>
+#include <sys/wait.h>
 
-//#include "getmem.c"
-//#include "setmem.c"
+#include "parasite_syscall.h"
 #include "ptrace.h"
 
 #define BUFSIZE 1024
@@ -15,27 +14,16 @@
 #define SYSCALL_ARGS 7 
 #define BUILTIN_SYSCALL_SIZE 8
 
-#define LINUX_MAP_ANONYMOUS 0x20
-
 #define set_user_reg(pregs, name, val)	\
 		(pregs->name = (val))
 
 #define get_user_reg(pregs, name)	\
 		(pregs.name)
 
-char code_syscall[] = {
+const char code_syscall[] = {
        0x0f, 0x05,	/* syscall	*/
        0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc	/* int 3, ... */
 }; 
-
-struct orig{
-	long text;
-	long data;
-	char *addr;
-	struct reg reg;
-};
-
-void restore_orig(pid_t, struct orig*);
 
 void parasite_setup_regs(unsigned long new_ip, void *stack, struct reg *regs){
 	set_user_reg(regs, r_rip, new_ip);
@@ -89,7 +77,7 @@ err:
 			
 
 
-int compel_execute_syscall(int pid, struct orig *orig, struct reg *regs){
+int compel_execute_syscall(pid_t pid, struct orig *orig, struct reg *regs){
 	int err;
 	uint8_t code_orig[BUILTIN_SYSCALL_SIZE];
 	unsigned long rip = regs -> r_rip;
@@ -115,7 +103,7 @@ int compel_execute_syscall(int pid, struct orig *orig, struct reg *regs){
 	return err;
 }
 
-void compel_syscall(int pid, struct orig *orig, int nr, long *ret,
+void compel_syscall(pid_t pid, struct orig *orig, int nr, long *ret,
 		unsigned long arg1,
 		unsigned long arg2,
 		unsigned long arg3,
@@ -155,7 +143,7 @@ void *remote_mmap(pid_t pid, struct orig *orig, void *addr, size_t length, int p
 	return (void *)map;
 }
 
-void restore_setregs(int pid, struct reg orig){
+void restore_setregs(pid_t pid, struct reg orig){
 	struct reg reg;
 	
 	ptrace_get_regs(pid, &reg);
@@ -165,15 +153,14 @@ void restore_setregs(int pid, struct reg orig){
 	printf("restore_registers\n");
 }
 
-void restore_memory(int pid, struct orig *orig){
+void restore_memory(pid_t pid, struct orig *orig){
 	ptrace_write_i(pid, orig->reg.r_rip, orig->text);
 	if(orig->addr != 0x0)
 	ptrace_write_d(pid, (unsigned long int)orig->addr, orig->data);
 }
 
-void restore_orig(int pid, struct orig *orig){
+void restore_orig(pid_t pid, struct orig *orig){
 	restore_setregs(pid, orig->reg);
 	restore_memory(pid, orig);
 }
 
-#endif
