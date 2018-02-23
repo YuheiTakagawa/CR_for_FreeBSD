@@ -9,7 +9,7 @@
 #include <string.h>
 #include <sys/mman.h>
 
-#include "fds.c"
+#include "fds.h"
 #include "register.c"
 #include "setmem.c"
 #include "ptrace.h"

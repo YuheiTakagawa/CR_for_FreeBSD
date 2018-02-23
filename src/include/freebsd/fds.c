@@ -1,5 +1,3 @@
-#ifndef GETFD
-#define GETFD
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/param.h>
@@ -11,18 +9,7 @@
 #include "files.h"
 
 #include "common.h"
-
-struct restore_fd_struct{
-	char path[BUFSIZE];
-	int fd;
-	off_t offset;
-};
-
-struct fd_list{
-	int fd[FD_MAX];
-	char *path[FD_MAX];
-	off_t offset[FD_MAX];
-};
+#include "fds.h"
 
 int prepare_restore_files(char *path, int fd, off_t foff){
         printf("PATH:%s\n", path);
@@ -102,4 +89,3 @@ int getfd(int pid){
 	return 0;
 }
 
-#endif

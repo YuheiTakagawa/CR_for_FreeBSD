@@ -63,6 +63,7 @@ test-obj := inject-test/inject-test.c
 test-obj += infect.a
 test-obj += $(INCLUDE_DEP)/ptrace.o
 test-obj += $(INCLUDE_DEP)/parasite_syscall.o
+test-obj += $(INCLUDE_COMMON)/files.o
 
 .PHONY: test
 test: inject-test/inject-test

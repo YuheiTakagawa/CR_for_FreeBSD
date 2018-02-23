@@ -7,7 +7,7 @@ CFLAG += -D_WITH_DPRINTF
 UNAME := ${shell uname}
 SRC_DIR = ./src
 
-INCLUDE_COMMON = ./src/include/common 
+INCLUDE_COMMON = ./src/include/common
 
 ifeq ($(UNAME), Linux)
 # for Linux include file
@@ -32,9 +32,11 @@ INCLUDE = -I $(INCLUDE_DEP) -I $(INCLUDE_COMMON)
 OBJ += compel/infect.a
 OBJ += $(INCLUDE_DEP)/ptrace.o
 OBJ += $(INCLUDE_DEP)/parasite_syscall.o
+OBJ += $(INCLUDE_DEP)/fds.o
+OBJ += $(INCLUDE_COMMON)/files.o
 
 %.o: %.c
-	$(Q) $(CC) $(INCLUDE) $(CFALG) -c -o $@ $^
+	$(Q) $(CC) $(INCLUDE) $(CFLAG) -c -o $@ $^
 
 compel/infect.a:
 	$(GNUMAKE) -e -C compel
@@ -43,12 +45,12 @@ compel/infect.a:
 all: restore getall
 
 
-restore: $(SRC_DIR) $(INCLUDE_DEP) $(INCLUDE_COMMON) $(OBJ)
+restore: $(OBJ)
 	$(call msg-gen, $@)
 	$(Q) $(CC) $(CFLAG) $(INCLUDE) $(SRC_DIR)/restore.c $(OBJ) -o $@
 
 
-getall: $(SRC_DIR) $(INCLUDE_DEP) $(INCLUDE_COMMON) $(OBJ)
+getall: $(OBJ)
 	$(call msg-gen, $@)
 	$(Q) $(CC) $(CFLAG) $(INCLUDE) $(SRC_DIR)/getall.c $(OBJ) -o $@
 
@@ -58,4 +60,5 @@ clean:
 	$(call msg-clean, "criu")
 	$(Q) $(RM) restore
 	$(Q) $(RM) getall
+	$(Q) $(RM) $(OBJ)
 	$(Q) $(GNUMAKE) -e -C compel clean

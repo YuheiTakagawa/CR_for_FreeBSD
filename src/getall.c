@@ -12,7 +12,7 @@
 #include "ptrace.h"
 #include "getmem.c"
 #include "register.c"
-#include "fds.c"
+#include "fds.h"
 #include "common.h"
 
 int tracing(pid_t pid);
