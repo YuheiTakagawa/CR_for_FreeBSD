@@ -1,4 +1,6 @@
-CC = gcc
+include scripts/msg.mk
+include scripts/tools.mk
+
 CFLAG = -Wall
 
 UNAME := ${shell uname}
@@ -23,7 +25,6 @@ ifneq ($(UNAME), FreeBSD)
 endif
 endif
 
-include scripts/msg.mk
 
 INCLUDE = -I $(INCLUDE_DEP) -I $(INCLUDE_COMMON) -I ./src 
 
