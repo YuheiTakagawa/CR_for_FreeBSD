@@ -28,12 +28,12 @@ void get_vmmap(int pid, struct vmds *vmds, int flag){
 	unsigned int count = 0;
 	char tmp[BUFSIZE];
 
-	int page_size;
+	//int page_size;
 	int size;
 
 	int write_fd = open_dump_file(pid, "map");
 
-	page_size = getpagesize();
+	//page_size = getpagesize();
 
 	prst = procstat_open_sysctl();
 	kp = procstat_getprocs(prst, KERN_PROC_PID, pid, &count);

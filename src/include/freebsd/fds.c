@@ -1,6 +1,5 @@
 #ifndef GETFD
 #define GETFD
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/param.h>

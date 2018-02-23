@@ -1,4 +1,3 @@
-#define _WITH_DPRINTF
 #include <stdio.h>
 #include <unistd.h>
 #include <ctype.h>

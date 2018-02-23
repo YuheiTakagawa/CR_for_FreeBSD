@@ -2,6 +2,7 @@ include scripts/msg.mk
 include scripts/tools.mk
 
 CFLAG = -Wall
+CFLAG += -D_WITH_DPRINTF
 
 UNAME := ${shell uname}
 SRC_DIR = ./src
