@@ -16,9 +16,7 @@
 #include "parasite_syscall.h"
 #include "breakpoint.c"
 
-#define BUFSIZE 1024
-#define PATHBUF 30
-
+#include "common.h"
 
 int target(char *path, char* argv[]);
 

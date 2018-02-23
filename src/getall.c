@@ -14,9 +14,7 @@
 #include "getmem.c"
 #include "register.c"
 #include "fds.c"
-
-#define BUFSIZE 1024
-#define PATHBUF 30
+#include "common.h"
 
 int tracing(pid_t pid);
 extern int injection(pid_t pid);

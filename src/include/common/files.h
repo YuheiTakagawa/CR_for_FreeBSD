@@ -1,11 +1,11 @@
-#include <unistd.h>
-#include <string.h>
-
 #ifndef FILES_H
 #define FILES_H
 
-#define BUFSIZE 1024
-#define PATHBUF 30
+#include <unistd.h>
+#include <string.h>
+
+#include "common.h"
+
 
 int open_file(pid_t pid, char* flag){
 	char filepath[PATHBUF];

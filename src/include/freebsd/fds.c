@@ -11,7 +11,7 @@
 
 #include "files.h"
 
-#define FD_MAX 1024
+#include "common.h"
 
 struct restore_fd_struct{
 	char path[BUFSIZE];

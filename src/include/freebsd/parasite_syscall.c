@@ -9,9 +9,8 @@
 #include "parasite_syscall.h"
 #include "ptrace.h"
 
-#define BUFSIZE 1024
-#define PATHBUF 30
-#define SYSCALL_ARGS 7 
+#include "common.h"
+
 #define BUILTIN_SYSCALL_SIZE 8
 
 #define set_user_reg(pregs, name, val)	\

@@ -20,12 +20,12 @@
 #include "infect-priv.h"
 #include "parasite_syscall.h"
 #include "ptrace.h"
+#include "emulate.h"
+#include "common.h"
 
-#define LINUX_MAP_ANONYMOUS 0x20 //ANONYMOUS of FreeBSD is 0x200, ANONYMOUS of Linux is 0x20
 #define PROT_ALL (PROT_EXEC | PROT_WRITE | PROT_READ) 
 #define PARASITE_STACK_SIZE	(16 << 10)
 #define RESTORE_STACK_SIGFRAME 0 // TODO Calc SIGFRAMESIZE
-#define SHARED_FILE_PATH "/tmp/shm"
 
 struct hello_pid{
 	char hello[256];
