@@ -44,3 +44,4 @@ clean:
 	$(call msg-clean, "criu")
 	$(Q) $(RM) restore
 	$(Q) $(RM) getall
+	$(Q) $(GNUMAKE) -e -C compel clean
