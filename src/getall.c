@@ -9,6 +9,7 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "parasite_syscall.c"
 #include "getmem.c"
 #include "register.c"
 #include "fds.c"
@@ -17,6 +18,7 @@
 #define PATHBUF 30
 
 int tracing(pid_t pid);
+extern int injection(int pid);
 
 
 int main(int argc, char* argv[]){
@@ -40,6 +42,7 @@ int tracing(pid_t pid){
 	if(WIFEXITED(status)){
 	} else if (WIFSTOPPED(status)){
 		printf("stop %d\n", pid);
+		injection(pid);
 		getfd(pid);
 		getregs(pid);
 		getmems(pid);
