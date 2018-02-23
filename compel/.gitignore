@@ -2,6 +2,7 @@ infect
 parasite-head
 parasite-head.h
 headgen
+inject-test/inject-test
 a.out
 *.o
 *.a
