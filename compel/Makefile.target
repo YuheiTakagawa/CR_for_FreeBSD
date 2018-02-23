@@ -18,11 +18,13 @@ INCLUDE_DEP = ../src/include/freebsd
 INCLUDE = -I $(INCLUDE_DEP) -I $(INCLUDE_COMMON)
 INCLUDE += -I ./include
 
-USE_FILES = ./X
+INCLUDE_TEST = $(INCLUDE) -I ./
+
+USE_FILES = /X
 USE_FILES += /tmp/shm
 
 .PHONY: all
-all: infect
+all: infect.a
 
 parasite-head.h: pie/parasite-head headgen
 	$(call msg-gen, $@)
@@ -44,17 +46,22 @@ inject += infect.o
 	$(call msg-cc, $@)
 	$(Q) $(CC) $(INCLUDE) $(CFLAG) -o $@ $^
 	
-infect: parasite-head.h $(inject) $(USE_FILES)
+infect.a: parasite-head.h $(inject) $(USE_FILES)
 	$(call msg-gen, $@)
-	$(Q) $(CC) -Wall $(INCLUDE) $(inject) -o $@
+	$(Q) ar cr infect.a $(inject)
+#$(Q) $(CC) -Wall -c $(INCLUDE) $(inject) -o $@
 
 /tmp/shm:
 	$(call msg-gen, $@)
 	$(Q) dd if=/dev/zero of=/tmp/shm bs=4096 count=1 status=none
 
-./X:
+/X:
 	$(call msg-gen, $@)
-	$(Q) mkdir X
+	$(Q) mkdir $@
+
+.PHONY: test
+test: inject-test/inject-test.c infect.a
+	$(CC) -Wall $(INCLUDE_TEST) $^ -o inject-test/inject-test
 
 .PHONY: clean
 clean:
@@ -65,4 +72,5 @@ clean:
 	$(Q) $(RM) ./*/*.o
 	$(Q) $(RM) pie/parasite-head
 	$(Q) $(RM) headgen
-	$(Q) $(RM) X/crtools-pr-*
+	$(Q) $(RM) /X/crtools-pr-*
+	$(Q) $(RM) *.a

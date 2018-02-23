@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -7,10 +8,10 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <ctype.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/ptrace.h>
 
-#include "parasite_syscall.c"
-#include "ptrace.h"
-#include "register.c"
 #include "parasite-head.h"
 #include "parasite.h"
 #include "infect.h"
@@ -21,8 +22,26 @@
 #define LINUX_MAP_ANONYMOUS 0x20 //ANONYMOUS of FreeBSD is 0x200, ANONYMOUS of Linux is 0x20
 #define PROT_ALL (PROT_EXEC | PROT_WRITE | PROT_READ) 
 #define PARASITE_STACK_SIZE	(16 << 10)
-#define RESTORE_STACK_SIGFRAME 0 // Please Calc
+#define RESTORE_STACK_SIGFRAME 0 // TODO Calc SIGFRAMESIZE
 #define SHARED_FILE_PATH "/tmp/shm"
+
+struct orig{
+	long text;
+	long data;
+	char *addr;
+	struct reg reg;
+};
+extern int ptrace_write_i(int, unsigned long int, int);
+extern void step_debug(int);
+extern int ptrace_step(int);
+extern int ptrace_get_regs(int, struct reg*);
+extern int print_regs(int);
+extern int ptrace_set_regs(int, struct reg*);
+extern int ptrace_cont(int);
+extern int ptrace_attach(int);
+extern int waitpro(int, int*);
+extern void *remote_mmap(int, struct orig*, void*, int, unsigned long int, unsigned long int, unsigned long int, unsigned long int);
+extern void compel_syscall(int, struct orig*, int, long int*, unsigned long int, unsigned long int, unsigned long int, unsigned long int, unsigned long int, unsigned long int);
 
 struct hello_pid{
 	char hello[256];
@@ -84,8 +103,12 @@ static int gen_parasite_saddr(struct sockaddr_un *saddr, int key){
 	int sun_len;
 
 	saddr->sun_family = PF_LOCAL;
+	/*
+	 * X/crtools-pr-%d is not root in CRIU for Linux.
+	 * Temporary, CRIU for FreeBSD has X/crtools-pr-%d to root.
+	 */
 	snprintf(saddr->sun_path, UNIX_PATH_MAX,
-			"X/crtools-pr-%d", key);
+			"/X/crtools-pr-%d", key);
 
 	sun_len = SUN_LEN(saddr);
 	*(saddr->sun_path + sun_len) = '\0';
@@ -209,16 +232,7 @@ static int make_sock_for(int pid){
 	return sk;
 }
 
-
-int main(int argc, char *argv[]){
-
-	if(argc < 2){
-
-		printf("usage: ./injection <PID>\n");
-		exit(1);
-
-	}
-
+int injection(int pid){
 	struct orig orig;
 	struct parasite_ctl *ctl;
 	struct infect_ctx *ictx;
@@ -232,11 +246,9 @@ int main(int argc, char *argv[]){
 	long ret;
 
 	int status;
-	int pid;
 
 	ctl = (struct parasite_ctl *) malloc(sizeof(struct parasite_ctl));
 
-       	pid = atoi(argv[1]);
 	ctl->rpid = pid;
 
 	/*
@@ -245,9 +257,6 @@ int main(int argc, char *argv[]){
 	ictx = &ctl->ictx;
 	ictx->sock = make_sock_for(pid);
 	
-	ptrace_attach(ctl->rpid);
-	waitpro(ctl->rpid, &status);
-
 
 	/* 
 	 *
@@ -383,8 +392,5 @@ int main(int argc, char *argv[]){
 	ptrace_set_regs(ctl->rpid, &orig.reg);
 	printf("restore reg\n");
 
-	//ptrace_cont(pid);
-	//while(1){}
-	ptrace_detach(ctl->rpid);
 	return 0;
 }
