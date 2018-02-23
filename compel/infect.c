@@ -327,13 +327,15 @@ int main(int argc, char *argv[]){
 	 * I want to implement as polling which especially
 	 * value is changed.
 	 */
-	//usleep(20);
-	//sleep(1);
-	//while((int)*ctl->addr_cmd != PARASITE_CMD_GET_PID + 1024){
-	//int *a = (int *) ctl->addr_cmd;
-	//printf("ctl->addr_cmd %d\n", *a);
-	//}
-
+	/*
+	usleep(20);
+	sleep(1);
+	while((int)*ctl->addr_cmd != PARASITE_CMD_GET_PID + 1024){
+	int *a = (int *) ctl->addr_cmd;
+	printf("ctl->addr_cmd %d\n", *a);
+	}
+	*/
+	
 	/* 
 	 * return address is shared memory + args address
 	 * 
@@ -372,8 +374,11 @@ int main(int argc, char *argv[]){
 	 *  Please, munmap in Parasite engine itself 
 	 */
 	/* maybe, I think restore memory in compel_syscall, this routine is bad. */
-	//compel_syscall(pid, &orig, 0xb, &ret, (unsigned long)remote_fd_map, 0x1000, 0x0, 0x0, 0x0, 0x0);
-	//compel_syscall(pid, &orig, 0xb, &ret, (unsigned long)remote_map, 0x0, 0x0, 0x0, 0x0, 0x0);
+	/*
+	compel_syscall(pid, &orig, 0xb, &ret, (unsigned long)remote_fd_map, 0x1000, 0x0, 0x0, 0x0, 0x0);
+	compel_syscall(pid, &orig, 0xb, &ret, (unsigned long)remote_map, 0x0, 0x0, 0x0, 0x0, 0x0);
+	*/
+
 	ptrace_set_regs(ctl->rpid, &orig.reg);
 	printf("restore reg\n");
 
