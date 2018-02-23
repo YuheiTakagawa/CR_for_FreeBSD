@@ -22,6 +22,7 @@
 #define PROT_ALL (PROT_EXEC | PROT_WRITE | PROT_READ) 
 #define PARASITE_STACK_SIZE	(16 << 10)
 #define RESTORE_STACK_SIGFRAME 0 // Please Calc
+#define SHARED_FILE_PATH "/tmp/shm"
 
 struct hello_pid{
 	char hello[256];
@@ -223,7 +224,7 @@ int main(int argc, char *argv[]){
 	struct infect_ctx *ictx;
 
 	void *tmp_map;
-	char buf[] = "/tmp/shm";
+	char buf[] = SHARED_FILE_PATH;
 
 	int fd;
 	long remote_fd;
