@@ -23,7 +23,7 @@ int setmems(pid_t pid, pid_t filePid, struct remap_vm_struct *revm){
 		revm++;
 	}
 
-        read_fd = open_file(filePid, "data");
+        read_fd = open_file(filePid, "heap");
         write_mem(read_fd, write_fd, revm->new_addr); 
 
 	while(revm->flags != LINUX_MAP_GROWDOWN){
