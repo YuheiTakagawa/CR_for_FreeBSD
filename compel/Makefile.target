@@ -1,6 +1,7 @@
 export CFLAG
 CFLAG = -Wall
 CFLAG += -c
+CFLAG += -D_BSD
 
 include ../scripts/msg.mk
 include ../scripts/tools.mk
@@ -9,7 +10,8 @@ include ../scripts/tools.mk
 
 INCLUDE = -I ../src/include
 
-SRC_DEP = ../src/include/freebsd
+SRC = ../src
+SRC_DEP = ../src/freebsd
 
 INCLUDE += -I ./include
 
@@ -60,9 +62,10 @@ infect.a: parasite-head.h $(inject) $(USE_FILES)
 
 test-obj := inject-test/inject-test.c
 test-obj += infect.a
-test-obj += $(INCLUDE_DEP)/ptrace.o
-test-obj += $(INCLUDE_DEP)/parasite_syscall.o
-test-obj += $(INCLUDE_COMMON)/files.o
+test-obj += $(SRC_DEP)/ptrace.o
+test-obj += $(SRC_DEP)/parasite_syscall.o
+test-obj += $(SRC_DEP)/register.o
+test-obj += $(SRC)/files.o
 
 .PHONY: test
 test: inject-test/inject-test

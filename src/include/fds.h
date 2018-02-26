@@ -11,7 +11,7 @@ struct restore_fd_struct{
 
 struct fd_list{
 	int fd[FD_MAX];
-	char *path[FD_MAX];
+	char path[FD_MAX][PATHBUF];
 	off_t offset[FD_MAX];
 };
 

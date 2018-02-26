@@ -11,13 +11,15 @@ INCLUDE = -I ./src/include
 
 ifeq ($(UNAME), Linux)
 # for Linux include file
-SRC_DEP = ./src/include/linux
+SRC_DEP = ./src/linux
+CFLAG += -D_LINUX
 endif
 
 ifeq ($(UNAME), FreeBSD)
 # for FreeBSD include file
 SRC_DEP = ./src/freebsd
 CFLAG += -lprocstat
+CFLAG += -D_BSD
 endif
 
 ifneq ($(UNAME), Linux)
