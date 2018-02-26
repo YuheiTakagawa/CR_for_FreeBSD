@@ -4,11 +4,11 @@ include scripts/tools.mk
 CFLAG = -Wall
 CFLAG += -D_WITH_DPRINTF
 
-UNAME := ${shell uname}
 SRC_DIR = ./src
-
 INCLUDE = -I ./src/include
 
+
+UNAME := ${shell uname}
 ifeq ($(UNAME), Linux)
 # for Linux include file
 SRC_DEP = ./src/linux
@@ -27,6 +27,7 @@ ifneq ($(UNAME), FreeBSD)
 	$(error ("Sorry, unsupported"))
 endif
 endif
+
 
 OBJ += compel/infect.a
 OBJ += $(SRC_DIR)/files.o
@@ -50,8 +51,10 @@ ROBJ += $(SRC_DIR)/breakpoint.o
 compel/infect.a:
 	$(GNUMAKE) -e -C compel
 
+target = restore getall
+
 .PHONY: all
-all: restore getall
+all: $(target)
 
 
 restore: $(OBJ) $(ROBJ)
@@ -67,7 +70,5 @@ getall: $(OBJ) $(COBJ)
 .PHONY: clean
 clean:
 	$(call msg-clean, "criu")
-	$(Q) $(RM) restore
-	$(Q) $(RM) getall
-	$(Q) $(RM) $(OBJ) $(COBJ) $(ROBJ)
+	$(Q) $(RM) $(target) $(OBJ) $(COBJ) $(ROBJ)
 	$(Q) $(GNUMAKE) -e -C compel clean

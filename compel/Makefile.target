@@ -59,8 +59,8 @@ infect.a: parasite-head.h $(inject) $(USE_FILES)
 	$(call msg-gen, $@)
 	$(Q) mkdir $@
 
+test-target := inject-test/inject-test.c
 
-test-obj := inject-test/inject-test.c
 test-obj += infect.a
 test-obj += $(SRC_DEP)/ptrace.o
 test-obj += $(SRC_DEP)/parasite_syscall.o
@@ -70,7 +70,7 @@ test-obj += $(SRC)/files.o
 .PHONY: test
 test: inject-test/inject-test
 
-inject-test/inject-test: $(test-obj)
+inject-test/inject-test: $(test-target) $(test-obj)
 	$(call msg-gen, $@)
 	$(Q) $(CC) -Wall $(INCLUDE_TEST) $^ -o $@
 
@@ -80,9 +80,7 @@ clean:
 	$(call msg-clean, "compel")
 	$(Q) $(RM) infect
 	$(Q) $(RM) parasite-head.h
-	$(Q) $(RM) ./*.o
-	$(Q) $(RM) ./*/*.o
-	$(Q) $(RM) pie/parasite-head
 	$(Q) $(RM) headgen
+	$(Q) $(RM) $(inject) $(test-obj)
 	$(Q) $(RM) /X/crtools-pr-*
-	$(Q) $(RM) *.a
+	$(Q) $(GNUMAKE) -C pie clean

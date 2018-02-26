@@ -10,13 +10,15 @@ parasite	+= infect.o
 parasite	+= syscall.o
 parasite	+= parasite-head.o
 
+target		:= parasite-head
+
 INCLUDE		:= -I ./std -I ./ -I ../ -I ../include
 
 LDS		:= ../compel-pack.lds.S
 
 include ../../scripts/msg.mk
 
-all: parasite-head
+all: $(target)
 .PHONY: all
 
 parasite-head: $(parasite) $(LDS)
@@ -30,3 +32,8 @@ parasite-head: $(parasite) $(LDS)
 %.o: %.c
 	$(call msg-cc, $@)
 	$(Q) $(CC) $(INCLUDE) $(COMPELFLAG) $(CFLAG) -o $@ $^
+
+clean:
+	$(call msg-clean, "pie")
+	$(Q) $(RM) $(target) $(parasite)
+.PHONY: clean
