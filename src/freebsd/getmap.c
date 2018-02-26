@@ -8,6 +8,13 @@
 
 #include "files.h"
 #include "getmap.h"
+#include "emulate.h"
+
+void emulate_flags(int *flag){
+	if(*flag & KVME_FLAG_GROWS_DOWN){
+		*flag = LINUX_MAP_GROWDOWN;
+	}
+}
 
 void get_vmmap(int pid, struct vmds *vmds, int flag){
 	struct procstat *prst;
@@ -39,6 +46,7 @@ void get_vmmap(int pid, struct vmds *vmds, int flag){
 			char *buf = kv->kve_path;
 			if(strlen(buf) == 0)
 				buf = " ";
+			emulate_flags(&kv->kve_flags);
 			size = snprintf(tmp, sizeof(tmp), "%lx,%lx,%x,%x,%s\n", kv->kve_start, kv->kve_end, kv->kve_flags, kv->kve_protection, buf);
 			write(write_fd, tmp, size);
 		}
@@ -48,7 +56,7 @@ void get_vmmap(int pid, struct vmds *vmds, int flag){
 			continue;
 		}
 
-		if(kv->kve_flags & KVME_FLAG_GROWS_DOWN){
+		if(kv->kve_flags & LINUX_MAP_GROWDOWN){
 			vmds->saddr = kv->kve_start;
 			vmds->ssize = kv->kve_end - kv->kve_start;
 			continue;

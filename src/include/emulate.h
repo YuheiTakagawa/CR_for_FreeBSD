@@ -8,6 +8,7 @@
  * which running on FreeBSD with Linuxulator.
  */
 #define LINUX_MAP_ANONYMOUS 0x20
+#define LINUX_MAP_GROWDOWN 0x100
 
 /*
  * It is different between Linux register

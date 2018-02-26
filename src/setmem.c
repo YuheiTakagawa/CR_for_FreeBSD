@@ -25,7 +25,7 @@ int setmems(pid_t pid, pid_t filePid, struct remap_vm_struct *revm){
         read_fd = open_file(filePid, "data");
         write_mem(read_fd, write_fd, revm->new_addr); 
 
-	while(revm->flags != 0x20){
+	while(revm->flags != LINUX_MAP_GROWDOWN){
 		revm++;
 	}
         read_fd = open_file(filePid, "stack");
@@ -60,10 +60,11 @@ void remap_mem(pid_t pid, struct remap_vm_struct *revm, struct remap_vm_old *rev
 	void *remote_map;
 	/* 
 	 * TODO
-	 * compat revm flags to migrate Linux and FreeBSD
-	 * MAP_GROWDOWN Linux 0x100  FreeBSD 0x20
+	 * fix hard cord
+	 * flag LINUX_MAP_ANONYMOUS, MAP_SHARED
+	 * set flags which get from file
 	 */
-	while(revm->flags != 0x20){
+	while(revm->flags != LINUX_MAP_GROWDOWN){
 		revm++;
 	}
 	compel_syscall(pid, orig,
