@@ -58,6 +58,11 @@ void remap_mem(pid_t pid, struct remap_vm_struct *revm, struct remap_vm_old *rev
 	long ret;
 	int status;
 	void *remote_map;
+	/* 
+	 * TODO
+	 * compat revm flags to migrate Linux and FreeBSD
+	 * MAP_GROWDOWN Linux 0x100  FreeBSD 0x20
+	 */
 	while(revm->flags != 0x20){
 		revm++;
 	}
