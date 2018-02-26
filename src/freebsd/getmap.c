@@ -39,11 +39,10 @@ void get_vmmap(int pid, struct vmds *vmds, int flag){
 
 	kve = procstat_getvmmap(prst, (void *)kp, &count);
 
+	printf("============================\n");
 	for(int i = 0; i < count; i++){
 		kv = &kve[i];
-		printf("============================\n");
-		printf("begin: %lx, end: %lx, flag: %x\n", kv->kve_start, kv->kve_end, kv->kve_flags);
-		printf("prot: %x, path: %s\n", kv->kve_protection, kv->kve_path);
+		printf("begin: %lx, end: %lx, flag: %x prot: %x, path: %s\n", kv->kve_start, kv->kve_end, kv->kve_flags, kv->kve_protection, kv->kve_path);
 		if(flag == DUMP_VMMAP){
 			char *buf = kv->kve_path;
 			if(strlen(buf) == 0)

@@ -15,35 +15,39 @@ int check_rip_syscall(pid_t pid, unsigned long int rip){
 	return 1;
 }
 
+void __print_regs(struct reg *reg){
+	printf("RAX: %lx excuted\n", reg->r_rax);
+        printf("RBX: %lx excuted\n", reg->r_rbx);
+        printf("RCX: %lx excuted\n", reg->r_rcx);
+        printf("RDX: %lx excuted\n", reg->r_rdx);
+        printf("RSI: %lx excuted\n", reg->r_rsi);
+        printf("RDI: %lx excuted\n", reg->r_rdi);
+        printf("RBP: %lx excuted\n", reg->r_rbp);
+        printf("RSP: %lx excuted\n", reg->r_rsp);
+        printf("RIP: %lx excuted\n", reg->r_rip);
+        printf("FLG: %lx excuted\n", reg->r_rflags);
+        printf("R8 : %lx excuted\n", reg->r_r8);
+        printf("R9 : %lx excuted\n", reg->r_r9);
+        printf("R10: %lx excuted\n", reg->r_r10);
+        printf("R11: %lx excuted\n", reg->r_r11);
+        printf("R12: %lx excuted\n", reg->r_r12);
+        printf("R13: %lx excuted\n", reg->r_r13);
+        printf("R14: %lx excuted\n", reg->r_r14);
+        printf("R15: %lx excuted\n", reg->r_r15);
+        printf("TRA: %x excuted\n", reg->r_trapno);
+        printf("CS : %lx excuted\n", reg->r_cs);
+        printf("SS : %lx excuted\n", reg->r_ss);
+        printf("DS : %x excuted\n", reg->r_ds);
+        printf("ES : %x excuted\n", reg->r_es);
+        printf("FS : %x excuted\n", reg->r_fs);
+        printf("GS : %x excuted\n", reg->r_gs);
+}
+
+
 void print_regs(pid_t pid){
 	struct reg reg;
 	ptrace_get_regs(pid, &reg);
-	printf("RAX: %lx excuted\n", reg.r_rax);
-        printf("RBX: %lx excuted\n", reg.r_rbx);
-        printf("RCX: %lx excuted\n", reg.r_rcx);
-        printf("RDX: %lx excuted\n", reg.r_rdx);
-        printf("RSI: %lx excuted\n", reg.r_rsi);
-        printf("RDI: %lx excuted\n", reg.r_rdi);
-        printf("RBP: %lx excuted\n", reg.r_rbp);
-        printf("RSP: %lx excuted\n", reg.r_rsp);
-        printf("RIP: %lx excuted\n", reg.r_rip);
-        printf("FLG: %lx excuted\n", reg.r_rflags);
-        printf("R8 : %lx excuted\n", reg.r_r8);
-        printf("R9 : %lx excuted\n", reg.r_r9);
-        printf("R10: %lx excuted\n", reg.r_r10);
-        printf("R11: %lx excuted\n", reg.r_r11);
-        printf("R12: %lx excuted\n", reg.r_r12);
-        printf("R13: %lx excuted\n", reg.r_r13);
-        printf("R14: %lx excuted\n", reg.r_r14);
-        printf("R15: %lx excuted\n", reg.r_r15);
-        printf("TRA: %x excuted\n", reg.r_trapno);
-        printf("CS : %lx excuted\n", reg.r_cs);
-        printf("SS : %lx excuted\n", reg.r_ss);
-        printf("DS : %x excuted\n", reg.r_ds);
-        printf("ES : %x excuted\n", reg.r_es);
-        printf("FS : %x excuted\n", reg.r_fs);
-        printf("GS : %x excuted\n", reg.r_gs);
-
+	__print_regs(&reg);
 }
 int setregs(pid_t pid, pid_t filePid){
 	struct reg reg;
@@ -113,31 +117,7 @@ int getregs(pid_t pid){
 	ptrace_get_gsbase(pid, &gs_base);
 
 
-	printf("RAX: %lx excuted\n", reg.r_rax);
-	printf("RBX: %lx excuted\n", reg.r_rbx);
-	printf("RCX: %lx excuted\n", reg.r_rcx);
-	printf("RDX: %lx excuted\n", reg.r_rdx);
-	printf("RSI: %lx excuted\n", reg.r_rsi);
-	printf("RDI: %lx excuted\n", reg.r_rdi);
-	printf("RBP: %lx excuted\n", reg.r_rbp);
-	printf("RSP: %lx excuted\n", reg.r_rsp);
-	printf("RIP: %lx excuted\n", reg.r_rip);
-	printf("FLG: %lx excuted\n", reg.r_rflags);
-	printf("R8 : %lx excuted\n", reg.r_r8);
-	printf("R9 : %lx excuted\n", reg.r_r9);
-	printf("R10: %lx excuted\n", reg.r_r10);
-	printf("R11: %lx excuted\n", reg.r_r11);
-	printf("R12: %lx excuted\n", reg.r_r12);
-	printf("R13: %lx excuted\n", reg.r_r13);
-	printf("R14: %lx excuted\n", reg.r_r14);
-	printf("R15: %lx excuted\n", reg.r_r15);
-	printf("TRA: %x excuted\n", reg.r_trapno);
-	printf("CS : %lx excuted\n", reg.r_cs);
-	printf("SS : %lx excuted\n", reg.r_ss);
-	printf("DS : %x excuted\n", reg.r_ds);
-	printf("ES : %x excuted\n", reg.r_es);
-	printf("FS : %x excuted\n", reg.r_fs);
-	printf("GS : %x excuted\n", reg.r_gs);
+	__print_regs(&reg);
 	printf("FSB: %lx excuted\n", fs_base);
 	printf("GSB: %lx excuted\n", gs_base);
 
