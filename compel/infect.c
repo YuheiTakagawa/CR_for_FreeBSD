@@ -1,27 +1,28 @@
+#include <ctype.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
-#include <fcntl.h>
+
 #include <sys/mman.h>
 #include <sys/user.h>
-#include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <ctype.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/ptrace.h>
 
-#include "parasite-head.h"
-#include "parasite.h"
+#include "common.h"
+#include "emulate.h"
 #include "infect.h"
-#include "rpc-pie-priv.h"
-#include "infect-rpc.h"
 #include "infect-priv.h"
+#include "infect-rpc.h"
+#include "parasite.h"
+#include "parasite-head.h"
 #include "parasite_syscall.h"
 #include "ptrace.h"
-#include "emulate.h"
-#include "common.h"
+#include "rpc-pie-priv.h"
 
 #define PROT_ALL (PROT_EXEC | PROT_WRITE | PROT_READ) 
 #define PARASITE_STACK_SIZE	(16 << 10)

@@ -1,19 +1,20 @@
-#include <stdio.h>
-#include <unistd.h>
 #include <ctype.h>
 #include <fcntl.h>
-#include <sys/types.h>
-#include <sys/ptrace.h>
-#include <sys/wait.h>
-#include <string.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
+#include <sys/ptrace.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
+#include "common.h"
+#include "getmem.h"
+#include "fds.h"
 #include "parasite_syscall.h"
 #include "ptrace.h"
-#include "getmem.h"
 #include "register.h"
-#include "fds.h"
-#include "common.h"
 
 int tracing(pid_t pid);
 extern int injection(pid_t pid);
@@ -37,8 +38,7 @@ int tracing(pid_t pid){
 
 	waitpro(pid, &status);
 
-	if(WIFEXITED(status)){
-	} else if (WIFSTOPPED(status)){
+	if(WIFSTOPPED(status)){
 		printf("stop %d\n", pid);
 		injection(pid);
 		getfd(pid);

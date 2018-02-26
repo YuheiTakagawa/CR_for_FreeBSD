@@ -1,16 +1,11 @@
+#include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <ctype.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <sys/ptrace.h>
-#include <sys/wait.h>
 
+#include "common.h"
 #include "files.h"
 #include "getmap.h"
-
 #include "getmem.h"
-#include "common.h"
 
 int getmems(pid_t pid){
 	int read_fd, dump_fd;

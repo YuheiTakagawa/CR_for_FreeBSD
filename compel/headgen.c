@@ -1,12 +1,13 @@
+#include <elf.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <elf.h>
+#include <string.h>
+#include <unistd.h>
+
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
 #include <sys/mman.h>
-#include <unistd.h>
-#include <string.h>
 
 #define __handle_elf handle_elf_x86_64
 

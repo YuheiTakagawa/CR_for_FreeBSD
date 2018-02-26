@@ -1,14 +1,16 @@
 #include <stdio.h>
+
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
 #include <sys/user.h>
+
 #include <libprocstat.h>
 
+#include "emulate.h"
 #include "files.h"
 #include "getmap.h"
-#include "emulate.h"
 
 void emulate_flags(int *flag){
 	if(*flag & KVME_FLAG_GROWS_DOWN){

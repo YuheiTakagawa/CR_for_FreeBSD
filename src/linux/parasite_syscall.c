@@ -1,17 +1,18 @@
-#include <stdio.h>
-#include <unistd.h>
-#include <stdarg.h>
-#include <string.h>
-#include <sys/mman.h>
 #include <errno.h>
+#include <stdarg.h>
 #include <stdint.h>
-#include <sys/wait.h>
-#include <sys/user.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 
+#include <sys/mman.h>
+#include <sys/user.h>
+#include <sys/wait.h>
+
+#include "common.h"
 #include "parasite_syscall.h"
 #include "ptrace.h"
 
-#include "common.h"
 
 #define set_user_reg(pregs, name, val)	\
 		(pregs->name = (val))

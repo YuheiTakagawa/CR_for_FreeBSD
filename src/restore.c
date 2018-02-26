@@ -1,22 +1,19 @@
 #include <stdio.h>
-#include <sys/wait.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <ctype.h>
-#include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/mman.h>
+#include <unistd.h>
 
+#include <sys/types.h>
+#include <sys/wait.h>
+
+#include "breakpoint.h"
+#include "common.h"
 #include "fds.h"
-#include "register.h"
-#include "setmem.h"
 #include "ptrace.h"
 #include "parasite_syscall.h"
-#include "breakpoint.h"
+#include "register.h"
+#include "setmem.h"
 
-#include "common.h"
 
 int target(char *path, char* argv[]);
 
@@ -40,7 +37,9 @@ int restore_fork(int filePid, char *exec_path){
 	read_fd_list(filePid, fds);
 	for(i = 0; fds[i].fd != -2 ; i++){
 		printf("fd:%d, off:%ld, path:%s\n", fds[i].fd, fds[i].offset, fds[i].path);
-		/* if restore tty info, have to implement restoring ttys*/
+		/*
+		 *  if restore tty info, have to implement restoring ttys
+		 */
 		if(strstr(fds[i].path, "/dev/pts") == NULL)
 			fd = prepare_restore_files(fds[i].path, fds[i].fd, fds[i].offset);
 	}
@@ -65,34 +64,35 @@ int main(int argc, char* argv[]){
 	struct remap_vm_struct revm[BUFSIZE];
 
 	if(argc < 3){
-		printf("Usage: %s <path> <file pid> <stack addr> <file offset>\n", argv[0]);
+		printf("Usage: %s <path> <file pid>\n", argv[0]);
 		exit(1);
 	}
 
 	filepath = argv[1];
 	filePid = atoi(argv[2]);
 
-	//fds.offset = strtol(argv[4], NULL, 16);
 	printf("CMD : %s\n", argv[1]);
 	printf("PPID: %d\n", getpid());
 	printf("Restore file: %d\n", filePid); 
 
-	//fds.path = "/dump/hello";
-	//fds.fd = 3;
-
 	pid = restore_fork(filePid, filepath);
 	insert_breakpoint(pid, filepath);
-//	remap_vm(pid, stack_addr, stack_size, &orig);
 	remap_vm(pid, filePid, revm, &orig);
-			waitpro(pid, &status);
-			//printf("sig stopped: %d\n", WSTOPSIG(status));
-					setmems(pid, filePid, revm);
-					setregs(pid, filePid);
-					ptrace_cont(pid);
-			waitpro(pid, &status);
-			print_regs(pid);
+	
+	waitpro(pid, &status);
+	setmems(pid, filePid, revm);
+	setregs(pid, filePid);
+	ptrace_cont(pid);
+	
+	waitpro(pid, &status);
+	print_regs(pid);
 
-		while(1){}
+	/*
+	 * To keep attach
+	 * if detach from process, uncomment ptrace_detach
+	 */
+	while(1){}
+	//ptrace_detach(pid);
 	return 0;
 }
 
