@@ -1,14 +1,6 @@
 #ifndef __GET_VM_
 #define __GET_VM_
 
-#include <stdio.h>
-#include <sys/param.h>
-#include <sys/queue.h>
-#include <sys/socket.h>
-#include <sys/sysctl.h>
-#include <sys/user.h>
-#include <libprocstat.h>
-
 #include "files.h"
 
 #define SHOW_VMMAP 0

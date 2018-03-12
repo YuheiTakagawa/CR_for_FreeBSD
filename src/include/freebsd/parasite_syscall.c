@@ -11,8 +11,6 @@
 
 #include "common.h"
 
-#define BUILTIN_SYSCALL_SIZE 8
-
 #define set_user_reg(pregs, name, val)	\
 		(pregs->name = (val))
 

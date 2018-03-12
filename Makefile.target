@@ -67,5 +67,5 @@ clean:
 	$(call msg-clean, "criu")
 	$(Q) $(RM) restore
 	$(Q) $(RM) getall
-	$(Q) $(RM) $(OBJ)
+	$(Q) $(RM) $(OBJ) $(COBJ) $(ROBJ)
 	$(Q) $(GNUMAKE) -e -C compel clean
