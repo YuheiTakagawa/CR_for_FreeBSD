@@ -10,11 +10,11 @@
 #include <sys/mman.h>
 
 #include "fds.h"
-#include "register.c"
-#include "setmem.c"
+#include "register.h"
+#include "setmem.h"
 #include "ptrace.h"
 #include "parasite_syscall.h"
-#include "breakpoint.c"
+#include "breakpoint.h"
 
 #include "common.h"
 

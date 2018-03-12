@@ -14,7 +14,7 @@
 
 #include "parasite_syscall.h"
 #include "ptrace.h"
-#include "register.c"
+#include "register.h"
 #include "parasite-head.h"
 #include "parasite.h"
 #include "infect.h"

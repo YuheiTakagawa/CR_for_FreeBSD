@@ -1,17 +1,20 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/types.h>
 
 #include "ptrace.h"
 #include "files.h"
 #include "emulate.h"
+#include "register.h"
 
-int check_rip_syscall(int pid, unsigned long int rip){
+int check_rip_syscall(pid_t pid, unsigned long int rip){
 	
 	printf("rip code:%x\n", ptrace_read_i(pid, rip));
 
 	return 1;
 }
 
-void print_regs(int pid){
+void print_regs(pid_t pid){
 	struct reg reg;
 	ptrace_get_regs(pid, &reg);
 	printf("RAX: %lx excuted\n", reg.r_rax);
@@ -41,7 +44,7 @@ void print_regs(int pid){
         printf("GS : %x excuted\n", reg.r_gs);
 
 }
-int setregs(int pid, pid_t filePid){
+int setregs(pid_t pid, pid_t filePid){
 	struct reg reg;
 	struct linuxreg linuxreg;
 	int fd;

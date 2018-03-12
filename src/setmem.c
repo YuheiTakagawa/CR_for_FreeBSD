@@ -1,34 +1,15 @@
-#ifndef SETMEM
-#define SETMEM
-
 #include <unistd.h>
+#include <sys/mman.h>
+#include <sys/wait.h>
+#include <stdlib.h>
 
+#include "ptrace.h"
 #include "files.h"
-#include "getmap.c"
+#include "getmap.h"
 #include "parasite_syscall.h"
-
-#define BUFSIZE 1024
-#define PATHBUF 30
-
-#define BUILTIN_SYSCALL_SIZE 8
-
-#define LINUX_MAP_ANONYMOUS 0x20
-
-struct remap_vm_struct{
-	unsigned long int new_addr;
-	unsigned long int new_end;
-	char path[BUFSIZE];
-	int flags;
-	int protection;
-};
-
-struct remap_vm_old{
-	unsigned long int old_addr;
-	unsigned long int old_size;
-};
-
-int setmems(pid_t, pid_t, struct remap_vm_struct*);
-int write_mem(int, int, long int);
+#include "common.h"
+#include "emulate.h"
+#include "setmem.h"
 
 int setmems(pid_t pid, pid_t filePid, struct remap_vm_struct *revm){
         int write_fd;
@@ -72,7 +53,7 @@ int write_mem(int read_fd, int write_fd, long int offset){
         return rnum;
 }
 
-void remap_mem(int pid, struct remap_vm_struct *revm, struct remap_vm_old *revm_old, struct orig *orig){
+void remap_mem(pid_t pid, struct remap_vm_struct *revm, struct remap_vm_old *revm_old, struct orig *orig){
 	long ret;
 	int status;
 	void *remote_map;
@@ -124,4 +105,3 @@ void remap_vm(pid_t pid, pid_t filePid, struct remap_vm_struct *revm, struct ori
 	remap_mem(pid, revm, &revm_old, orig);
 }
 
-#endif

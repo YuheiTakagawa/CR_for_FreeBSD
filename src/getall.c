@@ -10,8 +10,8 @@
 
 #include "parasite_syscall.h"
 #include "ptrace.h"
-#include "getmem.c"
-#include "register.c"
+#include "getmem.h"
+#include "register.h"
 #include "fds.h"
 #include "common.h"
 

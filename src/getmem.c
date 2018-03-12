@@ -1,6 +1,3 @@
-#ifndef GETMEM
-#define GETMEM
-
 #include <stdio.h>
 #include <unistd.h>
 #include <ctype.h>
@@ -10,12 +7,10 @@
 #include <sys/wait.h>
 
 #include "files.h"
-#include "getmap.c"
+#include "getmap.h"
 
-#define BUFSIZE 1024 
-#define PATHBUF 30
-
-int getmem(int read_fd, int dump_fd, long int offset, long int size);
+#include "getmem.h"
+#include "common.h"
 
 int getmems(pid_t pid){
 	int read_fd, dump_fd;
@@ -64,4 +59,3 @@ int getmem(int read_fd, int dump_fd, long int offset, long int size){
 	return 0;
 }
 
-#endif

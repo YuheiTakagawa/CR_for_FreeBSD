@@ -7,5 +7,6 @@
 #define SYSCALL_ARGS 7
 #define FD_MAX 1024
 #define SHARED_FILE_PATH "/tmp/shm"
+#define BUILTIN_SYSCALL_SIZE 8 
 
 #endif

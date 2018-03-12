@@ -34,6 +34,13 @@ OBJ += $(INCLUDE_DEP)/ptrace.o
 OBJ += $(INCLUDE_DEP)/parasite_syscall.o
 OBJ += $(INCLUDE_DEP)/fds.o
 OBJ += $(INCLUDE_COMMON)/files.o
+OBJ += $(INCLUDE_DEP)/register.o
+OBJ += $(INCLUDE_DEP)/getmap.o
+
+COBJ += $(SRC_DIR)/getmem.o
+
+ROBJ += $(SRC_DIR)/setmem.o
+ROBJ += $(SRC_DIR)/breakpoint.o
 
 %.o: %.c
 	$(Q) $(CC) $(INCLUDE) $(CFLAG) -c -o $@ $^
@@ -45,14 +52,14 @@ compel/infect.a:
 all: restore getall
 
 
-restore: $(OBJ)
+restore: $(OBJ) $(ROBJ)
 	$(call msg-gen, $@)
-	$(Q) $(CC) $(CFLAG) $(INCLUDE) $(SRC_DIR)/restore.c $(OBJ) -o $@
+	$(Q) $(CC) $(CFLAG) $(INCLUDE) $(SRC_DIR)/restore.c $^ -o $@
 
 
-getall: $(OBJ)
+getall: $(OBJ) $(COBJ)
 	$(call msg-gen, $@)
-	$(Q) $(CC) $(CFLAG) $(INCLUDE) $(SRC_DIR)/getall.c $(OBJ) -o $@
+	$(Q) $(CC) $(CFLAG) $(INCLUDE) $(SRC_DIR)/getall.c $^ -o $@
 
 
 .PHONY: clean
