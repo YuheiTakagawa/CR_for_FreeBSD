@@ -1,6 +1,3 @@
-#ifndef GETFD
-#define GETFD
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/param.h>
@@ -11,18 +8,41 @@
 
 #include "files.h"
 
-#define FD_MAX 1024
-#define BUF_SIZE 1024
-#define PATH_BUF 1024
+#include "common.h"
+#include "fds.h"
 
-struct fd_list{
-	int fd[FD_MAX];
-	char path[PATH_BUF][FD_MAX];
-	unsigned long int offset[FD_MAX];
-};
+int prepare_restore_files(char *path, int fd, off_t foff){
+        printf("PATH:%s\n", path);
+        int tmp = open(path, O_RDWR);
+        if(fd != tmp){
+                fd = dup2(tmp, fd);
+                close(tmp);
+        }
+        lseek(fd, foff, SEEK_SET);
+        return fd;
+}
+
+void read_fd_list(pid_t filePid, struct restore_fd_struct *fds){
+        int read_fd;
+        char buf[BUFSIZE];
+        int i = 0;
+        read_fd = open_file(filePid, "fds");
+        while(read(read_fd, &buf[i++], sizeof(char))){
+                if(buf[i-1] == '\n'){
+                        buf[i-1] = '\0';
+                        fds->fd = atoi(strtok(buf, ","));
+                        fds->offset = strtol(strtok(NULL, ","), NULL, 16);
+                        strncpy(fds->path, strtok(NULL, "\0"), i);
+                        fds++;
+                        i = 0;
+                }
+        }
+        close(read_fd);
+}
+
 
 /* Get FD position(file offset) from /proc/PID/fdinfo */
-unsigned long int get_fd_pos(pid_t pid, int fd){
+static unsigned long int get_fd_pos(pid_t pid, int fd){
 	char path[PATH_BUF];
 	char buf[BUF_SIZE];
 	FILE *fp;
@@ -39,7 +59,7 @@ unsigned long int get_fd_pos(pid_t pid, int fd){
 }
 
 /* Get actual FD path name, not symbolic link */
-int get_fd_path(pid_t pid, int fd, char *fd_path){
+static int get_fd_path(pid_t pid, int fd, char *fd_path){
 	int size;
 	char link[PATH_BUF], path[PATH_BUF];
 
@@ -91,5 +111,3 @@ int getfd(pid_t pid){
 	printf("finished get fd\n");
 	return 0;
 }
-
-#endif

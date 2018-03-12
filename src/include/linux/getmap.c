@@ -1,24 +1,12 @@
-#ifndef __GET_VM_
-#define __GET_VM_
-
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
-//#include <libprocstat.h>
+#include "files.h"
+#include "getmap.h"
 
-#define BUF_SIZE 1024
-#define PATH_BUF 1024
-
-struct vmds{
-	unsigned long int dsize;
-	unsigned long int ssize;
-	unsigned long int daddr;
-	unsigned long int saddr;
-};
-
-void get_vmmap(int pid, struct vmds* vmds){
+void get_vmmap(int pid, struct vmds* vmds, int flag){
 
 	char buf[BUF_SIZE] = {'\0'};
 	char path[PATH_BUF] = {'\0'};
@@ -73,7 +61,12 @@ void get_vmmap(int pid, struct vmds* vmds){
 	printf("stack size: %lx\n", vmds->ssize);
 	printf("stack addr: %lx\n", vmds->saddr);
 
-//	procstat_freevmmap(prst, (void *)kp);
 }
 
-#endif
+void show_vmmap(pid_t pid, struct vmds *vmds){
+	get_vmmap(pid, vmds, SHOW_VMMAP);
+}
+
+void dump_vmmap(pid_t pid, struct vmds *vmds){
+	get_vmmap(pid, vmds, DUMP_VMMAP);
+}

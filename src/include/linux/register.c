@@ -1,6 +1,3 @@
-#ifndef REGISTER
-#define REGISTER
-
 #include <sys/types.h>
 #include <sys/user.h>
 #include <sys/reg.h>
@@ -9,14 +6,16 @@
 #include "ptrace.h"
 #include "files.h"
 
-int check_rip_syscall(int pid, unsigned long int rip){
+#include "register.h"
+
+int check_rip_syscall(pid_t pid, unsigned long int rip){
 	
 	printf("rip code:%x\n", ptrace_read_i(pid, rip));
 
 	return 1;
 }
 
-void print_regs(int pid){
+void print_regs(pid_t pid){
 	struct user_regs_struct reg;
 	ptrace_get_regs(pid, &reg);
         printf("ORA: %llx excuted\n", reg.orig_rax);
@@ -47,13 +46,20 @@ void print_regs(int pid){
 
 }
 
-int setregs(int pid, pid_t filePid){
+int setregs(pid_t pid, pid_t filePid){
 	struct user_regs_struct reg, tmpreg;
 	int fd;
 
 	memset(&reg, 0, sizeof(reg));
 	fd = open_file(filePid, "regs");
 	read(fd, &reg, sizeof(reg));
+
+
+	/*
+	 * Use register info which read from dump file
+	 * but we should use only segment register allocated 
+	 * by OS.
+	 */
 
 	ptrace_get_regs(pid, &tmpreg);
 
@@ -63,6 +69,7 @@ int setregs(int pid, pid_t filePid){
 	reg.es = tmpreg.es;
 	reg.fs = tmpreg.fs;
 	reg.gs = tmpreg.gs;
+
 
 	check_rip_syscall(pid, reg.rip);
 
@@ -94,4 +101,3 @@ int getregs(pid_t pid){
 	return 0;
 }
 
-#endif
