@@ -19,7 +19,9 @@ void get_vmmap(int pid, struct vmds *vmds, int flag){
 	//int page_size;
 	int size;
 
-	int write_fd = open_dump_file(pid, "map");
+	int write_fd;
+	if(flag == DUMP_VMMAP)
+    	   	write_fd = open_dump_file(pid, "map");
 
 	//page_size = getpagesize();
 
