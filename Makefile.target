@@ -7,16 +7,16 @@ CFLAG += -D_WITH_DPRINTF
 UNAME := ${shell uname}
 SRC_DIR = ./src
 
-INCLUDE_COMMON = ./src/include/common
+INCLUDE = -I ./src/include
 
 ifeq ($(UNAME), Linux)
 # for Linux include file
-INCLUDE_DEP = ./src/include/linux
+SRC_DEP = ./src/include/linux
 endif
 
 ifeq ($(UNAME), FreeBSD)
 # for FreeBSD include file
-INCLUDE_DEP = ./src/include/freebsd
+SRC_DEP = ./src/freebsd
 CFLAG += -lprocstat
 endif
 
@@ -26,18 +26,18 @@ ifneq ($(UNAME), FreeBSD)
 endif
 endif
 
-
-INCLUDE = -I $(INCLUDE_DEP) -I $(INCLUDE_COMMON) 
-
 OBJ += compel/infect.a
-OBJ += $(INCLUDE_DEP)/ptrace.o
-OBJ += $(INCLUDE_DEP)/parasite_syscall.o
-OBJ += $(INCLUDE_DEP)/fds.o
-OBJ += $(INCLUDE_COMMON)/files.o
-OBJ += $(INCLUDE_DEP)/register.o
-OBJ += $(INCLUDE_DEP)/getmap.o
+OBJ += $(SRC_DIR)/files.o
+
+OBJ += $(SRC_DEP)/ptrace.o
+OBJ += $(SRC_DEP)/parasite_syscall.o
+OBJ += $(SRC_DEP)/fds.o
+OBJ += $(SRC_DEP)/register.o
+OBJ += $(SRC_DEP)/getmap.o
+
 
 COBJ += $(SRC_DIR)/getmem.o
+
 
 ROBJ += $(SRC_DIR)/setmem.o
 ROBJ += $(SRC_DIR)/breakpoint.o

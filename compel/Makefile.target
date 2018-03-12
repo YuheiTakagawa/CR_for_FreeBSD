@@ -7,11 +7,10 @@ include ../scripts/tools.mk
 
 #UNAME := ${shell uname}
 
-INCLUDE_COMMON = ../src/include/common
+INCLUDE = -I ../src/include
 
-INCLUDE_DEP = ../src/include/freebsd
+SRC_DEP = ../src/include/freebsd
 
-INCLUDE = -I $(INCLUDE_DEP) -I $(INCLUDE_COMMON)
 INCLUDE += -I ./include
 
 INCLUDE_TEST = $(INCLUDE) -I ./
