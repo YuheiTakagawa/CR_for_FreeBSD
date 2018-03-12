@@ -16,7 +16,6 @@
 #include "common.h"
 
 int tracing(pid_t pid);
-extern int injection(pid_t pid);
 
 
 int main(int argc, char* argv[]){
@@ -40,7 +39,6 @@ int tracing(pid_t pid){
 	if(WIFEXITED(status)){
 	} else if (WIFSTOPPED(status)){
 		printf("stop %d\n", pid);
-		injection(pid);
 		getfd(pid);
 		getregs(pid);
 		getmems(pid);

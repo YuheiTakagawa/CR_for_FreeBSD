@@ -43,14 +43,14 @@ void read_fd_list(pid_t filePid, struct restore_fd_struct *fds){
 
 /* Get FD position(file offset) from /proc/PID/fdinfo */
 static unsigned long int get_fd_pos(pid_t pid, int fd){
-	char path[PATH_BUF];
-	char buf[BUF_SIZE];
+	char path[PATHBUF];
+	char buf[BUFSIZE];
 	FILE *fp;
 	unsigned long int pos = 0;
 
-	snprintf(path, PATH_BUF, "/proc/%d/fdinfo/%d", pid, fd);
+	snprintf(path, PATHBUF, "/proc/%d/fdinfo/%d", pid, fd);
 	fp = fopen(path, "r");
-	while(fgets(buf, BUF_SIZE, fp) != NULL){
+	while(fgets(buf, BUFSIZE, fp) != NULL){
 		if(!strncmp(buf, "pos:", sizeof("pos"))){
 			sscanf(buf, "%*s %ld", &pos);
 		}
@@ -61,9 +61,9 @@ static unsigned long int get_fd_pos(pid_t pid, int fd){
 /* Get actual FD path name, not symbolic link */
 static int get_fd_path(pid_t pid, int fd, char *fd_path){
 	int size;
-	char link[PATH_BUF], path[PATH_BUF];
+	char link[PATHBUF], path[PATHBUF];
 
-	snprintf(path, PATH_BUF, "/proc/%d/fd/%d", pid, fd);
+	snprintf(path, PATHBUF, "/proc/%d/fd/%d", pid, fd);
 	size = readlink(path, link, sizeof(link));
 	link[size] = 0;
 	strncpy(fd_path, link, sizeof(link));
@@ -76,36 +76,41 @@ static int get_fd_path(pid_t pid, int fd, char *fd_path){
 
 int *get_open_fd(pid_t pid, struct fd_list *fdl){
 
-	char path[PATH_BUF] = {'\0'};
+	char path[PATHBUF] = {'\0'};
 	struct dirent *de;
 	DIR *fd_dir;
 	int i = 0;
-	snprintf(path, PATH_BUF, "/proc/%d/fd", pid);
+	snprintf(path, PATHBUF, "/proc/%d/fdinfo", pid);
 
 	fd_dir = opendir(path);
 	if(!fd_dir){
 		perror("opendir");
 	} 
-
 	while((de = readdir(fd_dir))){
-		if(atoi(de->d_name) > 2){
+		if(atoi(de->d_name) > 0){
 			fdl->fd[i] = atoi(de->d_name);
 			get_fd_path(pid, fdl->fd[i], fdl->path[i]);
 			fdl->offset[i] = get_fd_pos(pid, fdl->fd[i]);
 			i++;
 		}
 	}
+	fdl->fd[i] = -2;
 	return 0;
 }
 
 int getfd(pid_t pid){
 	struct fd_list fdl;
 	get_open_fd(pid, &fdl);
+	int write_fd = open_dump_file(pid, "fds");
 	for(int i = 0; i < FD_MAX; i++){
-		if(fdl.fd[i] != 0){
-		printf("FD: %d, OFFSET: %lx, PATH: %s\n", fdl.fd[i], fdl.offset[i], fdl.path[i]);
+		if(fdl.fd[i] >= 0){
+			printf("FD: %d, OFFSET: %lx, PATH: %s\n", fdl.fd[i], fdl.offset[i], fdl.path[i]);
+			dprintf(write_fd, "%d,%lx,%s\n", fdl.fd[i], fdl.offset[i], fdl.path[i]);
 		}
-		else{ break; }
+		if(fdl.fd[i] == -2){
+			dprintf(write_fd, "%d,%x,%s\n", -2, -1, " ");
+			break;
+		}
 	}
 
 	printf("finished get fd\n");

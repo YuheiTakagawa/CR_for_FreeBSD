@@ -26,7 +26,7 @@ ifneq ($(UNAME), FreeBSD)
 endif
 endif
 
-OBJ += compel/infect.a
+#OBJ += compel/infect.a
 OBJ += $(SRC_DIR)/files.o
 
 OBJ += $(SRC_DEP)/ptrace.o

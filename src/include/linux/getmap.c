@@ -8,15 +8,15 @@
 
 void get_vmmap(int pid, struct vmds* vmds, int flag){
 
-	char buf[BUF_SIZE] = {'\0'};
-	char path[PATH_BUF] = {'\0'};
+	char buf[BUFSIZE] = {'\0'};
+	char path[PATHBUF] = {'\0'};
 	int i = 0;
 	char *str;
 
-	snprintf(path, PATH_BUF, "/proc/%d/smaps", pid);
+	snprintf(path, PATHBUF, "/proc/%d/smaps", pid);
 	FILE *fp = fopen(path, "r");
 
-	while(fgets(buf, BUF_SIZE, fp) != NULL){
+	while(fgets(buf, BUFSIZE, fp) != NULL){
 		if(strstr(buf, "rd ex") != NULL){
 			if(i == 0){
 				i++;
@@ -26,7 +26,7 @@ void get_vmmap(int pid, struct vmds* vmds, int flag){
 
 		if(i == 1){
 			str = strtok(buf, "-");
-			vmds->daddr = strtoul(str, &str, 16);
+			vmds->haddr = strtoul(str, &str, 16);
 			i++;
 			continue;
 		}
@@ -34,7 +34,7 @@ void get_vmmap(int pid, struct vmds* vmds, int flag){
 		if(i == 2){
 			str = strtok(buf, " ");
 			str = strtok(NULL, " ");
-			vmds->dsize = atoi(str) * 1024;
+			vmds->hsize = atoi(str) * 1024;
 			i++;
 			continue;
 		}
@@ -56,8 +56,8 @@ void get_vmmap(int pid, struct vmds* vmds, int flag){
 
 	} 	
 
-	printf("data size: %lx\n", vmds->dsize);
-	printf("data addr: %lx\n", vmds->daddr);
+	printf("data size: %lx\n", vmds->hsize);
+	printf("data addr: %lx\n", vmds->haddr);
 	printf("stack size: %lx\n", vmds->ssize);
 	printf("stack addr: %lx\n", vmds->saddr);
 

@@ -1,3 +1,7 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
 #include <sys/ptrace.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -100,7 +104,7 @@ int ptrace_peek_area(pid_t pid, void *dst, void *addr, long bytes){
 		return -1;
 	for(w = 0; w < bytes / sizeof(long); w++){
 		unsigned long *d = dst, *a = addr;
-		d[w] = ptrace_read_d(pid, a + w);
+		d[w] = ptrace_read_d(pid, (unsigned long)a + w);
 		if(d[w] == -1U && errno)
 			goto err;
 	}
@@ -115,7 +119,7 @@ int ptrace_poke_area(pid_t pid, void *src, void *addr, long bytes){
 		return -1;
 	for(w = 0; w < bytes / sizeof(long); w++){
 		unsigned long *s = src, *a = addr;
-		if(ptrace_write_d(pid, a + w, s[w]))
+		if(ptrace_write_d(pid, (unsigned long)a + w, s[w]))
 				goto err;
 	}
 	return 0;
@@ -171,4 +175,3 @@ void waitpro(int pid, int *status){
 	}
 }
 
-#endif
