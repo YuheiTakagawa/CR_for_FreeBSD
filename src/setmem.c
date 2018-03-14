@@ -25,7 +25,7 @@ int setmems(pid_t pid, pid_t filePid, struct remap_vm_struct *revm){
         read_fd = open_file(filePid, "data");
         write_mem(read_fd, write_fd, revm->new_addr); 
 
-	while(revm->flags != 0x20){
+	while(revm->flags != 0x100){
 		revm++;
 	}
         read_fd = open_file(filePid, "stack");
@@ -58,7 +58,7 @@ void remap_mem(pid_t pid, struct remap_vm_struct *revm, struct remap_vm_old *rev
 	long ret;
 	int status;
 	void *remote_map;
-	while(revm->flags != 0x20){
+	while(revm->flags != 0x100){
 		revm++;
 	}
 	compel_syscall(pid, orig,

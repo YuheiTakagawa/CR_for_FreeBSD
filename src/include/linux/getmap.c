@@ -8,11 +8,71 @@
 
 void get_vmmap(int pid, struct vmds* vmds, int flag){
 
-	char buf[BUFSIZE] = {'\0'};
 	char path[PATHBUF] = {'\0'};
+	char b[BUFSIZE];
+	char tmp[BUFSIZE];
 	int i = 0;
 	char *str;
+	long start, end;
+	int flags;
+	char protection[5];
+	int size;
 
+	int write_fd;
+	if(flag == DUMP_VMMAP)
+		write_fd = open_dump_file(pid, "map");
+
+	snprintf(path, PATHBUF, "/proc/%d/maps", pid);
+	FILE *fp = fopen(path, "r");
+
+	while(fgets(b, BUFSIZE, fp) != NULL){
+		str = strtok(b, "-");
+		start = strtoul(str, &str, 16);
+		str = strtok(NULL, " ");
+		end = strtoul(str, &str, 16);
+		flags = 0x0;
+		str = strtok(NULL, " ");
+		//protection = 0x0;
+		//use protection as string
+		strncpy(protection, str, sizeof(protection));
+
+		for(int i = 0; i < 4; i++){
+			str = strtok(NULL, " ");
+		}
+		
+		printf("===============================\n");
+		printf("begin: %lx, end: %lx, flag: %x\n", start, end, flags);
+		printf("prot: %s, path: %s\n", protection, str);
+		if(flags == 0x0 && /*protection == 0x3*/!strncmp("rw-p", protection, sizeof(protection))){// data segment but linux's it is separated data and heap
+			if(strstr(str, "/") != NULL){
+				vmds->haddr = start;
+				vmds->hsize = end - start;
+				flags = 0x1;
+			//	continue;
+			}
+		}
+
+		if(/*flags == GROWS_DOWN || */strstr(str, "[stack]") != NULL){//stack
+			vmds->saddr = start;
+			vmds->ssize = end - start;
+			/* MAP_GROWSDOWN of Linux is 0x100.
+			 * On FreeBSD, MAP_GROWSDOWN is 0x20.
+			 */
+			flags = 0x100;
+			//continue;
+		}
+
+		if(flag == DUMP_VMMAP){
+			char *buf = str;
+			if(strlen(buf) == 0)
+				buf = " ";
+			size = snprintf(tmp, sizeof(tmp), "%lx,%lx,%x,%x,%s", start, end, flags, 0x7, buf);
+			//size = snprintf(tmp, sizeof(tmp), "%lx,%lx,%x,%s,%s", start, end, flags, protection, buf);
+			write(write_fd, tmp, size);
+		}
+		
+	}
+/*
 	snprintf(path, PATHBUF, "/proc/%d/smaps", pid);
 	FILE *fp = fopen(path, "r");
 
@@ -55,7 +115,7 @@ void get_vmmap(int pid, struct vmds* vmds, int flag){
 		}
 
 	} 	
-
+*/
 	printf("data size: %lx\n", vmds->hsize);
 	printf("data addr: %lx\n", vmds->haddr);
 	printf("stack size: %lx\n", vmds->ssize);
