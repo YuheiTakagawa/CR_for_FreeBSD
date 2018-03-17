@@ -43,6 +43,11 @@ void get_vmmap(int pid, struct vmds* vmds, int flag){
 		printf("===============================\n");
 		printf("begin: %lx, end: %lx, flag: %x\n", start, end, flags);
 		printf("prot: %s, path: %s\n", protection, str);
+/*
+ * TODO
+ * - dump protection with binary number(hex)
+ * - dump flags from smaps
+ */
 		if(flags == 0x0 && /*protection == 0x3*/!strncmp("rw-p", protection, sizeof(protection))){// data segment but linux's it is separated data and heap
 			if(strstr(str, "/") != NULL){
 				vmds->haddr = start;
