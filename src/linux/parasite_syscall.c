@@ -1,31 +1,108 @@
-#ifndef PARASITE_SYSCALL
-#define PARASITE_SYSCALL
-
 #include <stdio.h>
-#include <stdlib.h>
 #include <unistd.h>
 #include <stdarg.h>
 #include <string.h>
-#include <sys/user.h>
-#include <sys/reg.h>
+#include <sys/mman.h>
+#include <errno.h>
 #include <stdint.h>
+#include <sys/wait.h>
+#include <sys/user.h>
+
+#include "parasite_syscall.h"
+#include "ptrace.h"
 
 #include "common.h"
 
-#include "getmem.h"
-#include "ptrace.h"
+#define set_user_reg(pregs, name, val)	\
+		(pregs->name = (val))
+
+#define get_user_reg(pregs, name)	\
+		(pregs.name)
+
+const char code_syscall[] = {
+       0x0f, 0x05,	/* syscall	*/
+       0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc	/* int 3, ... */
+}; 
+
+void parasite_setup_regs(unsigned long new_ip, void *stack, struct user_regs_struct *regs){
+	set_user_reg(regs, rip, new_ip);
+	if(stack)
+		set_user_reg(regs, rsp, (unsigned long) stack);
+
+	/* on FreeBSD, this line is stop syscall */
+	//set_user_reg(regs, rax, -1);
+}
 
 
-long code = 0xcc050f;
+static int parasite_run(pid_t pid, int cmd, unsigned long ip, void *stack, struct user_regs_struct *regs, struct orig *orig){
+	
+	parasite_setup_regs(ip, stack, regs);
+	if (ptrace_set_regs(pid, regs)) {
+	}
 
-struct orig{
-	long text;
-	long data;
-	char *addr;
-	struct user_regs_struct reg;
-};
+	if (ptrace(cmd, pid, 1, 0)) {
+	}
 
-void inject_syscall_regs(int pid, struct orig *orig, int nr, 
+	return 0;
+}
+
+static int parasite_trap(pid_t pid, struct user_regs_struct *regs, struct orig *orig){
+	int status;
+	int ret = -1;
+
+	if(wait4(pid, &status, 0, NULL) != pid){
+		goto err;
+	}
+
+	if(!WIFSTOPPED(status)){
+		goto err;
+	}
+
+	if(ptrace_get_regs(pid, regs)){
+		goto err;
+	}
+
+	if(WSTOPSIG(status) != SIGTRAP){
+		goto err;
+	}
+
+	ret = 0;
+err:
+	restore_orig(pid, orig);
+	//ret = -1;
+	return ret;
+
+}
+			
+
+
+int compel_execute_syscall(pid_t pid, struct orig *orig, struct user_regs_struct *regs){
+	int err;
+	uint8_t code_orig[BUILTIN_SYSCALL_SIZE];
+	unsigned long rip = regs -> rip;
+	orig->text = ptrace_read_i(pid, rip);
+	orig->data = 0x0;
+	orig->addr = 0x0;
+	memcpy(code_orig, code_syscall, sizeof(code_orig));
+
+	/* injection syscall 0xcc050f int3 */	
+	if(ptrace_swap_area(pid, (void *)rip, (void *)code_orig, sizeof(code_orig))){
+		return -1;
+	}
+
+	err = parasite_run(pid, PT_CONTINUE, rip, 0, regs, orig);
+	if (!err)
+		err = parasite_trap(pid, regs, orig);
+
+	if (ptrace_poke_area(pid, (void *)code_orig,
+			     (void *)rip, sizeof(code_orig))) {
+		err = -1;
+	}
+
+	return err;
+}
+
+void compel_syscall(pid_t pid, struct orig *orig, int nr, long *ret,
 		unsigned long arg1,
 		unsigned long arg2,
 		unsigned long arg3,
@@ -37,7 +114,7 @@ void inject_syscall_regs(int pid, struct orig *orig, int nr,
 	ptrace_get_regs(pid, &reg);
 	orig->reg = reg;
 
-	reg.rax = (uint64_t)nr;
+	reg.orig_rax = (uint64_t)nr;
 	reg.rdi = arg1;
 	reg.rsi = arg2;
 	reg.rdx = arg3;
@@ -45,52 +122,27 @@ void inject_syscall_regs(int pid, struct orig *orig, int nr,
 	reg.r8  = arg5;
 	reg.r9  = arg6;
 
-	ptrace_set_regs(pid, &reg);
+	compel_execute_syscall(pid, orig, &reg);
+	*ret = get_user_reg(reg, rax);
+	printf("return: %lx\n", *ret);
 }
 
-void inject_syscall_mem(int pid, struct orig *orig, unsigned long rip){
-	orig->text = ptrace_read_i(pid, rip);
-	orig->data = 0x0;
-	orig->addr = 0x0;
-
-	/* injection syscall 0xcc050f */	
-	ptrace_write_i(pid, rip, code);
-	/******************************/
-}
-
-void inject_syscall_buf(int pid, struct orig *orig, char *addr){
-	int *tmp = malloc(sizeof(int));
-	orig->data = ptrace_read_i(pid, (unsigned long int) addr);
-	orig->addr = addr;
-	/* injection syscall buf */
-	for(int i = 0; i < strlen(addr) / 4 + 1; i++){
-		memset(tmp, 0, 4 + 1);
-		memcpy(tmp, addr + i * 4, 4);
-		ptrace_write_i(pid, (unsigned long int)addr + i * 4, *tmp);
-	}
-	/*************************/
-	free(tmp);
-	printf("orig_text: %lx\n", orig->text);
-	printf("orig_data: %lx\n", orig->data);
-}
-
-void inject_syscall(int pid, struct orig *orig, char *addr, int num, ...){
-	va_list list;
-	unsigned long arg[num];
+void *remote_mmap(pid_t pid, struct orig *orig, void *addr, size_t length, int prot, int flags, int fd, off_t offset){
+	long map;
+	int err = 0;
 	
-	va_start(list, num);
-	for(int i = 0; i < num; i++){
-		arg[i] = va_arg(list, unsigned long);
-	}
-	va_end(list);
-	inject_syscall_regs(pid, orig, arg[0], arg[1],
-		       	arg[2], arg[3], arg[4], arg[5], arg[6]);
-	inject_syscall_mem(pid, orig, orig->reg.rip);
-	if(addr != NULL)
-		inject_syscall_buf(pid, orig, addr);
+	compel_syscall(pid, orig, 9, &map,
+			(unsigned long)addr, length, prot, flags, fd, offset);
+	if(err < 0)
+		return NULL;
+
+	if(map == -EACCES && (prot & PROT_WRITE) && (prot & PROT_EXEC))
+		return NULL;
+
+	return (void *)map;
 }
 
-void restore_setregs(int pid, struct user_regs_struct orig){
+void restore_setregs(pid_t pid, struct user_regs_struct orig){
 	struct user_regs_struct reg;
 	
 	ptrace_get_regs(pid, &reg);
@@ -100,16 +152,14 @@ void restore_setregs(int pid, struct user_regs_struct orig){
 	printf("restore_registers\n");
 }
 
-void restore_memory(int pid, struct orig *orig){
-	printf("orig_text: %lx\n", orig->text);
+void restore_memory(pid_t pid, struct orig *orig){
 	ptrace_write_i(pid, orig->reg.rip, orig->text);
 	if(orig->addr != 0x0)
 	ptrace_write_d(pid, (unsigned long int)orig->addr, orig->data);
 }
 
-void restore_orig(int pid, struct orig *orig){
+void restore_orig(pid_t pid, struct orig *orig){
 	restore_setregs(pid, orig->reg);
 	restore_memory(pid, orig);
 }
 
-#endif

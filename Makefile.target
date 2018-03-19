@@ -11,7 +11,7 @@ INCLUDE = -I ./src/include
 
 ifeq ($(UNAME), Linux)
 # for Linux include file
-SRC_DEP = ./src/include/linux
+SRC_DEP = ./src/linux
 endif
 
 ifeq ($(UNAME), FreeBSD)
