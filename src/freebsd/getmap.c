@@ -57,7 +57,7 @@ void get_vmmap(int pid, struct vmds *vmds, int flag){
 			continue;
 		}
 
-		if(kv->kve_flags & LINUX_MAP_GROWDOWN){
+		if(kv->kve_flags & LINUX_MAP_GROWDOWN || kv->kve_flags & KVME_FLAG_GROWS_DOWN){
 			vmds->saddr = kv->kve_start;
 			vmds->ssize = kv->kve_end - kv->kve_start;
 			continue;

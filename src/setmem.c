@@ -66,6 +66,8 @@ void remap_mem(pid_t pid, struct remap_vm_struct *revm, struct remap_vm_old *rev
 	 * set flags which get from file
 	 */
 	while(revm->flags != LINUX_MAP_GROWDOWN){
+		if(revm->new_addr == 0x0)
+			break;
 		revm++;
 	}
 	compel_syscall(pid, orig,
