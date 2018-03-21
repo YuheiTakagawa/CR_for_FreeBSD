@@ -1,5 +1,4 @@
-restore
-getall
+crtools
 build/
 *.core
 *.swp
