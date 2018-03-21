@@ -40,7 +40,7 @@ int tracing(pid_t pid){
 
 	if(WIFSTOPPED(status)){
 		printf("stop %d\n", pid);
-		injection(pid);
+//		injection(pid);
 		getfd(pid);
 		getregs(pid);
 		getmems(pid);
