@@ -16,7 +16,7 @@ for i in ps:
 
 print("PID: " + pid)
 
-ret = subprocess.check_output(["/CR_for_FreeBSD/getall", pid])
+ret = subprocess.check_output(["/CR_for_FreeBSD/crtools", "dump", "-p", pid])
 
 print(ret.decode('utf-8'))
 subprocess.check_output(["kill", "-TERM", pid])

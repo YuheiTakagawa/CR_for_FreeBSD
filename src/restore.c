@@ -56,32 +56,23 @@ int restore_fork(int filePid, char *exec_path){
 	return 0;
 }
 
-int main(int argc, char* argv[]){
-	int pid, filePid;
+int restore(pid_t rpid, char *rpath){
 	int status;
-	char *filepath;
+	pid_t pid;
 	struct orig orig;
 	struct remap_vm_struct revm[BUFSIZE];
 
-	if(argc < 3){
-		printf("Usage: %s <path> <file pid>\n", argv[0]);
-		exit(1);
-	}
-
-	filepath = argv[1];
-	filePid = atoi(argv[2]);
-
-	printf("CMD : %s\n", argv[1]);
+	printf("CMD : %s\n", rpath);
 	printf("PPID: %d\n", getpid());
-	printf("Restore file: %d\n", filePid); 
+	printf("Restore file: %d\n", rpid); 
 
-	pid = restore_fork(filePid, filepath);
-	insert_breakpoint(pid, filepath);
-	remap_vm(pid, filePid, revm, &orig);
+	pid = restore_fork(rpid, rpath);
+	insert_breakpoint(pid, rpath);
+	remap_vm(pid, rpid, revm, &orig);
 	
 	waitpro(pid, &status);
-	setmems(pid, filePid, revm);
-	setregs(pid, filePid);
+	setmems(pid, rpid, revm);
+	setregs(pid, rpid);
 	ptrace_cont(pid);
 	
 	waitpro(pid, &status);
@@ -93,6 +84,24 @@ int main(int argc, char* argv[]){
 	 */
 	while(1){}
 	//ptrace_detach(pid);
+	
 	return 0;
 }
+	
+/*
+int main(int argc, char* argv[]){
+	int rpid;
+	char *rpath;
 
+	if(argc < 3){
+		printf("Usage: %s <path> <file pid>\n", argv[0]);
+		exit(1);
+	}
+
+	rpath = argv[1];
+	rpid = atoi(argv[2]);
+
+	restore(rpid, rpath);
+	return 0;
+}
+*/

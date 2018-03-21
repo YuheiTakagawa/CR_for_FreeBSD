@@ -40,10 +40,12 @@ OBJ += $(SRC_DEP)/getmap.o
 
 
 COBJ += $(SRC_DIR)/getmem.o
+COBJ += $(SRC_DIR)/getall.o
 
 
 ROBJ += $(SRC_DIR)/setmem.o
 ROBJ += $(SRC_DIR)/breakpoint.o
+ROBJ += $(SRC_DIR)/restore.o
 
 %.o: %.c
 	$(Q) $(CC) $(INCLUDE) $(CFLAG) -c -o $@ $^
@@ -51,20 +53,15 @@ ROBJ += $(SRC_DIR)/breakpoint.o
 compel/infect.a:
 	$(GNUMAKE) -e -C compel
 
-target = restore getall
+target = crtools
 
 .PHONY: all
 all: $(target)
 
 
-restore: $(OBJ) $(ROBJ)
+crtools: $(OBJ) $(ROBJ) $(COBJ)
 	$(call msg-gen, $@)
-	$(Q) $(CC) $(CFLAG) $(INCLUDE) $(SRC_DIR)/restore.c $^ -o $@
-
-
-getall: $(OBJ) $(COBJ)
-	$(call msg-gen, $@)
-	$(Q) $(CC) $(CFLAG) $(INCLUDE) $(SRC_DIR)/getall.c $^ -o $@
+	$(Q) $(CC) $(CFLAG) $(INCLUDE) $(SRC_DIR)/crtools.c $^ -o $@
 
 
 .PHONY: clean

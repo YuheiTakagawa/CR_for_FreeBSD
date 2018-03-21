@@ -20,6 +20,7 @@ int tracing(pid_t pid);
 extern int injection(pid_t pid);
 
 
+/*
 int main(int argc, char* argv[]){
 	pid_t pid;
 	if(argc < 2){
@@ -30,6 +31,7 @@ int main(int argc, char* argv[]){
 
 	tracing(pid);
 }
+*/
 
 int tracing(pid_t pid){
 	int status;
