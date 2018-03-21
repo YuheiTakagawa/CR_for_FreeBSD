@@ -5,7 +5,7 @@ CFLAG = -Wall
 CFLAG += -D_WITH_DPRINTF
 
 SRC_DIR = ./src
-INCLUDE = -I ./src/include
+INCLUDE = -I ./include
 
 
 UNAME := ${shell uname}

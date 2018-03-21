@@ -8,7 +8,7 @@ include ../scripts/tools.mk
 
 #UNAME := ${shell uname}
 
-INCLUDE = -I ../src/include
+INCLUDE = -I ../include
 
 SRC = ../src
 SRC_DEP = ../src/freebsd
