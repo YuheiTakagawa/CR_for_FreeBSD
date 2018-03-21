@@ -25,12 +25,12 @@ This project use procfs. procfs is not standard in FreeBSD.
 ## usage
 1. `make`
 2. `test/countlinuxsta`
-3. `./get.py countlinuxsta` or `./getall <PID>` in other tarminal
-4. `./restore test/countlinuxsta <PID>`
+3. `./get.py countlinuxsta` or `./crtools dump -p <PID>` in other tarminal
+4. `./crtools restore -e test/countlinuxsta -p <PID>`
 
 
 ## function
 - crtools: main function. Crtools checkpoint/restore target process.
   - checkpoint: Get and dump target process' status(cpu, memory, fd, etc.).
   - restore: Read from dump files and restore target process.
-- compel: For parasite code injection(https://criu.org/Parasite\_code). Parasite code injection compel target process to run any code include systemcall. 
+- compel: For parasite code injection(https://criu.org/Parasite_code). Parasite code injection compel target process to run any code include systemcall. 
