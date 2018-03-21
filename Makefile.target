@@ -20,6 +20,7 @@ ifeq ($(UNAME), FreeBSD)
 SRC_DEP = ./src/freebsd
 CFLAG += -lprocstat
 CFLAG += -D_BSD
+OBJ += compel/infect.a
 endif
 
 ifneq ($(UNAME), Linux)
@@ -29,7 +30,6 @@ endif
 endif
 
 
-OBJ += compel/infect.a
 OBJ += $(SRC_DIR)/files.o
 
 OBJ += $(SRC_DEP)/ptrace.o
