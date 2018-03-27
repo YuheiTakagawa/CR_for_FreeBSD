@@ -144,11 +144,6 @@ void *remote_mmap(pid_t pid, struct orig *orig, void *addr, size_t length, int p
 }
 
 void restore_setregs(pid_t pid, struct user_regs_struct orig){
-	struct user_regs_struct reg;
-	
-	ptrace_get_regs(pid, &reg);
-	printf("return value(rax) : %llx\n", reg.rax);
-		
 	ptrace_set_regs(pid, &orig);
 	printf("restore_registers\n");
 }

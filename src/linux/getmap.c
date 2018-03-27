@@ -11,7 +11,6 @@ void get_vmmap(int pid, struct vmds* vmds, int flag){
 	char path[PATHBUF] = {'\0'};
 	char b[BUFSIZE];
 	char tmp[BUFSIZE];
-	int i = 0;
 	char *str;
 	long start, end;
 	int flags;
