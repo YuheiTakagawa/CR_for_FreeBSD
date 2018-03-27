@@ -115,7 +115,7 @@ void compel_syscall(pid_t pid, struct orig *orig, int nr, long *ret,
 	ptrace_get_regs(pid, &reg);
 	orig->reg = reg;
 
-	reg.orig_rax = (uint64_t)nr;
+	reg.rax = (uint64_t)nr;
 	reg.rdi = arg1;
 	reg.rsi = arg2;
 	reg.rdx = arg3;
