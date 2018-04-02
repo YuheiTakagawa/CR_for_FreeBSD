@@ -54,8 +54,13 @@ target = testpy
 .PHONY: all
 all: $(target)
 
+parasite-head.h: pie/parasite-head
+	../compel/headgen $< $@
 
-testpy: $(OBJ) $(ROBJ) $(COBJ) 
+pie/parasite-head:
+	 gmake -e -C pie
+
+testpy: $(OBJ) $(ROBJ) $(COBJ) parasite-head.h 
 	$(call msg-gen, $@)
 	$(Q) $(CC) $(CFLAG) $(INCLUDE) ./testpy.c $^ -o $@
 
@@ -64,3 +69,5 @@ testpy: $(OBJ) $(ROBJ) $(COBJ)
 clean:
 	$(call msg-clean, "criu")
 	$(Q) $(RM) $(target) $(OBJ) $(COBJ) $(ROBJ)
+	$(Q) $(RM) pie/parasite-head
+	$(Q) gmake -e -C pie clean
