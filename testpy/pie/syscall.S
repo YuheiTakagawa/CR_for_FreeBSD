@@ -3,6 +3,8 @@
 SYSCALL(sys_fork, 2)
 SYSCALL(sys_read, 3)
 SYSCALL(sys_write, 4)
+SYSCALL(sys_open, 5)
 SYSCALL(sys_close, 6)
 SYSCALL(sys_getpid, 20)
+SYSCALL(sys_dup2, 90)
 SYSCALL(sys_nanosleep, 240)
