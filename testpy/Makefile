@@ -49,7 +49,7 @@ ROBJ += $(SRC_DIR)/restore.o
 %.o: %.c
 	$(Q) $(CC) $(INCLUDE) $(CFLAG) -c -o $@ $^
 
-target = run
+target = testpy injd 
 
 .PHONY: all
 all: $(target)
@@ -74,5 +74,5 @@ testpy: $(OBJ) $(ROBJ) $(COBJ) parasite-head.h
 clean:
 	$(call msg-clean, "criu")
 	$(Q) $(RM) $(target) $(OBJ) $(COBJ) $(ROBJ)
-	$(Q) $(RM) pie/parasite-head
+	$(Q) $(RM) pie/parasite-head parasite-head.h
 	$(Q) gmake -e -C pie clean
