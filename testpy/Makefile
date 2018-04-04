@@ -49,14 +49,19 @@ ROBJ += $(SRC_DIR)/restore.o
 %.o: %.c
 	$(Q) $(CC) $(INCLUDE) $(CFLAG) -c -o $@ $^
 
-target = testpy
+target = run
 
 .PHONY: all
 all: $(target)
 
+.PHONY: run
+run: testpy injd search.sh
+	./injd &
+
 parasite-head.h: pie/parasite-head
 	../compel/headgen $< $@
 
+.PHONY: pie/parasite-head
 pie/parasite-head:
 	 gmake -e -C pie
 
