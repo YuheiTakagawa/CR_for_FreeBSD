@@ -5,6 +5,9 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/mman.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include "ptrace.h"
 #include "parasite_syscall.h"
@@ -40,12 +43,14 @@ int main(int argc, char *argv[]){
 	long int map, remote_map;
 	char hello[] = "/tmp/shm";
 	struct reg reg; 
+	struct sockaddr_in *addr_args;
+	
 	ptrace_attach(pid);
 	waitpro(pid, &status);
 	printf("Attach\n");
 
 	compel_syscall(pid, &orig,
-			477, &map, 0x7fffffede000, 0x1000, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANON, -1, 0x0);
+			477, &map, 0x0, 0x1000, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANON, -1, 0x0);
 
 	inject_syscall_buf(pid, hello, (void *)map, sizeof(hello));
 	compel_syscall(pid, &orig,
@@ -58,6 +63,13 @@ int main(int argc, char *argv[]){
 	void *local_map = mmap(0x0, sizeof(parasite_blob), PROT_WRITE|PROT_READ|PROT_EXEC, MAP_SHARED, fd, 0);
 	memcpy(local_map, parasite_blob, sizeof(parasite_blob));
 
+	addr_args = local_map + parasite_sym__export_parasite_args;
+
+	bzero(addr_args, sizeof(struct sockaddr_in));
+	addr_args->sin_family = AF_INET;
+	addr_args->sin_port = htons(8080);
+	inet_aton("192.168.10.5", &addr_args->sin_addr);
+
 	ptrace_get_regs(pid, &reg);
 	reg.r_rip = (unsigned long int) remote_map;
 	reg.r_rbp = (unsigned long int) remote_map + sizeof(parasite_blob);
@@ -68,6 +80,11 @@ int main(int argc, char *argv[]){
 	ptrace_cont(pid);
 
 	waitpro(pid, &status);
+	ptrace_set_regs(pid, &orig.reg);
+	compel_syscall(pid, &orig,
+			73, &ret, remote_map, 0x1000, 0x0, 0x0, 0x0, 0x0); 
+	compel_syscall(pid, &orig,
+			73, &ret, map, 0x1000, 0x0, 0x0, 0x0, 0x0); 
 	ptrace_set_regs(pid, &orig.reg);
 	
 	ptrace_detach(pid);
