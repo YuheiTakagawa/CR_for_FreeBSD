@@ -41,6 +41,7 @@ void libsoccr_release(struct libsoccr_sk *sk);
 int libsoccr_save(struct libsoccr_sk *sk, struct libsoccr_sk_data *data, unsigned data_size);
 
 char *libsoccr_get_queue_bytes(struct libsoccr_sk *sk, int queue_id, unsigned flags);
+int libsoccr_set_queue_bytes(struct libsoccr_sk *sk, int queue_id, char *bytes, unsigned flags);
 
 int libsoccr_set_addr(struct libsoccr_sk *sk, int self, union libsoccr_addr *, unsigned flags);
 

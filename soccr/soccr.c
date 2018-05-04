@@ -331,36 +331,8 @@ int libsoccr_restore(struct libsoccr_sk *sk,
 
 static int __send_queue(struct libsoccr_sk *sk, int queue, char *buf, uint32_t len)
 {
-	int ret, err = -1, max_chunk;
-	int off;
-
-	max_chunk = len;
-	off = 0;
-
-	do {
-		int chunk = len;
-
-		if (chunk > max_chunk)
-			chunk = max_chunk;
-
-		ret = send(sk->fd, buf + off, chunk, 0);
-		if (ret <= 0) {
-			if (max_chunk > 1024) {
-				max_chunk >>=1;
-				continue;
-			}
-
-			printf("Can't restore %d queue data(%d), want (%d:%d:%d)",
-					queue, ret, chunk, len, max_chunk);
-			goto err;
-		}
-		off += ret;
-		len -= ret;
-	} while (len);
-
-	err = 0;
-err:
-	return err;
+	send(sk->fd, buf, len, 0);
+	return 0;
 }
 
 static int send_queue(struct libsoccr_sk *sk, int queue, char *buf, uint32_t len)
