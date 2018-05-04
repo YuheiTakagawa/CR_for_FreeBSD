@@ -18,7 +18,7 @@ INCLUDE += -I ../include
 INCLUDE_TEST = $(INCLUDE) -I ../
 
 .PHONY: all
-all: dumpnet restorenet
+all: dumpnet restorenet soccrdump
 
 target := $(SRC)/files.o
 
@@ -28,6 +28,9 @@ dumpnet: $(target) dumpnet.o
 restorenet: $(target) restorenet.o
 	$(Q) $(CC) -o $@ $^
 
+soccrdump: $(target) soccrdump.c ../libsoccr.a
+	$(Q) $(CC) -D_WITH_DPRINTF $(INCLUDE_TEST) -o $@ $^
+
 %.o: %.c 
 	$(call msg-cc, $@)
 	$(Q) $(CC) $(INCLUDE) $(CFLAG) -o $@ $^
@@ -35,5 +38,5 @@ restorenet: $(target) restorenet.o
 
 .PHONY: clean
 clean:
-	$(Q) $(RM) dumpnet restorenet $(target)
-	$(Q) $(RM) dumpnet.o restore.o
+	$(Q) $(RM) dumpnet restorenet soccrdump $(target)
+	$(Q) $(RM) dumpnet.o restorenet.o soccrdump.o
