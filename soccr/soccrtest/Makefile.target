@@ -18,7 +18,7 @@ INCLUDE += -I ../include
 INCLUDE_TEST = $(INCLUDE) -I ../
 
 .PHONY: all
-all: dumpnet restorenet soccrdump
+all: dumpnet restorenet soccrdump soccrres
 
 target := $(SRC)/files.o
 
@@ -29,6 +29,9 @@ restorenet: $(target) restorenet.o
 	$(Q) $(CC) -o $@ $^
 
 soccrdump: $(target) soccrdump.c ../libsoccr.a
+	$(Q) $(CC) -D_WITH_DPRINTF $(INCLUDE_TEST) -o $@ $^
+
+soccrres: $(target) soccrres.c ../libsoccr.a
 	$(Q) $(CC) -D_WITH_DPRINTF $(INCLUDE_TEST) -o $@ $^
 
 %.o: %.c 

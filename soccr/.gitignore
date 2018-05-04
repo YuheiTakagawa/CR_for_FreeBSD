@@ -2,5 +2,6 @@ dumpnet
 restorenet
 server
 soccrdump
+soccrres
 *.o
 *.a
