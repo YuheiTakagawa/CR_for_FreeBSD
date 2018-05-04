@@ -261,7 +261,6 @@ static int libsoccr_set_sk_data_noq(struct libsoccr_sk *sk,
 		struct libsoccr_sk_data *data, unsigned data_size)
 {
 	int addr_size;
-	uint32_t seq;
 
 	if (sk->src_addr->sa.sa_family == AF_INET)
 		addr_size = sizeof(sk->src_addr->v4);

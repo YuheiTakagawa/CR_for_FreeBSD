@@ -38,6 +38,8 @@ OBJ += $(SRC_DEP)/fds.o
 OBJ += $(SRC_DEP)/register.o
 OBJ += $(SRC_DEP)/getmap.o
 
+OBJ += $(SRC_DIR)/scm-code.o
+
 
 COBJ += $(SRC_DIR)/getmem.o
 COBJ += $(SRC_DIR)/getall.o
@@ -59,10 +61,9 @@ target = crtools
 all: $(target)
 
 
-crtools: $(OBJ) $(ROBJ) $(COBJ)
+crtools: $(ROBJ) $(COBJ) $(OBJ)
 	$(call msg-gen, $@)
-	$(Q) $(CC) $(CFLAG) $(INCLUDE) $(SRC_DIR)/crtools.c $^ -o $@
-
+	$(Q) $(CC) $(CFLAG) $(INCLUDE) $^ $(SRC_DIR)/crtools.c -o $@
 
 .PHONY: clean
 clean:

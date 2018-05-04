@@ -1,3 +1,5 @@
+#define NULL ((void *)0)
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -6,10 +8,13 @@
 #include "syscall.h"
 #include "string.c"
 #include "rpc-pie-priv.h"
+#include "common/scm.h"
 #include "parasite.h"
 #include "infect-rpc.h"
 
-#define NULL ((void *)0)
+
+static int tsock = -1;
+
 
 struct hello_pid{
 	char hello[256];
@@ -21,7 +26,16 @@ struct parasite_init{
 	struct sockaddr_un h_addr;
 };
 
-static int __parasite_daemon_reply_ack(int tsock, unsigned int cmd, int err)
+static int fill_fds_opts(struct parasite_drain_fd *fds, struct fd_opts *opts)
+{
+	opts->fown.uid = 0;
+	opts->fown.euid = 0;
+	opts->fown.pid_type = 0;
+	opts->fown.pid = 0;
+	return 0;
+}
+
+static int __parasite_daemon_reply_ack(unsigned int cmd, int err)
 {
 	struct ctl_msg m;
 	int ret;
@@ -35,7 +49,7 @@ static int __parasite_daemon_reply_ack(int tsock, unsigned int cmd, int err)
 	return 0;
 }
 
-static int __parasite_daemon_wait_msg(int tsock, struct ctl_msg *m)
+static int __parasite_daemon_wait_msg(struct ctl_msg *m)
 {
 	int ret;
 
@@ -53,7 +67,7 @@ static int __parasite_daemon_wait_msg(int tsock, struct ctl_msg *m)
 	return -1;
 }
 
-static int fini(int tsock){
+static int fini(void){
 //	//unsigned long new_sp;
 	sys_close(tsock);
 	return -1;
@@ -72,7 +86,6 @@ int connection(void *data){
 	struct parasite_init *args = data;
 	struct ctl_msg m;
 	char st[] = "I'M TAKAGAWA!\n";
-	int tsock;
 	int ret = 0;
 
 	sys_write(1, st, 15); 
@@ -86,7 +99,7 @@ int connection(void *data){
 	if(sys_connect(tsock, (struct sockaddr *)&args->h_addr, args->h_addr_len) < 0){
 	}
 
-	__parasite_daemon_reply_ack(tsock, PARASITE_CMD_INIT_DAEMON, 0);
+	__parasite_daemon_reply_ack(PARASITE_CMD_INIT_DAEMON, 0);
 
 
 	/* 
@@ -94,11 +107,11 @@ int connection(void *data){
 	 * If getting command is PARASITE_CMD_FINI, closing and cure
 	 */
 	while(1){
-		__parasite_daemon_wait_msg(tsock, &m);
+		__parasite_daemon_wait_msg(&m);
 		std_printf("local msg: %d\n", m.cmd);
 
 		if(m.cmd == PARASITE_CMD_FINI){
-			fini(tsock);
+			fini();
 			break;
 		}
 
@@ -109,8 +122,12 @@ int connection(void *data){
 				hp(data);
 
 				break;
+			case PARASITE_CMD_DRAIN_FDS:
+				std_printf("drain\n");
+				//drain_fds(data);
+				break;
 		}
-		__parasite_daemon_reply_ack(tsock, m.cmd, ret); 
+		__parasite_daemon_reply_ack(m.cmd, ret); 
 	}
 
 	return 0;

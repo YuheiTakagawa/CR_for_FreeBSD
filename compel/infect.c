@@ -14,6 +14,7 @@
 #include <sys/ptrace.h>
 
 #include "common.h"
+#include "common/scm.h"
 #include "emulate.h"
 #include "infect.h"
 #include "infect-priv.h"
@@ -225,7 +226,7 @@ int injection(pid_t pid){
 	void *tmp_map;
 	char buf[] = SHARED_FILE_PATH;
 
-	int fd;
+	int fd, sk;
 	long remote_fd;
 
 	long ret;
@@ -311,6 +312,17 @@ int injection(pid_t pid){
 	compel_rpc_call_sync(PARASITE_CMD_DUMP_THREAD, ctl);
 	compel_rpc_call_sync(PARASITE_CMD_DUMP_ITIMERS, ctl);
 	compel_rpc_call_sync(PARASITE_CMD_GET_PID, ctl);
+	/*
+	compel_rpc_call(PARASITE_CMD_DRAIN_FDS, ctl);
+	struct fd_opts opts;
+	sk = compel_rpc_sock(ctl);
+	printf("sk: %d\n", sk);
+	int lfds, nr_fds = 0;
+	ret = recv_fds(sk, &lfds, nr_fds, &opts, sizeof(struct fd_opts));
+	
+	ret = compel_rpc_sync(PARASITE_CMD_DRAIN_FDS, ctl);
+	printf("ret: %ld\n", ret);
+	*/
 
 
 	/*

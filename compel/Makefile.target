@@ -38,6 +38,7 @@ pie/parasite-head:
 
 
 inject += infect-rpc.o
+#inject += $(SRC)/scm-code.o
 inject += infect.o
 
 
