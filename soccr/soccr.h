@@ -32,6 +32,7 @@ struct libsoccr_sk_data {
 	uint32_t	rcv_wup;
 };
 
+void setipfw(int, char*, char*);
 struct libsoccr_sk *libsoccr_pause(int fd);
 void libsoccr_resume(struct libsoccr_sk *sk);
 

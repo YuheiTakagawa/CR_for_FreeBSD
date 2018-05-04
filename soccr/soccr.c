@@ -18,10 +18,10 @@ void setipfw(int flag, char *sip, char *dip){
 
 	switch(flag) {
 	case IPFWADD:
-		snprintf(ipfw, sizeof(ipfw), "./ipfw.sh add %s %s", sip, dip);
+		snprintf(ipfw, sizeof(ipfw), "ipfw.sh add %s %s", sip, dip);
 		break;
 	case IPFWDEL:
-		snprintf(ipfw, sizeof(ipfw), "./ipfw.sh delete %s %s", sip, dip);
+		snprintf(ipfw, sizeof(ipfw), "ipfw.sh delete %s %s", sip, dip);
 		break;
 	}
 	system(ipfw);

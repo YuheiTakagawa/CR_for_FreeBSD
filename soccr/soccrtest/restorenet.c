@@ -121,7 +121,7 @@ int main(int argc, char *argv[]){
 
 	/* unfilter packet */
 	printf("unfilter packet\n");
-	snprintf(ipfw, sizeof(ipfw), "./ipfw.sh delete");
+	snprintf(ipfw, sizeof(ipfw), "ipfw.sh delete");
 	system(ipfw);
 
 	snprintf(chs, sizeof(chs), "RESTORE FINISHED\n");
