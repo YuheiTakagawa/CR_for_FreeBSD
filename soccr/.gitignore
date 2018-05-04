@@ -1,3 +1,5 @@
 dumpnet
 restorenet
 server
+*.o
+*.a
