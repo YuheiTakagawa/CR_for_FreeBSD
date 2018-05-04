@@ -10,7 +10,7 @@
 
 #include "common.h"
 #include "files.h"
-#include "soccr.h"
+#include "../soccr.h"
 
 #define IPFWDEL 1
 
@@ -18,19 +18,12 @@ int main(int argc, char *argv[]){
 	int rst;
 	pid_t pid;
 	int fd;
-	socklen_t socklen = sizeof(struct sockaddr_in), size = sizeof(int);
-	struct sockaddr_in srv_addr, cnt_addr;
-	u_int32_t sndseq, rcvseq;
 	int dsize;
 	char buf[256];
-	char ipfw[256];
 	char chs[] = "Welcome 000\n";
-	int aux = 0;
 	char *queue;
 	char srcip[20], dstip[20];
 	int srcpt, dstpt;
-	struct msswnd mw;
-	socklen_t mwsize = sizeof(mw);
 	struct libsoccr_sk *so_rst;
 	struct libsoccr_sk_data data = {};
 	union libsoccr_addr addr, dst;

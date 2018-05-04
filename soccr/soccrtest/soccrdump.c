@@ -10,7 +10,7 @@
 
 #include "common.h"
 #include "files.h"
-#include "soccr.h"
+#include "../soccr.h"
 
 #define IPFWADD 0
 #define IPFWDEL 1
@@ -40,32 +40,28 @@ int listen_port(int port) {
 int main(void){
 	int sock, sockpre;
 	int fd;
-	socklen_t socklen, size = sizeof(int);
-	struct sockaddr_in srv_addr, cnt_addr;
-	u_int32_t sndseq, rcvseq;
-	int sndsize = 0, rcvsize = 0, dsize = 0;
+	socklen_t socklen;
+	struct sockaddr_in addr, dst;
+	int dsize = 0;
 	char buf[256];
 	char chs[] = "Welcome 000\n";
-	int aux = 0, tmp = 0;
 	char *queue;
 	char srcip[20], dstip[20];
 	int srcpt, dstpt;
-	struct msswnd mw;
-	socklen_t mwsize = sizeof(mw);
 	pid_t pid = getpid();
 	struct libsoccr_sk_data data = {};
-	struct libsoccr_sk *so, *so_rst;
+	struct libsoccr_sk *so;
 
 	sockpre = listen_port(9090);
 
 	socklen = sizeof(struct sockaddr_in);
-	sock = accept(sockpre, (struct sockaddr *)&cnt_addr, &socklen);
+	sock = accept(sockpre, (struct sockaddr *)&dst, &socklen);
 
-	getsockname(sock, (struct sockaddr *) &srv_addr, &socklen);
-	strncpy(srcip, inet_ntoa(srv_addr.sin_addr), sizeof(srcip));
-	strncpy(dstip, inet_ntoa(cnt_addr.sin_addr), sizeof(dstip));
-	srcpt = ntohs(srv_addr.sin_port);
-	dstpt = ntohs(cnt_addr.sin_port);
+	getsockname(sock, (struct sockaddr *) &addr, &socklen);
+	strncpy(srcip, inet_ntoa(addr.sin_addr), sizeof(srcip));
+	strncpy(dstip, inet_ntoa(dst.sin_addr), sizeof(dstip));
+	srcpt = ntohs(addr.sin_port);
+	dstpt = ntohs(dst.sin_port);
 
 	read(sock, buf, sizeof(buf));
 	printf("from client %s", buf);

@@ -7,14 +7,14 @@ CFLAG += -D_WITH_DPRINTF
 include ../scripts/msg.mk
 include ../scripts/tools.mk
 
+target := libsoccr.a
+obj := soccr.o
 
-all: libsoccr.a
+all: $(target)
 .PHONY:	all
 
-target := soccr.o
-
-libsoccr.a: $(target)
-	$(AR) rsc $@ $^
+libsoccr.a: $(obj)
+	$(Q) $(AR) rsc $@ $^
 
 .PHONY:	test
 test:
@@ -24,10 +24,9 @@ test:
 	$(call msg-cc, $@)
 	$(Q) $(CC) $(INCLUDE) $(CFLAG) -o $@ $^
 
-
 clean:
 	$(GNUMAKE) -C soccrtest clean
-	$(RM) soccr.o
-	$(RM) libsoccr.a
+	$(RM) $(target)
+	$(RM) $(obj)
 .PHONY:	clean
 

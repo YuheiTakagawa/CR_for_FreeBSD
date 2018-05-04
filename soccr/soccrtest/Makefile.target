@@ -13,25 +13,19 @@ INCLUDE = -I ../../include
 SRC = ../../src
 SRC_DEP = ../../src/freebsd
 
-INCLUDE += -I ../include
-
-INCLUDE_TEST = $(INCLUDE) -I ../
+target := soccrdump
+target += soccrres
 
 .PHONY: all
-all: dumpnet restorenet soccrdump soccrres
+all: $(target)
 
-target := $(SRC)/files.o
+src := $(SRC)/files.o
+libsoccr := ../libsoccr.a
 
-dumpnet: $(target) dumpnet.o
-	$(Q) $(CC) -o $@ $^
-
-restorenet: $(target) restorenet.o
-	$(Q) $(CC) -o $@ $^
-
-soccrdump: $(target) soccrdump.c ../libsoccr.a
+soccrdump: soccrdump.o $(src) $(libsoccr)
 	$(Q) $(CC) -D_WITH_DPRINTF $(INCLUDE_TEST) -o $@ $^
 
-soccrres: $(target) soccrres.c ../libsoccr.a
+soccrres: soccrres.o $(src) $(libsoccr)
 	$(Q) $(CC) -D_WITH_DPRINTF $(INCLUDE_TEST) -o $@ $^
 
 %.o: %.c 
@@ -41,5 +35,5 @@ soccrres: $(target) soccrres.c ../libsoccr.a
 
 .PHONY: clean
 clean:
-	$(Q) $(RM) dumpnet restorenet soccrdump $(target)
-	$(Q) $(RM) dumpnet.o restorenet.o soccrdump.o
+	$(Q) $(RM) $(target)
+	$(Q) $(RM) soccrdump.o soccrres.o
