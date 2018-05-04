@@ -8,25 +8,13 @@ include ../scripts/msg.mk
 include ../scripts/tools.mk
 
 
-INCLUDE = -I ../include
-
-SRC = ../src
-SRC_DEP = ../src/freebsd
-
-INCLUDE += -I ./include
-
-INCLUDE_TEST = $(INCLUDE) -I ./
-
-all: dumpnet restorenet
+all: libsoccr.a
 .PHONY:	all
 
-target := $(SRC)/files.o
+target := soccr.o
 
-dumpnet: $(target) dumpnet.c
-	$(Q) $(CC) -o $@ $^
-
-restorenet: $(target) restorenet.c
-	$(Q) $(CC) -o $@ $^
+libsoccr.a: $(target)
+	$(AR) rsc $@ $^
 
 .PHONY:	test
 test:
@@ -39,5 +27,7 @@ test:
 
 clean:
 	$(GNUMAKE) -C soccrtest clean
+	$(RM) soccr.o
+	$(RM) libsoccr.a
 .PHONY:	clean
 
