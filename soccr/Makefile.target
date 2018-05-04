@@ -17,22 +17,27 @@ INCLUDE += -I ./include
 
 INCLUDE_TEST = $(INCLUDE) -I ./
 
-.PHONY: all
 all: dumpnet restorenet
+.PHONY:	all
 
 target := $(SRC)/files.o
 
-dumpnet: $(target) dumpnet.o
+dumpnet: $(target) dumpnet.c
 	$(Q) $(CC) -o $@ $^
 
-restorenet: $(target) restorenet.o
+restorenet: $(target) restorenet.c
 	$(Q) $(CC) -o $@ $^
+
+.PHONY:	test
+test:
+	$(GNUMAKE) -e -C soccrtest
 
 %.o: %.c 
 	$(call msg-cc, $@)
 	$(Q) $(CC) $(INCLUDE) $(CFLAG) -o $@ $^
 
 
-.PHONY: clean
 clean:
-	$(Q) $(RM) dumpnet restorenet $(target)
+	$(GNUMAKE) -C soccrtest clean
+.PHONY:	clean
+

@@ -1,0 +1,39 @@
+export CFLAG
+CFLAG = -Wall
+CFLAG += -c
+CFLAG += -D_BSD
+CFLAG += -D_WITH_DPRINTF
+
+include ../../scripts/msg.mk
+include ../../scripts/tools.mk
+
+
+INCLUDE = -I ../../include
+
+SRC = ../../src
+SRC_DEP = ../../src/freebsd
+
+INCLUDE += -I ../include
+
+INCLUDE_TEST = $(INCLUDE) -I ../
+
+.PHONY: all
+all: dumpnet restorenet
+
+target := $(SRC)/files.o
+
+dumpnet: $(target) dumpnet.o
+	$(Q) $(CC) -o $@ $^
+
+restorenet: $(target) restorenet.o
+	$(Q) $(CC) -o $@ $^
+
+%.o: %.c 
+	$(call msg-cc, $@)
+	$(Q) $(CC) $(INCLUDE) $(CFLAG) -o $@ $^
+
+
+.PHONY: clean
+clean:
+	$(Q) $(RM) dumpnet restorenet $(target)
+	$(Q) $(RM) dumpnet.o restore.o
