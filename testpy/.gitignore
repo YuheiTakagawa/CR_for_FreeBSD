@@ -1,3 +1,5 @@
 !*.c
 !*.sh
 injd
+testpy
+pie/parasite-head.h
