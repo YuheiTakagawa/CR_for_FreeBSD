@@ -14,7 +14,6 @@
 #include <sys/ptrace.h>
 
 #include "common.h"
-#include "common/scm.h"
 #include "emulate.h"
 #include "infect.h"
 #include "infect-priv.h"

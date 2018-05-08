@@ -38,8 +38,6 @@ OBJ += $(SRC_DEP)/fds.o
 OBJ += $(SRC_DEP)/register.o
 OBJ += $(SRC_DEP)/getmap.o
 
-OBJ += $(SRC_DIR)/scm-code.o
-
 
 COBJ += $(SRC_DIR)/getmem.o
 COBJ += $(SRC_DIR)/getall.o
