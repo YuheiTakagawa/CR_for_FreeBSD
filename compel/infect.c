@@ -311,18 +311,6 @@ int injection(pid_t pid){
 	compel_rpc_call_sync(PARASITE_CMD_DUMP_THREAD, ctl);
 	compel_rpc_call_sync(PARASITE_CMD_DUMP_ITIMERS, ctl);
 	compel_rpc_call_sync(PARASITE_CMD_GET_PID, ctl);
-	/*
-	compel_rpc_call(PARASITE_CMD_DRAIN_FDS, ctl);
-	struct fd_opts opts;
-	sk = compel_rpc_sock(ctl);
-	printf("sk: %d\n", sk);
-	int lfds, nr_fds = 0;
-	ret = recv_fds(sk, &lfds, nr_fds, &opts, sizeof(struct fd_opts));
-	
-	ret = compel_rpc_sync(PARASITE_CMD_DRAIN_FDS, ctl);
-	printf("ret: %ld\n", ret);
-	*/
-
 
 	/*
 	 * Wait for Parasite Engine finishes writing to memory.
