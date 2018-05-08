@@ -8,7 +8,6 @@
 #include "syscall.h"
 #include "string.c"
 #include "rpc-pie-priv.h"
-#include "common/scm.h"
 #include "parasite.h"
 #include "infect-rpc.h"
 

@@ -12,7 +12,7 @@ parasite	+= parasite-head.o
 
 target		:= parasite-head
 
-INCLUDE		:= -I ./std -I ./ -I ../ -I ../include -I ../../include
+INCLUDE		:= -I ./std -I ./ -I ../ -I ../include
 
 LDS		:= ../compel-pack.lds.S
 
