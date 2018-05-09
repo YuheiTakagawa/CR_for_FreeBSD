@@ -9,6 +9,7 @@
 #include <sys/user.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/ptrace.h>
@@ -23,6 +24,7 @@
 #include "parasite_syscall.h"
 #include "ptrace.h"
 #include "rpc-pie-priv.h"
+#include "fdtransport.h"
 
 #define PROT_ALL (PROT_EXEC | PROT_WRITE | PROT_READ) 
 #define PARASITE_STACK_SIZE	(16 << 10)
@@ -87,7 +89,7 @@ void *compel_parasite_args_p(struct parasite_ctl *ctl){
 static int gen_parasite_saddr(struct sockaddr_un *saddr, int key){
 	int sun_len;
 
-	saddr->sun_family = PF_LOCAL;
+	saddr->sun_family = PF_UNIX;
 	/*
 	 * X/crtools-pr-%d is not root in CRIU for Linux.
 	 * Temporary, CRIU for FreeBSD has X/crtools-pr-%d to root.
@@ -212,7 +214,7 @@ static int make_sock_for(int pid){
 
 
 	//sk = socket(PF_LOCAL, SOCK_SEQPACKET | SOCK_NONBLOCK, 0);
-	sk = socket(PF_LOCAL, SOCK_SEQPACKET, 0);
+	sk = socket(PF_UNIX, SOCK_SEQPACKET, 0);
 
 	return sk;
 }
@@ -311,6 +313,8 @@ int injection(pid_t pid){
 	compel_rpc_call_sync(PARASITE_CMD_DUMP_THREAD, ctl);
 	compel_rpc_call_sync(PARASITE_CMD_DUMP_ITIMERS, ctl);
 	compel_rpc_call_sync(PARASITE_CMD_GET_PID, ctl);
+	unlink("/local.sock2");
+	int ftmp = listen_gate("/local.sock2");
 
 	/*
 	 * Wait for Parasite Engine finishes writing to memory.
@@ -345,6 +349,38 @@ int injection(pid_t pid){
 
 	printf("hello: %s\n", hellop->hello);
 	printf("pid: %d\n", hellop->pid);
+
+	
+
+	compel_rpc_call(PARASITE_CMD_DRAIN_FDS, ctl);
+
+	int msg = 0, fds = 0;
+	fds = recvfd(ftmp, &msg, sizeof(msg));
+	printf("fds %d\n", fds);
+	struct sockaddr_in srv;
+	socklen_t srvlen = sizeof(srv);
+	getsockname(fds, (struct sockaddr *)&srv, &srvlen);
+	printf("srv port %d\n", ntohs(srv.sin_port));
+	getpeername(fds, (struct sockaddr *)&srv, &srvlen);
+	printf("cli port %d\n", ntohs(srv.sin_port));
+
+	int aux = 1;
+	setsockopt(fds, SOL_SOCKET, SO_REPAIR, &aux, sizeof(aux));
+	aux = TCP_RECV_QUEUE;
+	setsockopt(fds, SOL_SOCKET, SO_REPAIR_QUEUE, &aux, sizeof(aux));
+
+	socklen_t sizeq = sizeof(int);
+	int tmp;
+	getsockopt(fds, SOL_SOCKET, SO_QUEUE_SEQ, &tmp, &sizeq);
+	printf("RECV SEQ %x\n", tmp);
+
+	aux = 0;
+	setsockopt(fds, SOL_SOCKET, SO_REPAIR, &aux, sizeof(aux));
+	//write(fds, "MMMOJJO\n", 9);
+//	sleep(20);
+
+	compel_rpc_sync(PARASITE_CMD_DRAIN_FDS, ctl);
+
 
 
 	/*
