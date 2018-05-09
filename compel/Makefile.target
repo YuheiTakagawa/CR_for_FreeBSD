@@ -53,7 +53,7 @@ infect.a: parasite-head.h $(inject) $(USE_FILES)
 
 /tmp/shm:
 	$(call msg-gen, $@)
-	$(Q) dd if=/dev/zero of=/tmp/shm bs=4096 count=1 status=none
+	$(Q) dd if=/dev/zero of=/tmp/shm bs=4096*2 count=1 status=none
 
 /X:
 	$(call msg-gen, $@)
