@@ -91,8 +91,10 @@ int main(int argc, char *argv[]){
 	printf("unfilter packet\n");
 	setipfw(IPFWDEL, srcip, dstip);
 
-	snprintf(chs, sizeof(chs), "RESTORE FINISHED\n");
-	write(rst, chs, sizeof(chs));
+//	snprintf(chs, sizeof(chs), "RESTORE FINISHED\n");
+//	write(rst, chs, sizeof(chs));
+	while(read(rst, chs, sizeof(chs)))
+		printf("recv %s\n", chs);
 
 	return 0;
 }
