@@ -164,12 +164,3 @@ void restore_orig(pid_t pid, struct orig *orig){
 	restore_memory(pid, orig);
 }
 
-/*
-int parasite_drain_fds_seize(int nr_fds, int off, int *lfds)
-{
-	int ret = -1, size, sk;
-
-	sk = socket(PF_UNIX, SOCK_DGRAM, 0);
-
-	ret = 0;
-*/

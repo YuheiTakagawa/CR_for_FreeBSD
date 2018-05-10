@@ -41,8 +41,10 @@ static int tcp_repair_off(int fd) {
 	int ret, aux = 1;
 
 	ret = setsockopt(fd, SOL_SOCKET, SO_REPAIR, &aux, sizeof(aux));
-	if (ret < 0)
+	if (ret < 0){
+		perror("setsockopt");
 		printf("Failed to turn off repair mode on socket\n");
+	}
 
 	return ret;
 }

@@ -6,6 +6,7 @@ CFLAG += -D_WITH_DPRINTF
 
 SRC_DIR = ./src
 INCLUDE = -I ./include
+INCLUDE += -I ./
 
 
 UNAME := ${shell uname}
@@ -21,6 +22,7 @@ SRC_DEP = ./src/freebsd
 CFLAG += -lprocstat
 CFLAG += -D_BSD
 OBJ += compel/infect.a
+OBJ += soccr/libsoccr.a
 endif
 
 ifneq ($(UNAME), Linux)
@@ -52,6 +54,9 @@ ROBJ += $(SRC_DIR)/restore.o
 
 compel/infect.a:
 	$(GNUMAKE) -e -C compel
+
+soccr/libsoccr.a:
+	$(GNUMAKE) -e -C soccr
 
 target = crtools
 

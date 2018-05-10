@@ -13,6 +13,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/ptrace.h>
+#include <arpa/inet.h>
 
 #include "common.h"
 #include "emulate.h"
@@ -25,10 +26,16 @@
 #include "ptrace.h"
 #include "rpc-pie-priv.h"
 #include "fdtransport.h"
+#include "../soccr/soccr.h"
+#include "files.h"
 
 #define PROT_ALL (PROT_EXEC | PROT_WRITE | PROT_READ) 
 #define PARASITE_STACK_SIZE	(16 << 10)
 #define RESTORE_STACK_SIGFRAME 0 // TODO Calc SIGFRAMESIZE
+
+#define IPFWADD 0
+
+int parasite_drain_fds_seize(void *ctl, pid_t pid);
 
 struct hello_pid{
 	char hello[256];
@@ -313,8 +320,6 @@ int injection(pid_t pid){
 	compel_rpc_call_sync(PARASITE_CMD_DUMP_THREAD, ctl);
 	compel_rpc_call_sync(PARASITE_CMD_DUMP_ITIMERS, ctl);
 	compel_rpc_call_sync(PARASITE_CMD_GET_PID, ctl);
-	unlink("/local.sock2");
-	int ftmp = listen_gate("/local.sock2");
 
 	/*
 	 * Wait for Parasite Engine finishes writing to memory.
@@ -325,14 +330,6 @@ int injection(pid_t pid){
 	 * I want to implement as polling which especially
 	 * value is changed.
 	 */
-	/*
-	usleep(20);
-	sleep(1);
-	while((int)*ctl->addr_cmd != PARASITE_CMD_GET_PID + 1024){
-	int *a = (int *) ctl->addr_cmd;
-	printf("ctl->addr_cmd %d\n", *a);
-	}
-	*/
 	
 	/* 
 	 * return address is shared memory + args address
@@ -350,39 +347,8 @@ int injection(pid_t pid){
 	printf("hello: %s\n", hellop->hello);
 	printf("pid: %d\n", hellop->pid);
 
+	parasite_drain_fds_seize(ctl, ctl->rpid);
 	
-
-	compel_rpc_call(PARASITE_CMD_DRAIN_FDS, ctl);
-
-	int msg = 0, fds = 0;
-	fds = recvfd(ftmp, &msg, sizeof(msg));
-	printf("fds %d\n", fds);
-	struct sockaddr_in srv;
-	socklen_t srvlen = sizeof(srv);
-	getsockname(fds, (struct sockaddr *)&srv, &srvlen);
-	printf("srv port %d\n", ntohs(srv.sin_port));
-	getpeername(fds, (struct sockaddr *)&srv, &srvlen);
-	printf("cli port %d\n", ntohs(srv.sin_port));
-
-	int aux = 1;
-	setsockopt(fds, SOL_SOCKET, SO_REPAIR, &aux, sizeof(aux));
-	aux = TCP_RECV_QUEUE;
-	setsockopt(fds, SOL_SOCKET, SO_REPAIR_QUEUE, &aux, sizeof(aux));
-
-	socklen_t sizeq = sizeof(int);
-	int tmp;
-	getsockopt(fds, SOL_SOCKET, SO_QUEUE_SEQ, &tmp, &sizeq);
-	printf("RECV SEQ %x\n", tmp);
-
-	aux = 0;
-	setsockopt(fds, SOL_SOCKET, SO_REPAIR, &aux, sizeof(aux));
-	//write(fds, "MMMOJJO\n", 9);
-//	sleep(20);
-
-	compel_rpc_sync(PARASITE_CMD_DRAIN_FDS, ctl);
-
-
-
 	/*
 	 * send PARASITE_CMD_FINI to Parasite Daemon,
 	 * Parasite Daemon run socket closing and curing.
@@ -411,6 +377,73 @@ int injection(pid_t pid){
 
 	ptrace_set_regs(ctl->rpid, &orig.reg);
 	printf("restore reg\n");
+
+	return 0;
+}
+
+int parasite_drain_fds_seize(void *ctl, pid_t pid)
+{
+	struct libsoccr_sk_data data = {};
+	struct libsoccr_sk *so;
+	int sock, fd;
+	char srcaddr[20], dstaddr[20];
+	int srcpt, dstpt;
+	int msg = 0, fds = 0;
+	struct sockaddr_in addr;
+	char *queue;
+	int dsize = 0;
+	socklen_t len = sizeof(addr);
+
+	unlink("/local.sock2");
+	sock = listen_gate("/local.sock2");
+
+	compel_rpc_call(PARASITE_CMD_DRAIN_FDS, ctl);
+
+	fds = recvfd(sock, &msg, sizeof(msg));
+	printf("fds %d\n", fds);
+
+	getsockname(fds, (struct sockaddr *)&addr, &len);
+	strncpy(srcaddr, inet_ntoa(addr.sin_addr), sizeof(srcaddr));
+	srcpt = ntohs(addr.sin_port);
+	getpeername(fds, (struct sockaddr *)&addr, &len);
+	strncpy(dstaddr, inet_ntoa(addr.sin_addr), sizeof(dstaddr));
+	dstpt = ntohs(addr.sin_port);
+
+	setipfw(IPFWADD, srcaddr, dstaddr);
+	so = libsoccr_pause(fds);
+	printf("pause\n");
+
+	dsize = libsoccr_save(so, &data, sizeof(data));
+	if(dsize < 0){
+		perror("libsoccr_save");
+		return 1;
+	}
+	close(fds);
+	printf("close, don't send fin\n");
+
+	queue = libsoccr_get_queue_bytes(so, TCP_RECV_QUEUE, 0);
+	fd = open_dump_file(pid, "rcvq");
+	write(fd, queue, data.inq_len);
+	close(fd);
+
+	queue = libsoccr_get_queue_bytes(so,  TCP_SEND_QUEUE, 0);
+	fd = open_dump_file(pid, "sndq");
+	write(fd, queue, data.outq_len);
+	close(fd);
+
+
+	printf("TCP repair mode: off\n");
+
+	fd = open_dump_file(pid, "sock");
+	dprintf(fd, "%s,%d,%s,%d,%u,%u,%u,%u,%u,%u,%x,%d,%x,%d\n",
+			srcaddr, srcpt, dstaddr, dstpt,
+			data.snd_wl1, data.snd_wnd, data.max_window,
+			data.rcv_wnd, data.rcv_wup, data.mss_clamp,
+			data.outq_seq, data.outq_len, data.inq_seq, data.inq_len);
+	close(fd);
+
+	compel_rpc_sync(PARASITE_CMD_DRAIN_FDS, ctl);
+	libsoccr_resume(so);
 
 	return 0;
 }
