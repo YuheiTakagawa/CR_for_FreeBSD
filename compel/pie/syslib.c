@@ -168,13 +168,15 @@ int sendfd(int gate, int fd, void* message, int message_len)
 		return -1;
 	}
 	std_printf("fini sendmsg\n");
+	sys_close(fd);
 	return 0;
 }
 
 
 
-int drain_fds(void)
+int drain_fds(struct parasite_drain_fd *data)
 {
+	std_printf("nr_fds %d\n", data->nr_fds);
 	int msg = sys_getpid();
 	int gate = connect_gate("/local.sock2");
 	sendfd(gate, 4, &msg, sizeof(msg));
@@ -234,7 +236,7 @@ int connection(void *data){
 				break;
 			case PARASITE_CMD_DRAIN_FDS:
 				std_printf("drain\n");
-				drain_fds();
+				drain_fds(data);
 				break;
 		}
 		__parasite_daemon_reply_ack(m.cmd, ret); 

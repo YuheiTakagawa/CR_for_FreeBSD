@@ -16,8 +16,8 @@
 #include "ptrace.h"
 #include "register.h"
 
-int tracing(pid_t pid);
-extern int injection(pid_t pid);
+int tracing(pid_t pid, int *options);
+extern int injection(pid_t pid, int *options);
 
 
 /*
@@ -33,7 +33,7 @@ int main(int argc, char* argv[]){
 }
 */
 
-int tracing(pid_t pid){
+int tracing(pid_t pid, int *options){
 	int status;
 	
 	ptrace_attach(pid);
@@ -42,13 +42,13 @@ int tracing(pid_t pid){
 
 	if(WIFSTOPPED(status)){
 		printf("stop %d\n", pid);
-		injection(pid);
 		getfd(pid);
+		injection(pid, options);
 		getregs(pid);
 		getmems(pid);
 	}
 	printf("Checkpoint\n");
-	ptrace_detach(pid);
+	ptrace_cont(pid);
 
 	return 0;
 }

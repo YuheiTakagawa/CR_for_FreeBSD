@@ -226,7 +226,7 @@ static int make_sock_for(int pid){
 	return sk;
 }
 
-int injection(pid_t pid){
+int injection(pid_t pid, int *option){
 	struct orig orig;
 	struct parasite_ctl *ctl;
 	struct infect_ctx *ictx;
@@ -240,6 +240,8 @@ int injection(pid_t pid){
 	long ret;
 
 	int status;
+
+	int tcp_established = option[0];
 
 	ctl = (struct parasite_ctl *) malloc(sizeof(struct parasite_ctl));
 
@@ -347,7 +349,15 @@ int injection(pid_t pid){
 	printf("hello: %s\n", hellop->hello);
 	printf("pid: %d\n", hellop->pid);
 
-	parasite_drain_fds_seize(ctl, ctl->rpid);
+
+	if (tcp_established) {
+		printf("tcpestablished\n");
+		struct parasite_drain_fd pdfd;
+		pdfd.nr_fds = 4;
+       		ctl->addr_args = &pdfd;
+
+		parasite_drain_fds_seize(ctl, ctl->rpid);
+	}
 	
 	/*
 	 * send PARASITE_CMD_FINI to Parasite Daemon,

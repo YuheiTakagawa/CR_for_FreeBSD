@@ -5,7 +5,7 @@
 #include <unistd.h>
 
 extern int restore(pid_t pid, char *path);
-extern int tracing(pid_t pid);
+extern int tracing(pid_t pid, int * options);
 
 int usage(void){
 	printf(	"Usage\n"
@@ -21,10 +21,11 @@ int main(int argc, char *argv[]){
 	int i;
 	int pid = 0;
 	char *path = NULL;
+	int options[10];
 	struct option longopts[] = {
 		{ "pid",	required_argument,	0, 'p' },
 		{ "help",	no_argument,		0, 'h' },
-		{ },
+		{ "tcp",	no_argument,		0, 't' },
 	};
 
 	if(argc < 2){
@@ -33,13 +34,16 @@ int main(int argc, char *argv[]){
 
 	int opt;
 	int longindex;
-	while((opt = getopt_long(argc, argv, "p:e:h", longopts, &longindex)) != -1){
+	while((opt = getopt_long(argc, argv, "p:e:ht", longopts, &longindex)) != -1){
 		switch(opt){
 			case 'p':
 				pid = atoi(optarg);
 				break;
 			case 'e':
 				path = optarg;
+				break;
+			case 't':
+				options[0] = 1;
 				break;
 			case 'h':
 				usage();
@@ -62,7 +66,7 @@ int main(int argc, char *argv[]){
 		if(!(strcmp(argv[i], "dump"))){
 			if(pid == 0)
 				goto usage;
-			tracing(pid);
+			tracing(pid, options);
 			break;
 		}
 		goto usage;
