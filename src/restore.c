@@ -123,8 +123,14 @@ int restore_fork(int filePid, char *exec_path){
 		/*
 		 *  if restore tty info, have to implement restoring ttys
 		 */
-		if(strstr(fds[i].path, "/dev/pts") == NULL)
+		if(strstr(fds[i].path, "/dev/pts") == NULL){
+			if(!strcmp(fds[i].path, "internet")){
+				restore_socket(filePid, fds[i].fd);
+				continue;
+			}else if(!strcmp(fds[i].path, "local"))
+				continue;
 			fd = prepare_restore_files(fds[i].path, fds[i].fd, fds[i].offset);
+		}
 	}
 	pid = fork();
 	if(pid < 0){
@@ -132,7 +138,10 @@ int restore_fork(int filePid, char *exec_path){
 		exit(1);
 	}
 	if(pid != 0){
-		close(fd);
+		for(i = 0; fds[i].fd != -2; i++) {
+			if(fds[i].fd > 2)
+				close(fd);
+		}
 		return pid;
 	}
 	target(exec_path, NULL);
@@ -156,17 +165,19 @@ int restore(pid_t rpid, char *rpath){
 	waitpro(pid, &status);
 	setmems(pid, rpid, revm);
 	setregs(pid, rpid);
-	ptrace_cont(pid);
+//	step_debug(pid);
+
+//	ptrace_cont(pid);
 	
-	waitpro(pid, &status);
-	print_regs(pid);
+//	waitpro(pid, &status);
+//	print_regs(pid);
 
 	/*
 	 * To keep attach
 	 * if detach from process, uncomment ptrace_detach
 	 */
-	while(1){}
-	//ptrace_detach(pid);
+//	while(1){}
+	ptrace_detach(pid);
 	
 	return 0;
 }
