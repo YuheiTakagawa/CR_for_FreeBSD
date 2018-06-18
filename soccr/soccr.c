@@ -38,7 +38,7 @@ static int tcp_repair_on(int fd) {
 }
 
 static int tcp_repair_off(int fd) {
-	int ret, aux = 1;
+	int ret, aux = 0;
 
 	ret = setsockopt(fd, SOL_SOCKET, SO_REPAIR, &aux, sizeof(aux));
 	if (ret < 0){
