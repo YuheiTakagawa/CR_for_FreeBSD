@@ -282,7 +282,8 @@ static int libsoccr_set_sk_data_noq(struct libsoccr_sk *sk,
 	}
 
 	if (set_queue_seq(sk, TCP_RECV_QUEUE,
-				data->inq_seq - data->inq_len))
+//				data->inq_seq - data->inq_len))
+				data->inq_seq))
 		return -2;
 
 	if (set_queue_seq(sk, TCP_SEND_QUEUE,
