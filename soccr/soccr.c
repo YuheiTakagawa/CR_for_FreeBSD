@@ -118,9 +118,16 @@ static int refresh_sk(struct libsoccr_sk *sk,
 		return -1;
 	}
 
+	printf("outq_len %d\n", size);
 	data->outq_len = size;
 
-	data->unsq_len = 0;
+	if (ioctl(sk->fd, FIONUNWRITE, &size) == -1) {
+		perror("ioctl");
+		return -1;
+	}
+
+	printf("unsq_len %d\n", size);
+	data->unsq_len = size;
 
 	if (ioctl(sk->fd, FIONREAD, &size) == -1) {
 		perror("ioctl");
@@ -275,11 +282,11 @@ static int libsoccr_set_sk_data_noq(struct libsoccr_sk *sk,
 	}
 
 	if (set_queue_seq(sk, TCP_RECV_QUEUE,
-				data->inq_seq))
+				data->inq_seq - data->inq_len))
 		return -2;
 
 	if (set_queue_seq(sk, TCP_SEND_QUEUE,
-				data->outq_seq))
+				data->outq_seq - data->outq_len))
 		return -3;
 
 	if (sk->dst_addr->sa.sa_family == AF_INET)
@@ -332,8 +339,44 @@ int libsoccr_restore(struct libsoccr_sk *sk,
 
 static int __send_queue(struct libsoccr_sk *sk, int queue, char *buf, uint32_t len)
 {
-	send(sk->fd, buf, len, 0);
-	return 0;
+	int ret, err = -1, max_chunk;
+	int off;
+
+	max_chunk = len;
+	off = 0;
+
+	do {
+		int chunk = len;
+
+		if (chunk > max_chunk)
+			chunk = max_chunk;
+
+		printf("off: %d, chunk %d\n", off, chunk);
+		ret = send(sk->fd, buf + off, chunk, 0);
+		printf("send ret: %d\n", ret);
+		if (ret <= 0) {
+			if (max_chunk > 1024) {
+				max_chunk >>= 1;
+				continue;
+			}
+			
+			goto err;
+		}
+
+		off += ret;
+		len -= ret;
+	} while (len);
+
+	err = 0;
+
+err:
+	return err;
+/*
+	printf("len %d\n", len);
+	ret = send(sk->fd, buf, len, 0);
+	printf("ret %d\n", ret);
+*/
+
 }
 
 static int send_queue(struct libsoccr_sk *sk, int queue, char *buf, uint32_t len)
@@ -365,6 +408,7 @@ static int libsoccr_restore_queue(struct libsoccr_sk *sk, struct libsoccr_sk_dat
 
 		ulen = data->unsq_len;
 		len = data->outq_len - ulen;
+		printf("len %d, ulen %d\n", len, ulen);
 		if (len && send_queue(sk, TCP_SEND_QUEUE, buf, len))
 			return -2;
 

@@ -5,6 +5,8 @@
 
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include "breakpoint.h"
 #include "common.h"
@@ -13,6 +15,10 @@
 #include "parasite_syscall.h"
 #include "register.h"
 #include "setmem.h"
+#include "soccr/soccr.h"
+#include "files.h"
+
+#define IPFWDEL 1
 
 
 int target(char *path, char* argv[]);
@@ -27,6 +33,83 @@ int target(char *path, char *argv[]){
 	ret = execvp(exec[0], exec);
 	perror("execvp");
 	exit(ret);
+}
+
+int restore_socket(int pid, int rfd) {
+	int rst, fd;
+	int dsize;
+	char *queue;
+	char srcaddr[20], dstaddr[20];
+	char buf [256];
+	int srcpt, dstpt;
+	struct libsoccr_sk *so_rst;
+	struct libsoccr_sk_data data = {};
+	union libsoccr_addr addr, dst;
+
+	fd = open_file(pid, "sock");
+
+	read(fd, buf, sizeof(buf));
+	strncpy(srcaddr, strtok(buf, ","), sizeof(srcaddr));
+	srcpt = atoi(strtok(NULL, ","));
+	strncpy(dstaddr, strtok(NULL, ","), sizeof(dstaddr));
+	dstpt = atoi(strtok(NULL, ","));
+	data.snd_wl1 = atoi(strtok(NULL, ","));
+	data.snd_wnd = atoi(strtok(NULL, ","));
+	data.max_window = atoi(strtok(NULL, ","));
+	data.rcv_wnd = atoi(strtok(NULL, ","));
+	data.rcv_wup = atoi(strtok(NULL, ","));
+	data.mss_clamp = atoi(strtok(NULL, ","));
+	data.outq_seq = strtol(strtok(NULL, ","), NULL, 16);
+	data.outq_len = atoi(strtok(NULL, ","));
+	data.inq_seq = strtol(strtok(NULL, ","), NULL, 16);
+	data.inq_len = atoi(strtok(NULL, ","));
+	data.unsq_len = atoi(strtok(NULL, ","));
+	close(fd);
+
+
+	addr.v4.sin_family = AF_INET;
+	addr.v4.sin_addr.s_addr = inet_addr(srcaddr);
+	addr.v4.sin_port = htons(srcpt);
+
+	dst.v4.sin_family = AF_INET;
+	dst.v4.sin_addr.s_addr = inet_addr(dstaddr);
+	dst.v4.sin_port = htons(dstpt);
+
+	printf("create new socket\n");
+	rst = socket(AF_INET, SOCK_STREAM, 0);
+	dup2(rst, rfd);
+	close(rst);
+
+	so_rst = libsoccr_pause(rfd);
+
+	libsoccr_set_addr(so_rst, 1, &addr, 0);
+	libsoccr_set_addr(so_rst, 0, &dst, 0);
+
+	fd = open_file(pid, "sndq");
+	queue = malloc(data.outq_len + 1);
+	read(fd, queue, data.outq_len);
+	libsoccr_set_queue_bytes(so_rst, TCP_SEND_QUEUE, queue, 0);
+	close(fd);
+
+	fd = open_file(pid, "rcvq");
+	queue = malloc(data.inq_len + 1);
+	read(fd, queue, data.inq_len);
+	libsoccr_set_queue_bytes(so_rst, TCP_RECV_QUEUE, queue, 0);
+	close(fd);
+	
+
+	printf("restore\n");
+	dsize = sizeof(struct libsoccr_sk_data);
+	libsoccr_restore(so_rst, &data, dsize);
+
+	printf("resume so_rst\n");
+	libsoccr_resume(so_rst);
+/* unfilter packet */
+	printf("unfilter packet\n");
+//	setipfw(IPFWDEL, "192.168.11.1", "192.168.11.30");
+	setipfw(IPFWDEL, srcaddr, dstaddr);
+
+	return 0;
 }
 
 int restore_fork(int filePid, char *exec_path){

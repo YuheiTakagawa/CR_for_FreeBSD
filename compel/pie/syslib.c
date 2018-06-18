@@ -177,7 +177,7 @@ int drain_fds(void)
 {
 	int msg = sys_getpid();
 	int gate = connect_gate("/local.sock2");
-	sendfd(gate, 3, &msg, sizeof(msg));
+	sendfd(gate, 4, &msg, sizeof(msg));
 	return 0;
 }
 

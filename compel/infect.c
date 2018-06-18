@@ -435,11 +435,11 @@ int parasite_drain_fds_seize(void *ctl, pid_t pid)
 	printf("TCP repair mode: off\n");
 
 	fd = open_dump_file(pid, "sock");
-	dprintf(fd, "%s,%d,%s,%d,%u,%u,%u,%u,%u,%u,%x,%d,%x,%d\n",
+	dprintf(fd, "%s,%d,%s,%d,%u,%u,%u,%u,%u,%u,%x,%d,%x,%d,%d\n",
 			srcaddr, srcpt, dstaddr, dstpt,
 			data.snd_wl1, data.snd_wnd, data.max_window,
 			data.rcv_wnd, data.rcv_wup, data.mss_clamp,
-			data.outq_seq, data.outq_len, data.inq_seq, data.inq_len);
+			data.outq_seq, data.outq_len, data.inq_seq, data.inq_len, data.unsq_len);
 	close(fd);
 
 	compel_rpc_sync(PARASITE_CMD_DRAIN_FDS, ctl);

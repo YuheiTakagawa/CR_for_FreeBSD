@@ -50,6 +50,7 @@ int main(int argc, char *argv[]){
 	data.outq_len = atoi(strtok(NULL, ","));
 	data.inq_seq = strtol(strtok(NULL, ","), NULL, 16);
 	data.inq_len = atoi(strtok(NULL, ","));
+	data.unsq_len = atoi(strtok(NULL, ","));
 	close(fd);
 
 
@@ -91,10 +92,14 @@ int main(int argc, char *argv[]){
 	printf("unfilter packet\n");
 	setipfw(IPFWDEL, srcip, dstip);
 
-//	snprintf(chs, sizeof(chs), "RESTORE FINISHED\n");
-//	write(rst, chs, sizeof(chs));
-	while(read(rst, chs, sizeof(chs)))
+	snprintf(chs, sizeof(chs), "RESTORE FINISHED\n");
+	write(rst, chs, sizeof(chs));
+	printf("fini\n");
+	while(1){}
+	/*while(read(rst, chs, sizeof(chs))){
 		printf("recv %s\n", chs);
+		usleep(100000);
+	}*/
 
 	return 0;
 }
