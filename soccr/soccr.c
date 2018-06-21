@@ -2,16 +2,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <linux/sockios.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <netinet/tcp_fsm.h>
+#include <netinet/tcp.h>
+//#include <netinet/tcp_fsm.h>
 #include <sys/ioctl.h>
 
 #include "soccr.h"
 #define IPFWADD 0
 #define IPFWDEL 1
 
+struct msswnd {
+	__uint32_t	snd_wl1;
+	__uint32_t	snd_wnd;
+	__uint32_t	max_sndwnd;
+	__uint32_t	rcv_wnd;
+	__uint32_t	rcv_adv;
+	__uint32_t	t_maxseg;
+};
 
 void setipfw(int flag, char *sip, char *dip){
 	char ipfw[256];
@@ -30,7 +40,7 @@ void setipfw(int flag, char *sip, char *dip){
 static int tcp_repair_on(int fd) {
 	int ret, aux = 1;
 
-	ret = setsockopt(fd, SOL_SOCKET, SO_REPAIR, &aux, sizeof(aux));
+	ret = setsockopt(fd, SOL_TCP, TCP_REPAIR, &aux, sizeof(aux));
 	if (ret < 0)
 		printf("Can't turn TCP repair mode ON\n");
 
@@ -40,7 +50,7 @@ static int tcp_repair_on(int fd) {
 static int tcp_repair_off(int fd) {
 	int ret, aux = 0;
 
-	ret = setsockopt(fd, SOL_SOCKET, SO_REPAIR, &aux, sizeof(aux));
+	ret = setsockopt(fd, SOL_TCP, TCP_REPAIR, &aux, sizeof(aux));
 	if (ret < 0){
 		perror("setsockopt");
 		printf("Failed to turn off repair mode on socket\n");
@@ -111,9 +121,9 @@ static int refresh_sk(struct libsoccr_sk *sk,
 {
 	int size;
 
-	data->state = TCPS_ESTABLISHED;
+	data->state = TCP_ESTABLISHED;
 
-	if (ioctl(sk->fd, FIONWRITE, &size) == -1) {
+	if (ioctl(sk->fd, SIOCOUTQ, &size) == -1) {
 		perror("ioctl");
 		return -1;
 	}
@@ -121,7 +131,7 @@ static int refresh_sk(struct libsoccr_sk *sk,
 	printf("outq_len %d\n", size);
 	data->outq_len = size;
 
-	if (ioctl(sk->fd, FIONUNWRITE, &size) == -1) {
+	if (ioctl(sk->fd, SIOCOUTQNSD, &size) == -1) {
 		perror("ioctl");
 		return -1;
 	}
@@ -129,7 +139,7 @@ static int refresh_sk(struct libsoccr_sk *sk,
 	printf("unsq_len %d\n", size);
 	data->unsq_len = size;
 
-	if (ioctl(sk->fd, FIONREAD, &size) == -1) {
+	if (ioctl(sk->fd, SIOCINQ, &size) == -1) {
 		perror("ioctl");
 		return -1;
 	}
@@ -141,10 +151,10 @@ static int refresh_sk(struct libsoccr_sk *sk,
 
 static int get_window(struct libsoccr_sk *sk, struct libsoccr_sk_data *data)
 {
-	struct msswnd mw;
+	struct msswnd mw = {};
 	socklen_t len = sizeof(mw);
 
-	getsockopt(sk->fd, SOL_SOCKET, SO_MSS_WINDOW, &mw, &len);
+//	getsockopt(sk->fd, SOL_TCP, TCP_MSS_WINDOW, &mw, &len);
 
 	data->snd_wl1		= mw.snd_wl1;
 	data->snd_wnd		= mw.snd_wnd;
@@ -172,12 +182,12 @@ static int get_queue(int sk, int queue_id,
 
 	aux = queue_id;
 	auxl = sizeof(aux);
-	ret = setsockopt(sk, SOL_SOCKET, SO_REPAIR_QUEUE, &aux, auxl);
+	ret = setsockopt(sk, SOL_TCP, TCP_REPAIR_QUEUE, &aux, auxl);
 	if (ret < 0)
 		goto err_sopt;
 
 	auxl = sizeof(*seq);
-	ret = getsockopt(sk, SOL_SOCKET, SO_QUEUE_SEQ, seq, &auxl);
+	ret = getsockopt(sk, SOL_TCP, TCP_QUEUE_SEQ, seq, &auxl);
 	if (ret < 0)
 		goto err_sopt;
 
@@ -253,12 +263,12 @@ static int set_queue_seq(struct libsoccr_sk *sk, int queue, uint32_t seq)
 {
 	printf("\tSetting %d queue seq to %u\n", queue, seq);
 
-	if (setsockopt(sk->fd, SOL_SOCKET, SO_REPAIR_QUEUE, &queue, sizeof(queue)) < 0) {
+	if (setsockopt(sk->fd, SOL_TCP, TCP_REPAIR_QUEUE, &queue, sizeof(queue)) < 0) {
 		printf("Can't set repair seq\n");
 		return -1;
 	}
 
-	if (setsockopt(sk->fd, SOL_SOCKET, SO_QUEUE_SEQ, &seq, sizeof(seq)) < 0) {
+	if (setsockopt(sk->fd, SOL_TCP, TCP_QUEUE_SEQ, &seq, sizeof(seq)) < 0) {
 		printf("Can't set queue seq\n");
 		return -1;
 	}
@@ -282,8 +292,8 @@ static int libsoccr_set_sk_data_noq(struct libsoccr_sk *sk,
 	}
 
 	if (set_queue_seq(sk, TCP_RECV_QUEUE,
-//				data->inq_seq - data->inq_len))
-				data->inq_seq))
+				data->inq_seq - data->inq_len))
+//				data->inq_seq))
 		return -2;
 
 	if (set_queue_seq(sk, TCP_SEND_QUEUE,
@@ -295,7 +305,7 @@ static int libsoccr_set_sk_data_noq(struct libsoccr_sk *sk,
 	else
 		addr_size = sizeof(sk->dst_addr->v6);
 
-	if (data->state == TCPS_SYN_SENT && tcp_repair_off(sk->fd))
+	if (data->state == TCP_SYN_SENT && tcp_repair_off(sk->fd))
 		return -1;
 
 	if (connect(sk->fd, &sk->dst_addr->sa, addr_size) == -1 &&
@@ -304,7 +314,7 @@ static int libsoccr_set_sk_data_noq(struct libsoccr_sk *sk,
 		return -1;
 	}
 
-	if (data->state == TCPS_SYN_SENT && tcp_repair_off(sk->fd))
+	if (data->state == TCP_SYN_SENT && tcp_repair_off(sk->fd))
 		return -1;
 
 	return 0;
@@ -333,7 +343,7 @@ int libsoccr_restore(struct libsoccr_sk *sk,
 		.rcv_adv = data->rcv_wup,
 		.t_maxseg = data->mss_clamp,
 	};
-	setsockopt(sk->fd, SOL_SOCKET, SO_MSS_WINDOW, &mw, sizeof(mw));
+//	setsockopt(sk->fd, SOL_TCP, TCP_MSS_WINDOW, &mw, sizeof(mw));
 
 	return 0;
 }
@@ -384,7 +394,7 @@ static int send_queue(struct libsoccr_sk *sk, int queue, char *buf, uint32_t len
 {
 	printf("\tRestoring TCP %d queue data %u bytes\n", queue, len);
 
-	if (setsockopt(sk->fd, SOL_SOCKET, SO_REPAIR_QUEUE, &queue, sizeof(queue)) < 0) {
+	if (setsockopt(sk->fd, SOL_TCP, TCP_REPAIR_QUEUE, &queue, sizeof(queue)) < 0) {
 		perror("Can't set repair queue");
 		return -1;
 	}

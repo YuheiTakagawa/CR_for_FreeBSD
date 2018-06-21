@@ -1,10 +1,11 @@
 #!/bin/sh
 no=4000
 if [ $1 = "add" ]; then
-	ipfw add $no deny ip from $2 to $3
-	ipfw add $no deny ip from $3 to $2
+	iptables -I INPUT -s $2 -d $3 -j DROP
+	iptables -I INPUT -s $3 -d $2 -j DROP
 fi
 
 if [ $1 = "delete" ]; then
-	ipfw delete $no 
+	iptables -D INPUT -s $2 -d $3 -j DROP 
+	iptables -D INPUT -s $3 -d $2 -j DROP
 fi

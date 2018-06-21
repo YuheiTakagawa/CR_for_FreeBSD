@@ -1,6 +1,7 @@
 #ifndef __LIBSOCCR_H__
 #define __LIBSOCCR_H__
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <sys/socket.h>
 
 struct libsoccr_sk;

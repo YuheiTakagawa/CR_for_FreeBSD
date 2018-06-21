@@ -87,7 +87,7 @@ int main(void){
 		memset(chs, 0, sizeof(chs));
 	}
 
-	setipfw(IPFWADD, srcip, dstip);
+//	setipfw(IPFWADD, srcip, dstip);
 	/* REPAIR MODE ON */
 	so = libsoccr_pause(sock);
 
