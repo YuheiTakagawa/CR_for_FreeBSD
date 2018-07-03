@@ -48,7 +48,9 @@ int tracing(pid_t pid, int *options){
 		getmems(pid);
 	}
 	printf("Checkpoint\n");
-	ptrace_cont(pid);
+	//ptrace_cont(pid);
+	ptrace_detach(pid);
+	kill(pid, 9);
 
 	return 0;
 }

@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp_fsm.h>
+#include <arpa/inet.h>
 #include <sys/ioctl.h>
 
 #include "soccr.h"
@@ -28,7 +29,7 @@ void setipfw(int flag, char *sip, char *dip){
 }
 
 static int tcp_repair_on(int fd) {
-	int ret, aux = 1;
+	int ret = 1, aux = 1;
 
 	ret = setsockopt(fd, SOL_SOCKET, SO_REPAIR, &aux, sizeof(aux));
 	if (ret < 0)
@@ -38,7 +39,7 @@ static int tcp_repair_on(int fd) {
 }
 
 static int tcp_repair_off(int fd) {
-	int ret, aux = 0;
+	int ret = -1 , aux = 0;
 
 	ret = setsockopt(fd, SOL_SOCKET, SO_REPAIR, &aux, sizeof(aux));
 	if (ret < 0){
@@ -147,11 +148,13 @@ static int get_window(struct libsoccr_sk *sk, struct libsoccr_sk_data *data)
 	getsockopt(sk->fd, SOL_SOCKET, SO_MSS_WINDOW, &mw, &len);
 
 	data->snd_wl1		= mw.snd_wl1;
+	data->snd_wl2		= mw.snd_wl2;
 	data->snd_wnd		= mw.snd_wnd;
 	data->max_window	= mw.max_sndwnd;
 	data->rcv_wnd		= mw.rcv_wnd;
 	data->rcv_wup		= mw.rcv_adv;
 	data->mss_clamp		= mw.t_maxseg;
+	data->snd_scale		= mw.snd_scale;
 
 	return 0;
 }
@@ -319,22 +322,28 @@ int libsoccr_restore(struct libsoccr_sk *sk,
 	if (libsoccr_set_sk_data_noq(sk, data, data_size))
 		return -1;
 
+
+	struct msswnd mw = {
+		.snd_wl1 = data->snd_wl1,
+		.snd_wl2 = data->snd_wl2,
+		.snd_wnd = data->snd_wnd,
+	//	.snd_wnd = 65664,
+		.max_sndwnd = data->max_window,
+		.rcv_wnd = data->rcv_wnd,
+		.rcv_adv = data->rcv_wup,
+		.t_maxseg = data->mss_clamp,
+		.snd_scale = data->snd_scale,
+	};
+	setsockopt(sk->fd, SOL_SOCKET, SO_MSS_WINDOW, &mw, sizeof(mw));
+
+
+
 	if (libsoccr_restore_queue(sk, data, sizeof(*data), TCP_RECV_QUEUE, sk->recv_queue))
 		return -1;
 
 	if (libsoccr_restore_queue(sk, data, sizeof(*data), TCP_SEND_QUEUE, sk->send_queue))
 		return -1;
 	
-	struct msswnd mw = {
-		.snd_wl1 = data->snd_wl1,
-		.snd_wnd = data->snd_wnd,
-		.max_sndwnd = data->max_window,
-		.rcv_wnd = data->rcv_wnd,
-		.rcv_adv = data->rcv_wup,
-		.t_maxseg = data->mss_clamp,
-	};
-	setsockopt(sk->fd, SOL_SOCKET, SO_MSS_WINDOW, &mw, sizeof(mw));
-
 	return 0;
 }
 
@@ -354,6 +363,7 @@ static int __send_queue(struct libsoccr_sk *sk, int queue, char *buf, uint32_t l
 
 		printf("off: %d, chunk %d\n", off, chunk);
 		ret = send(sk->fd, buf + off, chunk, 0);
+		perror("send");
 		printf("send ret: %d\n", ret);
 		if (ret <= 0) {
 			if (max_chunk > 1024) {
@@ -415,6 +425,12 @@ static int libsoccr_restore_queue(struct libsoccr_sk *sk, struct libsoccr_sk_dat
 
 		if (ulen) {
 			tcp_repair_off(sk->fd);
+		
+			char srcaddr[20], dstaddr[20];
+			strncpy(srcaddr, inet_ntoa(sk->src_addr->v4.sin_addr), sizeof(srcaddr));
+			strncpy(dstaddr, inet_ntoa(sk->dst_addr->v4.sin_addr), sizeof(srcaddr));
+			setipfw(IPFWDEL, srcaddr, dstaddr);
+		
 			if (__send_queue(sk, TCP_SEND_QUEUE, buf + len, ulen))
 				return -3;
 			if (tcp_repair_on(sk->fd))

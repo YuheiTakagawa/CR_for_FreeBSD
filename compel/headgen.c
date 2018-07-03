@@ -159,6 +159,7 @@ int __handle_elf(void *mem, size_t size){
 			}else{
 				sh_src = sec_hdrs[sym->st_shndx];
 			}
+			printf("sym->st_value %x\n", sym->st_value);
 			pr_out("#define %s_sym%s 0x%lx\n",
 					"parasite", name, (unsigned long)(sym->st_value + (sh_src ? sh_src->sh_addr : 0)));
 		}

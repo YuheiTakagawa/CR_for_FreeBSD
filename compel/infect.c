@@ -184,11 +184,15 @@ static int parasite_init_daemon(struct parasite_ctl *ctl){
 
 	reg.r_rip = (unsigned long int)ctl->remote_map;
 	reg.r_rbp = (unsigned long int)ctl->remote_map + sizeof(parasite_blob);
+	printf("rbp: %lx\n", reg.r_rbp);
 	reg.r_rbp += RESTORE_STACK_SIGFRAME;
+	printf("rbp: %lx\n", reg.r_rbp);
 	reg.r_rbp += PARASITE_STACK_SIZE;
+	printf("rbp: %lx\n", reg.r_rbp);
 
 	ptrace_set_regs(pid, &reg);
 	ptrace_cont(pid);
+//	step_debug(pid);
 	/*
 	 *  parasite_run include ptrace SETREGS and CONTINUE, 
 	 *  but this function does not work properly. 
@@ -355,11 +359,12 @@ int parasite_drain_fds_seize(void *ctl, pid_t pid)
 	printf("TCP repair mode: off\n");
 
 	fd = open_dump_file(pid, "sock");
-	dprintf(fd, "%s,%d,%s,%d,%u,%u,%u,%u,%u,%u,%x,%d,%x,%d,%d\n",
+	dprintf(fd, "%s,%d,%s,%d,%u,%u,%u,%u,%u,%u,%u,%x,%d,%x,%d,%d,%d\n",
 			srcaddr, srcpt, dstaddr, dstpt,
-			data.snd_wl1, data.snd_wnd, data.max_window,
-			data.rcv_wnd, data.rcv_wup, data.mss_clamp,
-			data.outq_seq, data.outq_len, data.inq_seq, data.inq_len, data.unsq_len);
+			data.snd_wl1, data.snd_wl2, data.snd_wnd,
+			data.max_window, data.rcv_wnd, data.rcv_wup,
+			data.mss_clamp, data.outq_seq, data.outq_len,
+			data.inq_seq, data.inq_len, data.unsq_len, data.snd_scale);
 	close(fd);
 
 	compel_rpc_sync(PARASITE_CMD_DRAIN_FDS, ctl);
@@ -440,6 +445,8 @@ int injection(pid_t pid, int *option){
 
 	memcpy(ctl->local_map, parasite_blob, sizeof(parasite_blob));
 
+	printf("size parasite_blob %x\n", sizeof(parasite_blob));
+	printf("parasite_args %x\n", parasite_sym__export_parasite_args);
 
 	/*
 	 * If you want to debug register, please uncomment

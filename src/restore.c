@@ -54,6 +54,7 @@ int restore_socket(int pid, int rfd) {
 	strncpy(dstaddr, strtok(NULL, ","), sizeof(dstaddr));
 	dstpt = atoi(strtok(NULL, ","));
 	data.snd_wl1 = atoi(strtok(NULL, ","));
+	data.snd_wl2 = atoi(strtok(NULL, ","));
 	data.snd_wnd = atoi(strtok(NULL, ","));
 	data.max_window = atoi(strtok(NULL, ","));
 	data.rcv_wnd = atoi(strtok(NULL, ","));
@@ -64,6 +65,7 @@ int restore_socket(int pid, int rfd) {
 	data.inq_seq = strtol(strtok(NULL, ","), NULL, 16);
 	data.inq_len = atoi(strtok(NULL, ","));
 	data.unsq_len = atoi(strtok(NULL, ","));
+	data.snd_scale = atoi(strtok(NULL, ","));
 	close(fd);
 
 
@@ -77,8 +79,12 @@ int restore_socket(int pid, int rfd) {
 
 	printf("create new socket\n");
 	rst = socket(AF_INET, SOCK_STREAM, 0);
+
 	dup2(rst, rfd);
-	close(rst);
+	if (rst != rfd)
+		close(rst);
+
+//	while(1){}
 
 	so_rst = libsoccr_pause(rfd);
 
@@ -124,7 +130,8 @@ int restore_fork(int filePid, char *exec_path){
 		 *  if restore tty info, have to implement restoring ttys
 		 */
 		if(strstr(fds[i].path, "/dev/pts") == NULL){
-			if(!strcmp(fds[i].path, "internet")){
+			if((strstr(fds[i].path, "internet")) ||
+				(strstr(fds[i].path, "socket"))){
 				restore_socket(filePid, fds[i].fd);
 				continue;
 			}else if(!strcmp(fds[i].path, "local"))
