@@ -12,8 +12,8 @@
 #include <sys/wait.h>
 #include <sys/ptrace.h>
 
-#include "parasite_syscall.h"
 #include "ptrace.h"
+#include "parasite_syscall.h"
 #include "register.h"
 #include "parasite-head.h"
 #include "parasite.h"

@@ -1,4 +1,6 @@
 COMPELFLAG	:= -fpie
+COMPELFLAG	+= -fno-stack-protector
+COMPELFLAG	+= -lbsd
 ASFLAG		:= -c
 ASFLAG		+= -Wstrict-prototypes
 ASFLAG		+= -D__ASSEMBLY__

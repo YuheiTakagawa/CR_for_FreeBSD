@@ -8,6 +8,7 @@
 #include <sys/un.h>
 #include <fcntl.h>
 #include <string.h>
+#include <bsd/string.h>
 
 /* UNIXドメインソケットを待ち受ける */
 /* path: ソケットのパス */
@@ -21,7 +22,7 @@ int listen_gate(const char* path)
 	}
 	memset(&gate_addr, 0, sizeof(gate_addr));
 	gate_addr.sun_family = AF_UNIX;
-	strlcpy(gate_addr.sun_path, path, sizeof(gate_addr.sun_path));
+	strncpy(gate_addr.sun_path, path, sizeof(gate_addr.sun_path));
 	if( bind(gate, (struct sockaddr*)&gate_addr, sizeof(gate_addr)) < 0 ) {
 		return -1;
 	}
@@ -40,7 +41,7 @@ int connect_gate(const char* path)
 	}
 	memset(&gate_addr, 0, sizeof(gate_addr));
 	gate_addr.sun_family = AF_UNIX;
-	strlcpy(gate_addr.sun_path, path, sizeof(gate_addr.sun_path));
+	strncpy(gate_addr.sun_path, path, sizeof(gate_addr.sun_path));
 	if ( connect(gate, (struct sockaddr*)&gate_addr, sizeof(gate_addr)) < 0 ) {
 		return -1;
 	}

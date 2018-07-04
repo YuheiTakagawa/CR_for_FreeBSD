@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -14,6 +15,7 @@
 #include <sys/wait.h>
 #include <sys/ptrace.h>
 #include <arpa/inet.h>
+#include <bsd/string.h>
 
 #include "common.h"
 #include "emulate.h"
@@ -30,7 +32,7 @@
 #include "files.h"
 
 #define PROT_ALL (PROT_EXEC | PROT_WRITE | PROT_READ) 
-#define PARASITE_STACK_SIZE	(16 << 10)
+#define PARASITE_STACK_SIZE	(16 << 8)
 #define RESTORE_STACK_SIGFRAME 0 // TODO Calc SIGFRAMESIZE
 
 #define IPFWADD 0
@@ -116,6 +118,7 @@ static int prepare_tsock(struct parasite_ctl *ctl, pid_t pid,
 	//socklen_t sk_len;
 	struct sockaddr_un addr;
 
+	printf("parasite_daemon %p", args);
 	args->h_addr_len = gen_parasite_saddr(&addr, getpid());
 
 	ssock = ctl->ictx.sock;
@@ -138,6 +141,7 @@ static int prepare_tsock(struct parasite_ctl *ctl, pid_t pid,
 	}
 	*/
 
+	printf("parasite_daemon\n");
 	if(bind(ssock, (struct sockaddr *) &addr, args->h_addr_len) < 0){
 		perror("Can't  bind socket");
 		goto err;
@@ -148,6 +152,7 @@ static int prepare_tsock(struct parasite_ctl *ctl, pid_t pid,
 		goto err;
 	}
 
+	printf("parasite_daemon\n");
 	if(ctl->ictx.flags & INFECT_FAIL_CONNECT)
 		args->h_addr_len = gen_parasite_saddr(&addr, getpid() + 1);
 
@@ -156,9 +161,11 @@ static int prepare_tsock(struct parasite_ctl *ctl, pid_t pid,
 	 * struct sockaddr_un is different between Linux and FreeBSD
 	 */	
 
+	printf("parasite_daemon\n");
 	args->h_addr.sun_family = addr.sun_family;
 	strncpy(args->h_addr.sun_path, addr.sun_path, sizeof(addr.sun_path));
 
+	printf("parasite_daemon\n");
 	//ctl->tsock = -ssock;
 	ctl->tsock = ssock;
 	return 0;
@@ -172,7 +179,7 @@ static int parasite_init_daemon(struct parasite_ctl *ctl){
 	pid_t pid = ctl->rpid;
 	int sockfd;
 	struct ctl_msg m = { };
-	struct reg reg;
+	struct user_regs_struct reg;
 
 	*ctl->addr_cmd = PARASITE_CMD_INIT_DAEMON;
 	args = compel_parasite_args(ctl, struct parasite_init_args_linux);
@@ -182,13 +189,14 @@ static int parasite_init_daemon(struct parasite_ctl *ctl){
 
 	ptrace_get_regs(pid, &reg);
 
-	reg.r_rip = (unsigned long int)ctl->remote_map;
-	reg.r_rbp = (unsigned long int)ctl->remote_map + sizeof(parasite_blob);
-	reg.r_rbp += RESTORE_STACK_SIGFRAME;
-	reg.r_rbp += PARASITE_STACK_SIZE;
+	reg.rip = (unsigned long int)ctl->remote_map;
+	reg.rbp = (unsigned long int)ctl->remote_map + sizeof(parasite_blob);
+	reg.rbp += RESTORE_STACK_SIGFRAME;
+	reg.rbp += PARASITE_STACK_SIZE;
 
 	ptrace_set_regs(pid, &reg);
 	ptrace_cont(pid);
+	//step_debug(pid);
 	/*
 	 *  parasite_run include ptrace SETREGS and CONTINUE, 
 	 *  but this function does not work properly. 
@@ -233,6 +241,7 @@ int injection(pid_t pid, int *option){
 
 	void *tmp_map;
 	char buf[] = SHARED_FILE_PATH;
+	char path[50];
 
 	int fd, sk;
 	long remote_fd;
@@ -282,13 +291,16 @@ int injection(pid_t pid, int *option){
 		       	(unsigned long)tmp_map, O_RDWR, 0x0, 0x0, 0x0, 0x0);
 	printf("remote_fd:%ld\n", remote_fd);
 
-	ctl->remote_map = remote_mmap(ctl->rpid, &orig, (void *) 0x0, sizeof(parasite_blob),
-		       	PROT_ALL, MAP_SHARED | MAP_FILE, remote_fd, 0x0);
+	ctl->remote_map = remote_mmap(ctl->rpid, &orig, (void *) NULL, 0x3000,
+		       	PROT_ALL, MAP_SHARED | MAP_ANONYMOUS, -1, 0x0);
 	compel_syscall(ctl->rpid, &orig, 0x3, &ret, (unsigned long)remote_fd,
 		       	0x0, 0x0, 0x0, 0x0, 0x0); 
 	printf("remote_fd_map:%p\n", ctl->remote_map);
+
+	snprintf(path, 50, "/proc/%d/map_files/%lx-%lx", ctl->rpid, (unsigned long int)ctl->remote_map, (unsigned long int)ctl->remote_map + 0x3000);
+	fd = open(path, O_RDWR);
 	
-	ctl->local_map = mmap(0x0, sizeof(parasite_blob), PROT_ALL, MAP_SHARED, fd, 0);
+	ctl->local_map = mmap(NULL, 0x3000, PROT_ALL, MAP_SHARED|MAP_FILE, fd, 0);
 	printf("local_map:%p\n", ctl->local_map);
 
 
@@ -298,8 +310,9 @@ int injection(pid_t pid, int *option){
 	 *
 	 */
 
+	//while(1){}
 	memcpy(ctl->local_map, parasite_blob, sizeof(parasite_blob));
-
+	
 
 	/*
 	 * If you want to debug register, please uncomment
@@ -314,6 +327,7 @@ int injection(pid_t pid, int *option){
 	 */
 	ctl->addr_cmd = ctl->local_map + parasite_sym__export_parasite_cmd;
 	ctl->addr_args = ctl->local_map + parasite_sym__export_parasite_args;
+	printf("addr_cmd %lx, addr_args %lx\n", ctl->addr_cmd, ctl->addr_args);
 	parasite_init_daemon(ctl);
 
 	/*
@@ -445,7 +459,7 @@ int parasite_drain_fds_seize(void *ctl, pid_t pid)
 	printf("TCP repair mode: off\n");
 
 	fd = open_dump_file(pid, "sock");
-	dprintf(fd, "%s,%d,%s,%d,%u,%u,%u,%u,%u,%u,%x,%d,%x,%d,%d\n",
+	dprintf(fd, "%s,%d,%s,%d,%u,0,%u,%u,%u,%u,%u,%x,%d,%x,%d,%d,6\n",
 			srcaddr, srcpt, dstaddr, dstpt,
 			data.snd_wl1, data.snd_wnd, data.max_window,
 			data.rcv_wnd, data.rcv_wup, data.mss_clamp,
@@ -457,3 +471,4 @@ int parasite_drain_fds_seize(void *ctl, pid_t pid)
 
 	return 0;
 }
+

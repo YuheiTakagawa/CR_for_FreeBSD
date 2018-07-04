@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <arpa/inet.h>
 //#include <netinet/tcp_fsm.h>
 #include <sys/ioctl.h>
 
@@ -151,17 +152,21 @@ static int refresh_sk(struct libsoccr_sk *sk,
 
 static int get_window(struct libsoccr_sk *sk, struct libsoccr_sk_data *data)
 {
-	struct msswnd mw = {};
+	struct tcp_repair_window mw = {};
 	socklen_t len = sizeof(mw);
 
-//	getsockopt(sk->fd, SOL_TCP, TCP_MSS_WINDOW, &mw, &len);
+	getsockopt(sk->fd, SOL_TCP, TCP_REPAIR_WINDOW, &mw, &len);
 
 	data->snd_wl1		= mw.snd_wl1;
 	data->snd_wnd		= mw.snd_wnd;
-	data->max_window	= mw.max_sndwnd;
+	data->max_window	= mw.max_window;
 	data->rcv_wnd		= mw.rcv_wnd;
-	data->rcv_wup		= mw.rcv_adv;
-	data->mss_clamp		= mw.t_maxseg;
+	data->rcv_wup		= mw.rcv_wup;
+
+
+	socklen_t auxl;
+	auxl = sizeof(data->mss_clamp);
+	getsockopt(sk->fd, SOL_TCP, TCP_MAXSEG,	&data->mss_clamp, &auxl);
 
 	return 0;
 }
@@ -335,15 +340,16 @@ int libsoccr_restore(struct libsoccr_sk *sk,
 	if (libsoccr_restore_queue(sk, data, sizeof(*data), TCP_SEND_QUEUE, sk->send_queue))
 		return -1;
 	
-	struct msswnd mw = {
+	struct tcp_repair_window mw = {
 		.snd_wl1 = data->snd_wl1,
 		.snd_wnd = data->snd_wnd,
-		.max_sndwnd = data->max_window,
+		.max_window = data->max_window,
 		.rcv_wnd = data->rcv_wnd,
-		.rcv_adv = data->rcv_wup,
-		.t_maxseg = data->mss_clamp,
+		.rcv_wup = data->rcv_wup,
 	};
-//	setsockopt(sk->fd, SOL_TCP, TCP_MSS_WINDOW, &mw, sizeof(mw));
+	setsockopt(sk->fd, SOL_TCP, TCP_REPAIR_WINDOW, &mw, sizeof(mw));
+	
+	setsockopt(sk->fd, SOL_TCP, TCP_MAXSEG, &data->mss_clamp, sizeof(data->mss_clamp));
 
 	return 0;
 }
@@ -425,6 +431,11 @@ static int libsoccr_restore_queue(struct libsoccr_sk *sk, struct libsoccr_sk_dat
 
 		if (ulen) {
 			tcp_repair_off(sk->fd);
+			char srcaddr[20], dstaddr[20];
+			strncpy(srcaddr, inet_ntoa(sk->src_addr->v4.sin_addr), sizeof(srcaddr));
+			printf("srcaddr %s\n", srcaddr);
+			strncpy(dstaddr, inet_ntoa(sk->dst_addr->v4.sin_addr), sizeof(dstaddr));
+			setipfw(IPFWDEL, srcaddr, dstaddr);
 			if (__send_queue(sk, TCP_SEND_QUEUE, buf + len, ulen))
 				return -3;
 			if (tcp_repair_on(sk->fd))

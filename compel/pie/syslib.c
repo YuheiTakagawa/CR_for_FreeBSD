@@ -143,7 +143,7 @@ int sendfd(int gate, int fd, void* message, int message_len)
 	iov.iov_base = message;
 	iov.iov_len = message_len;
 
-	struct linux_cmsghdr *cmsg = (struct linux_cmsghdr*)cmsgbuf;
+	struct cmsghdr *cmsg = (struct cmsghdr*)cmsgbuf;
 //	struct cmsghdr *cmsg = (struct cmsghdr*)cmsgbuf;
 	cmsg->cmsg_len = CMSG_LEN(sizeof(int));
 //	cmsg->cmsg_len = (_ALIGN(sizeof(struct cmsghdr)) + sizeof(int));
@@ -153,7 +153,7 @@ int sendfd(int gate, int fd, void* message, int message_len)
 //	*((int *)((void*)((char*)cmsg + _ALIGN(sizeof(struct cmsghdr))))) = fd;
 
 	//struct msghdr msg;
-	struct linux_msghdr msg;
+	struct msghdr msg;
 	memset(&msg, 0, sizeof(msg));
 	msg.msg_name = NULL;
 	msg.msg_namelen = 0;
@@ -209,6 +209,8 @@ int connection(void *data){
 
 	std_printf("path %s, family %d\n", args->h_addr.sun_path, args->h_addr.sun_family);
 	if(sys_connect(tsock, (struct sockaddr *)&args->h_addr, args->h_addr_len) < 0){
+		std_printf("no connect\n");
+		return 1;
 	}
 
 	__parasite_daemon_reply_ack(PARASITE_CMD_INIT_DAEMON, 0);
@@ -241,6 +243,7 @@ int connection(void *data){
 		}
 		__parasite_daemon_reply_ack(m.cmd, ret); 
 	}
+	std_printf("breaked\n");
 
 	return 0;
 }

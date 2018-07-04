@@ -6,6 +6,14 @@
 
 struct libsoccr_sk;
 
+struct tcp_repair_window {
+	uint32_t	snd_wl1;
+	uint32_t	snd_wnd;
+	uint32_t	max_window;
+	uint32_t	rcv_wnd;
+	uint32_t	rcv_wup;
+};
+
 union libsoccr_addr {
 	struct sockaddr sa;
 	struct sockaddr_in v4;
@@ -33,6 +41,9 @@ struct libsoccr_sk_data {
 	uint32_t	rcv_wup;
 };
 
+#ifndef TCP_REPAIR_WINDOW
+#define TCP_REPAIR_WINDOW	29
+#endif
 void setipfw(int, char*, char*);
 struct libsoccr_sk *libsoccr_pause(int fd);
 void libsoccr_resume(struct libsoccr_sk *sk);

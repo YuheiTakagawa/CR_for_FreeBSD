@@ -87,7 +87,7 @@ int *get_open_fd(pid_t pid, struct fd_list *fdl){
 		perror("opendir");
 	} 
 	while((de = readdir(fd_dir))){
-		if(atoi(de->d_name) > 0){
+		if(atoi(de->d_name) >= 0){
 			fdl->fd[i] = atoi(de->d_name);
 			get_fd_path(pid, fdl->fd[i], fdl->path[i]);
 			fdl->offset[i] = get_fd_pos(pid, fdl->fd[i]);

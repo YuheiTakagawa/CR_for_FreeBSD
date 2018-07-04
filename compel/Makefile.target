@@ -1,7 +1,8 @@
 export CFLAG
 CFLAG = -Wall
 CFLAG += -c
-CFLAG += -D_BSD
+CFLAG += -D_LINUX
+CFLAG += -lbsd
 
 include ../scripts/msg.mk
 include ../scripts/tools.mk
@@ -11,7 +12,7 @@ include ../scripts/tools.mk
 INCLUDE = -I ../include
 
 SRC = ../src
-SRC_DEP = ../src/freebsd
+SRC_DEP = ../src/linux
 
 INCLUDE += -I ./include
 
@@ -53,7 +54,7 @@ infect.a: parasite-head.h $(inject) $(USE_FILES)
 
 /tmp/shm:
 	$(call msg-gen, $@)
-	$(Q) dd if=/dev/zero of=/tmp/shm bs=4096*2 count=1 status=none
+	$(Q) dd if=/dev/zero of=/tmp/shm bs=12288 count=1 
 
 /X:
 	$(call msg-gen, $@)
@@ -72,7 +73,7 @@ test: inject-test/inject-test
 
 inject-test/inject-test: $(test-target) $(test-obj)
 	$(call msg-gen, $@)
-	$(Q) $(CC) -Wall $(INCLUDE_TEST) $^ -o $@
+	$(Q) $(CC) -D_LINUX -Wall $(INCLUDE_TEST) $^ -o $@
 
 
 .PHONY: clean

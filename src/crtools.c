@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <bsd/string.h>
 
 extern int restore(pid_t pid, char *path);
 extern int tracing(pid_t pid, int * options);

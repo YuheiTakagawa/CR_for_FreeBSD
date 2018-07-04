@@ -9,6 +9,7 @@
 #include <sys/time.h>
 #include <time.h>
 #include <signal.h>
+#include <stdint.h>
 
 typedef uint32_t u32;
 

@@ -43,12 +43,14 @@ int tracing(pid_t pid, int *options){
 	if(WIFSTOPPED(status)){
 		printf("stop %d\n", pid);
 		getfd(pid);
-		injection(pid, options);
 		getregs(pid);
 		getmems(pid);
+		injection(pid, options);
+		//while(1){}
 	}
 	printf("Checkpoint\n");
-	ptrace_cont(pid);
+	ptrace_detach(pid);
+	kill(pid, 9);
 
 	return 0;
 }

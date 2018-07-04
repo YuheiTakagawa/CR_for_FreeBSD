@@ -11,6 +11,8 @@
 
 #define __handle_elf handle_elf_x86_64
 
+#define Elf_Ehdr Elf64_Ehdr
+#define Elf_Shdr Elf64_Shdr
 
 /* Check if pointer is out-of-bound */
 static int __ptr_oob(const uintptr_t ptr, const uintptr_t start, const size_t size)
@@ -158,9 +160,11 @@ int __handle_elf(void *mem, size_t size){
 				sh_src = NULL;
 			}else{
 				sh_src = sec_hdrs[sym->st_shndx];
+				ptr_func_exit(sh_src);
 			}
 			pr_out("#define %s_sym%s 0x%lx\n",
-					"parasite", name, (unsigned long)(sym->st_value + (sh_src ? sh_src->sh_addr : 0)));
+			//	"parasite", name, (unsigned long)(sym->st_value + (sh_src ? sh_src->sh_addr : 0)));
+					"parasite", name, (unsigned long)(sym->st_value));
 		}
 	}
 
