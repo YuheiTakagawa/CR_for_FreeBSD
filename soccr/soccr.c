@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -94,6 +95,11 @@ void libsoccr_resume(struct libsoccr_sk *sk)
 	libsoccr_release(sk);
 }
 
+void libsoccr_close(struct libsoccr_sk *sk)
+{
+	close(sk->fd);
+}
+
 void libsoccr_release(struct libsoccr_sk *sk)
 {
 	if (sk->flags & SK_FLAG_FREE_RQ)
@@ -148,7 +154,6 @@ static int get_window(struct libsoccr_sk *sk, struct libsoccr_sk_data *data)
 	getsockopt(sk->fd, SOL_SOCKET, SO_MSS_WINDOW, &mw, &len);
 
 	data->snd_wl1		= mw.snd_wl1;
-	data->snd_wl2		= mw.snd_wl2;
 	data->snd_wnd		= mw.snd_wnd;
 	data->max_window	= mw.max_sndwnd;
 	data->rcv_wnd		= mw.rcv_wnd;
@@ -325,7 +330,6 @@ int libsoccr_restore(struct libsoccr_sk *sk,
 
 	struct msswnd mw = {
 		.snd_wl1 = data->snd_wl1,
-		.snd_wl2 = data->snd_wl2,
 		.snd_wnd = data->snd_wnd,
 	//	.snd_wnd = 65664,
 		.max_sndwnd = data->max_window,
@@ -336,10 +340,12 @@ int libsoccr_restore(struct libsoccr_sk *sk,
 	};
 	setsockopt(sk->fd, SOL_SOCKET, SO_MSS_WINDOW, &mw, sizeof(mw));
 
-
-
 	if (libsoccr_restore_queue(sk, data, sizeof(*data), TCP_RECV_QUEUE, sk->recv_queue))
 		return -1;
+			char srcaddr[20], dstaddr[20];
+			strncpy(srcaddr, inet_ntoa(sk->src_addr->v4.sin_addr), sizeof(srcaddr));
+			strncpy(dstaddr, inet_ntoa(sk->dst_addr->v4.sin_addr), sizeof(srcaddr));
+			setipfw(IPFWDEL, srcaddr, dstaddr);
 
 	if (libsoccr_restore_queue(sk, data, sizeof(*data), TCP_SEND_QUEUE, sk->send_queue))
 		return -1;
@@ -426,12 +432,7 @@ static int libsoccr_restore_queue(struct libsoccr_sk *sk, struct libsoccr_sk_dat
 		if (ulen) {
 			tcp_repair_off(sk->fd);
 		
-			char srcaddr[20], dstaddr[20];
-			strncpy(srcaddr, inet_ntoa(sk->src_addr->v4.sin_addr), sizeof(srcaddr));
-			strncpy(dstaddr, inet_ntoa(sk->dst_addr->v4.sin_addr), sizeof(srcaddr));
-			setipfw(IPFWDEL, srcaddr, dstaddr);
-		
-			if (__send_queue(sk, TCP_SEND_QUEUE, buf + len, ulen))
+		if (__send_queue(sk, TCP_SEND_QUEUE, buf + len, ulen))
 				return -3;
 			if (tcp_repair_on(sk->fd))
 				return -4;

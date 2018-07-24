@@ -37,6 +37,7 @@ struct libsoccr_sk_data {
 void setipfw(int, char*, char*);
 struct libsoccr_sk *libsoccr_pause(int fd);
 void libsoccr_resume(struct libsoccr_sk *sk);
+void libsoccr_close(struct libsoccr_sk *sk);
 
 void libsoccr_release(struct libsoccr_sk *sk);
 

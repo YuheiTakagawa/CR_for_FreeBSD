@@ -368,6 +368,7 @@ int parasite_drain_fds_seize(void *ctl, pid_t pid)
 	close(fd);
 
 	compel_rpc_sync(PARASITE_CMD_DRAIN_FDS, ctl);
+	libsoccr_close(so);
 	libsoccr_resume(so);
 
 	return 0;
