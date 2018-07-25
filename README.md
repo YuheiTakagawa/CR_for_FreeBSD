@@ -5,7 +5,7 @@ The same project is CRIU. (https://criu.org/)
 The goal is Containers live migration among heterogeneous OS platform. Now, supporting Linux and FreeBSD.  
 *support process is Linux Binary only* 
 
-## install
+## install(FreeBSD)
 FreeBSD has make command, 'devel/gmake' or 'gmake'.
 Please install gmake.  
 `pkd install -y gmake`
@@ -21,6 +21,9 @@ For Linuxulator be enaled at boot time, add this line to /etc/rc.conf:
 This project use procfs. procfs is not standard in FreeBSD.  
 `mount -t procfs procfs /proc`  
 
+## install(Linux)
+Using `bsd/string.h`in Linux, please install libbsd.
+`apt-get install libbsd-dev`
 
 ## usage
 1. `make`
