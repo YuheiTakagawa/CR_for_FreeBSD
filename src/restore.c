@@ -54,7 +54,6 @@ int restore_socket(int pid, int rfd) {
 	strncpy(dstaddr, strtok(NULL, ","), sizeof(dstaddr));
 	dstpt = atoi(strtok(NULL, ","));
 	data.snd_wl1 = atoi(strtok(NULL, ","));
-	data.snd_wl2 = atoi(strtok(NULL, ","));
 	data.snd_wnd = atoi(strtok(NULL, ","));
 	data.max_window = atoi(strtok(NULL, ","));
 	data.rcv_wnd = atoi(strtok(NULL, ","));
