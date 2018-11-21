@@ -23,20 +23,20 @@ static int recv_criu_msg(int socket_fd, CriuReq **req) {
 	unsigned char *buf;
 	int len;
 
-	len = recv(socket_fd, NULL, 0, MSG_TRUNC | MSG_PEEK);
+	recv(socket_fd, NULL, 0, MSG_PEEK);
 	ioctl(socket_fd, FIONREAD, &len);
 	if (len == -1) {
 		printf("Can't read request");
 		return -1;
 	}
-
+	
 	printf("size %d\n", len);
 
 	buf = xmalloc(len);
 	if (!buf)
 		return -ENOMEM;
 
-	len = recv(socket_fd, buf, len, MSG_TRUNC);
+	len = recv(socket_fd, buf, len, MSG_PEEK);
 	if (len == -1) {
 		printf("Can't read request");
 		goto err;
