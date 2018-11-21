@@ -20,6 +20,7 @@ ifeq ($(UNAME), FreeBSD)
 # for FreeBSD include file
 SRC_DEP = ./src/freebsd
 CFLAG += -lprocstat
+CFLAG += -lprotobuf-c
 CFLAG += -D_BSD
 OBJ += compel/infect.a
 OBJ += soccr/libsoccr.a
@@ -33,6 +34,8 @@ endif
 
 
 OBJ += $(SRC_DIR)/files.o
+OBJ += $(SRC_DIR)/images/rpc.pb-c.o
+OBJ += $(SRC_DIR)/cr-service.o
 
 OBJ += $(SRC_DEP)/ptrace.o
 OBJ += $(SRC_DEP)/parasite_syscall.o
@@ -67,6 +70,10 @@ all: $(target)
 crtools: $(ROBJ) $(COBJ) $(OBJ)
 	$(call msg-gen, $@)
 	$(Q) $(CC) $(CFLAG) $(INCLUDE) $^ $(SRC_DIR)/crtools.c -o $@
+
+.PHONY: install
+install: crtools
+	install $^ /usr/local/sbin/criu
 
 .PHONY: clean
 clean:

@@ -4,6 +4,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "cr-service.h"
+
 extern int restore(pid_t pid, char *path);
 extern int tracing(pid_t pid, int * options);
 
@@ -23,6 +25,7 @@ int main(int argc, char *argv[]){
 	char *path = NULL;
 	int options[10];
 	struct option longopts[] = {
+		{ "version",	no_argument,		0, 'V' },
 		{ "pid",	required_argument,	0, 'p' },
 		{ "help",	no_argument,		0, 'h' },
 		{ "tcp",	no_argument,		0, 't' },
@@ -34,8 +37,11 @@ int main(int argc, char *argv[]){
 
 	int opt;
 	int longindex;
-	while((opt = getopt_long(argc, argv, "p:e:ht", longopts, &longindex)) != -1){
+	while((opt = getopt_long(argc, argv, "p:e:Vht", longopts, &longindex)) != -1){
 		switch(opt){
+			case 'V':
+				printf("Version: 3.1\n");
+				break;
 			case 'p':
 				pid = atoi(optarg);
 				break;
@@ -67,6 +73,13 @@ int main(int argc, char *argv[]){
 			if(pid == 0)
 				goto usage;
 			tracing(pid, options);
+			break;
+		}
+		if(!(strcmp(argv[i], "swrk"))){
+			if(argc < 3)
+				goto usage;
+			cr_service_work(atoi(argv[2]));
+			//tracing(pid, options);
 			break;
 		}
 		goto usage;
