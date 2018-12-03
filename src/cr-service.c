@@ -136,7 +136,7 @@ int send_criu_dump_resp(int socket_fd, bool success, bool restored) {
 static char images_dir[PATH_MAX];
 
 static int setup_opts_from_req(int sk, CriuOpts *req){
-	return 1;
+	return 0;
 /*
 	struct ucred ids;
 	struct stat st;
@@ -257,7 +257,6 @@ more:
 
 	switch (msg->type) {
 	case CRIU_REQ_TYPE__DUMP:
-	printf("dumpsuruyo%d\n", msg->type);
 		ret = dump_using_req(sk, msg->opts);
 		break;
 	case CRIU_REQ_TYPE__RESTORE:
