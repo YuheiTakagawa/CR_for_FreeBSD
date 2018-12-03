@@ -1,0 +1,26 @@
+                                       
+                                     LOGIN
+
+
+                      Please enter your ID and password.
+
+
+              user ID  [g2118021                                ]
+              password [                                        ]
+
+
+                                   [Login] 
+
+                                    LOGOUT
+
+
+                       Please push the following button.
+
+                                   [Logout]
+
+
+
+
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

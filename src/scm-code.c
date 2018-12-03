@@ -1,13 +1,17 @@
 /* from CRIU criu/include/common/scm-code.c */
-#include <string.h>
+#define NULL ((void *) 0)
+#include <stdio.h>
 #include <sys/socket.h>
 #include <errno.h>
 #include "compiler.h"
 #include "common/scm.h"
+#include "scm.h"
+#include "string.h"
 
 static void scm_fdset_init_chunk(struct scm_fdset *fdset, int nr_fds,
 		void *data, unsigned ch_size)
 {
+	printf("scm_fdset_init_chunk\n");
 	struct cmsghdr *cmsg;
 	static char dummy;
 
@@ -28,6 +32,7 @@ static void scm_fdset_init_chunk(struct scm_fdset *fdset, int nr_fds,
 static int *scm_fdset_init(struct scm_fdset *fdset, struct sockaddr_un *saddr,
 		int saddr_len)
 {
+	printf("scm_fdset_init\n");
 	struct cmsghdr *cmsg;
 
 	fdset->iov.iov_base		= (void *)0xdeadbeef;
@@ -51,6 +56,7 @@ static int *scm_fdset_init(struct scm_fdset *fdset, struct sockaddr_un *saddr,
 int send_fds(int sock, struct sockaddr_un *saddr, int len,
 		int *fds, int nr_fds, void *data, unsigned ch_size)
 {
+	printf("send_fds\n");
 	struct scm_fdset fdset = {};
 	int *cmsg_data;
 	int i, min_fd, ret;
@@ -74,6 +80,7 @@ int send_fds(int sock, struct sockaddr_un *saddr, int len,
 
 int __recv_fds(int sock, int *fds, int nr_fds, void *data, unsigned ch_size, int flags)
 {
+	printf("__recv_fds\n");
 	struct scm_fdset fdset = {};
 	struct cmsghdr *cmsg;
 	int *cmsg_data;
@@ -85,8 +92,7 @@ int __recv_fds(int sock, int *fds, int nr_fds, void *data, unsigned ch_size, int
 		min_fd = min(CR_SCM_MAX_FD, nr_fds - 1);
 		scm_fdset_init_chunk(&fdset, min_fd, data, ch_size);
 
-//		ret = recvmsg(sock, &fdset.hdr, flags);
-		ret = recvmsg(sock, &fdset.hdr, MSG_WAITALL);
+		ret = recvmsg(sock, &fdset.hdr, flags);
 		if (ret <= 0)
 			return ret;
 

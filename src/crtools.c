@@ -79,7 +79,7 @@ int main(int argc, char *argv[]){
 			if(argc < 3)
 				goto usage;
 			cr_service_work(atoi(argv[2]));
-			//tracing(pid, options);
+			tracing(pid, options);
 			break;
 		}
 		goto usage;

@@ -19,8 +19,10 @@ endif
 ifeq ($(UNAME), FreeBSD)
 # for FreeBSD include file
 SRC_DEP = ./src/freebsd
-CFLAG += -lprocstat
 CFLAG += -lprotobuf-c
+CFLAG += -Bdynamic
+CFLAG += -lprocstat
+CFLAG += -lpthread
 CFLAG += -D_BSD
 OBJ += compel/infect.a
 OBJ += soccr/libsoccr.a
@@ -35,6 +37,10 @@ endif
 
 OBJ += $(SRC_DIR)/files.o
 OBJ += $(SRC_DIR)/images/rpc.pb-c.o
+OBJ += $(SRC_DIR)/utils.o
+OBJ += $(SRC_DIR)/log.o
+OBJ += $(SRC_DIR)/scm-code.o
+OBJ += $(SRC_DIR)/cr-errno.o
 OBJ += $(SRC_DIR)/cr-service.o
 
 OBJ += $(SRC_DEP)/ptrace.o

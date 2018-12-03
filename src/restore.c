@@ -173,10 +173,8 @@ int restore(pid_t rpid, char *rpath){
 	setregs(pid, rpid);
 //	step_debug(pid);
 
-	ptrace_cont(pid);
-	sleep(10);
-kill(pid, 9);
-return 0;
+//	ptrace_cont(pid);
+//	sleep(10);
 	
 //	waitpro(pid, &status);
 //	print_regs(pid);

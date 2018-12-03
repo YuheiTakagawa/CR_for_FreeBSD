@@ -33,9 +33,14 @@ int main(int argc, char* argv[]){
 }
 */
 
+int cr_dump_tasks(pid_t pid){
+	return tracing(pid, NULL);
+}
+
 int tracing(pid_t pid, int *options){
 	int status;
-	
+
+//sleep(30);	
 	ptrace_attach(pid);
 
 	waitpro(pid, &status);
@@ -43,14 +48,14 @@ int tracing(pid_t pid, int *options){
 	if(WIFSTOPPED(status)){
 		printf("stop %d\n", pid);
 		getfd(pid);
-		injection(pid, options);
+//		injection(pid, options);
 		getregs(pid);
 		getmems(pid);
 	}
 	printf("Checkpoint\n");
 	//ptrace_cont(pid);
 	ptrace_detach(pid);
-	kill(pid, 9);
+//	kill(pid, 9);
 
 	return 0;
 }
