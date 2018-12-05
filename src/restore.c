@@ -187,7 +187,7 @@ int restore(pid_t rpid, char *rpath){
 	ptrace_detach(pid);
 	printf("detach\n");
 	
-	return 0;
+	return pid;
 }
 	
 /*
@@ -207,3 +207,9 @@ int main(int argc, char* argv[]){
 	return 0;
 }
 */
+
+//int cr_restore_tasks(void) {
+int cr_restore_tasks(int pid, char *rpath){
+	return restore(pid, rpath);
+}
+	

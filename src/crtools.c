@@ -1,8 +1,11 @@
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include "cr-service.h"
 
@@ -78,8 +81,25 @@ int main(int argc, char *argv[]){
 		if(!(strcmp(argv[i], "swrk"))){
 			if(argc < 3)
 				goto usage;
-			cr_service_work(atoi(argv[2]));
-			tracing(pid, options);
+			printf("swrk des\n");
+			struct sockaddr_un sa;
+			int sock = socket(PF_UNIX, SOCK_SEQPACKET, 0);
+			if (sock == -1) {
+				printf("socket\n");
+				return -1;
+			}
+
+			sa.sun_family = PF_UNIX;
+			strcpy(sa.sun_path, "/criu-fifo");
+			if(connect(sock, (struct sockaddr*)&sa, sizeof(struct sockaddr_un)) == -1) {
+				printf("connect\n");
+				close(sock);
+				return -1;
+			}
+
+			dup2(sock, atoi(argv[2]));
+			cr_service_work(sock);
+			close(sock);
 			break;
 		}
 		goto usage;

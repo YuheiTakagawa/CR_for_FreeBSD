@@ -20,7 +20,6 @@ ifeq ($(UNAME), FreeBSD)
 # for FreeBSD include file
 SRC_DEP = ./src/freebsd
 CFLAG += -lprotobuf-c
-CFLAG += -Bdynamic
 CFLAG += -lprocstat
 CFLAG += -lpthread
 CFLAG += -D_BSD

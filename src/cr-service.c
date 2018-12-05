@@ -28,7 +28,7 @@ static int recv_criu_msg(int socket_fd, CriuReq **req) {
 	unsigned char *buf;
 	int len;
 
-	recv(socket_fd, NULL, 0, MSG_PEEK);
+	recv(socket_fd, NULL, 1, MSG_PEEK);
 	ioctl(socket_fd, FIONREAD, &len);
 	if (len == -1) {
 		printf("Can't read request");
@@ -133,6 +133,20 @@ int send_criu_dump_resp(int socket_fd, bool success, bool restored) {
 	return send_criu_msg(socket_fd, &msg);
 }
 
+int send_criu_restore_resp(int socket_fd, bool success, int pid) {
+	CriuResp msg = CRIU_RESP__INIT;
+	CriuRestoreResp resp = CRIU_RESTORE_RESP__INIT;
+
+	msg.type = CRIU_REQ_TYPE__RESTORE;
+	msg.success = success;
+	set_resp_err(&msg);
+	msg.restore = &resp;
+
+	resp.pid = pid;
+
+	return send_criu_msg(socket_fd, &msg);
+}
+
 static char images_dir[PATH_MAX];
 
 static int setup_opts_from_req(int sk, CriuOpts *req){
@@ -210,7 +224,6 @@ static int dump_using_req(int sk, CriuOpts *req){
 		goto exit;
 
 	success = true;
-	return 0;
 exit:
 	if (req->leave_running || !self_dump || !success) {
 		if (send_criu_dump_resp(sk, success, false) == -1) {
@@ -223,7 +236,30 @@ exit:
 }
 
 static int restore_using_req(int sk, CriuOpts *req){
-	return 0;
+	bool success = false;
+	pid_t pid;
+
+//	opts.restore_detach = true;
+
+	if (setup_opts_from_req(sk, req))
+		goto exit;
+
+	setproctitle("restore --rpc -D %s", images_dir);
+
+	if ((pid = cr_restore_tasks(req->pid, "/countlinuxsta")) == -1)
+		goto exit;
+
+	success = true;
+
+exit:
+	if (send_criu_restore_resp(sk, success,
+				pid) == -1){
+				//root_item ? root_item->pid->real : -1) == -1 ) {
+		pr_perror("Can't send response");
+		success = false;
+	}
+
+	return success ? 0 : 1;
 }
 
 static int chk_keepopen_req(CriuReq *msg) {
@@ -245,6 +281,7 @@ int cr_service_work(int sk) {
 	int ret = -1;
 	CriuReq *msg = 0;
 
+//	sleep(100);
 more:
 	if (recv_criu_msg(sk, &msg) == -1) {
 		printf("Can't recv request");

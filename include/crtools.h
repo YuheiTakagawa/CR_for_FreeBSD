@@ -5,5 +5,6 @@
 #include "servicefd.h"
 
 extern int cr_dump_tasks(pid_t pid);
+extern int cr_restore_tasks(pid_t pid, char* str);
 
 #endif
