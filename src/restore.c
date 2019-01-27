@@ -118,10 +118,20 @@ int restore_socket(int pid, int rfd) {
 }
 
 int restore_fork(int filePid, char *exec_path){
-	pid_t pid;
 	int fd;
 	int i;
 	struct restore_fd_struct fds[1024];
+	pid_t pid;
+	
+	pid = fork();
+	if(pid < 0){
+		perror("FORK");
+		exit(1);
+	}
+	if(pid != 0){
+		return pid;
+	}
+
 	read_fd_list(filePid, fds);
 	for(i = 0; fds[i].fd != -2 ; i++){
 		printf("fd:%d, off:%ld, path:%s\n", fds[i].fd, fds[i].offset, fds[i].path);
@@ -137,18 +147,6 @@ int restore_fork(int filePid, char *exec_path){
 				continue;
 			fd = prepare_restore_files(fds[i].path, fds[i].fd, fds[i].offset);
 		}
-	}
-	pid = fork();
-	if(pid < 0){
-		perror("FORK");
-		exit(1);
-	}
-	if(pid != 0){
-		for(i = 0; fds[i].fd != -2; i++) {
-			if(fds[i].fd > 2)
-				close(fd);
-		}
-		return pid;
 	}
 	target(exec_path, NULL);
 	return 0;
