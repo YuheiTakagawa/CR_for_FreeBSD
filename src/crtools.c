@@ -98,7 +98,7 @@ int main(int argc, char *argv[]){
 			}
 
 			dup2(sock, atoi(argv[2]));
-			cr_service_work(sock);
+			cr_service_work(atoi(argv[2]));
 			close(sock);
 			break;
 		}
