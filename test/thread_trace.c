@@ -56,11 +56,19 @@ int main(int argc, void *argv[]){
 	}
 	if (WIFSTOPPED(status)){
 		printf("stop %d\n", pid);
-		rc = ptrace(PT_GETNUMLWPS, pid, (caddr_t)&num, 0);
+		num = ptrace(PT_GETNUMLWPS, pid, NULL, 0);
+		if (num <= 0){
+			perror("ptrace getnumlwps");
+			return 1;
+		}
 		printf("num %d\n", num);
-		lwpid_t list[num/sizeof(lwpid_t)];
+		lwpid_t list[num];
 		rc = ptrace(PT_GETLWPLIST, pid, (caddr_t)&list, num);
-		for(int i=0; i < num/sizeof(lwpid_t); i++){
+		if (rc < 0){
+			perror("ptrace getlwplist");
+			return 1;
+		}
+		for(int i=0; i < num; i++){
 			printf("LWP tid:%d\n", list[i]);
 			rc = ptrace(PT_GETREGS, list[i], (caddr_t)&reg, 0);
 			if (rc < 0){
@@ -69,9 +77,6 @@ int main(int argc, void *argv[]){
 			}
 			__print_regs(&reg);
 		}
-		printf("process =======\n");
-		rc = ptrace(PT_GETREGS, pid, (caddr_t)&reg, 0);
-		__print_regs(&reg);
 	}
 
 

@@ -3,7 +3,7 @@
 #include <sys/types.h>
 #include <pthread.h>
 #include <unistd.h>
-#define THREADS_NUM 1
+#define THREADS_NUM 5
 
 struct threada{
 #define _pthread_startzero tid
