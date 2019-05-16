@@ -6,6 +6,8 @@
 
 #include <sys/mman.h>
 #include <sys/wait.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 #include "common.h"
 #include "parasite_syscall.h"

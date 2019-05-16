@@ -51,19 +51,24 @@ int *get_open_fd(int pid, struct fd_list *fdl){
 
 	int i = 0;
 	sync();
+	printf("procstat_open_sysctl\n");
 	// get struct procstat
 	prst = procstat_open_sysctl();
+	printf("procstat_getprocs\n");
 	// get kinfo_proc with pid
 	kp = procstat_getprocs(prst, KERN_PROC_PID, pid, &mapped);
+	printf("procstat_getfiles\n");
 	// get pid process has file list
 	fstlist = procstat_getfiles(prst, (void *)kp, mapped);
 	// separate file list
 	STAILQ_FOREACH(fst, fstlist, next) {
 			fdl->fd[i] = fst->fs_fd;
-			strncpy(fdl->path[i], fst->fs_path, PATHBUF);
+			if (fst->fs_path != NULL)
+				strncpy(fdl->path[i], fst->fs_path, PATHBUF);
 			fdl->offset[i] = fst->fs_offset;
 			i++;
 	}
+	printf("procstat_freepro\n");
 	fdl->fd[i] = -2;
 	
 	procstat_freeprocs(prst, (void *)kp);
@@ -76,7 +81,7 @@ int getfd(int pid){
 	int write_fd = open_dump_file(pid, "fds");
 	for(int i = 0; i < FD_MAX; i++){
 		/* file descriptor is range -1 ~, error code is -2 */
-		if(fdl.fd[i] > 0){
+		if(fdl.fd[i] >= 0){
 			printf("FD: %d, OFFSET: %lx, PATH: %s\n", fdl.fd[i], fdl.offset[i], fdl.path[i]);
 			dprintf(write_fd, "%d,%lx,%s\n", fdl.fd[i], fdl.offset[i], fdl.path[i]);
 		}

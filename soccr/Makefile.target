@@ -1,0 +1,32 @@
+export CFLAG
+CFLAG = -Wall
+CFLAG += -c
+CFLAG += -D_BSD
+CFLAG += -D_WITH_DPRINTF
+
+include ../scripts/msg.mk
+include ../scripts/tools.mk
+
+target := libsoccr.a
+obj := soccr.o
+
+all: $(target)
+.PHONY:	all
+
+libsoccr.a: $(obj)
+	$(Q) $(AR) rsc $@ $^
+
+.PHONY:	test
+test:
+	$(GNUMAKE) -e -C soccrtest
+
+%.o: %.c 
+	$(call msg-cc, $@)
+	$(Q) $(CC) $(INCLUDE) $(CFLAG) -o $@ $^
+
+clean:
+	$(GNUMAKE) -C soccrtest clean
+	$(RM) $(target)
+	$(RM) $(obj)
+.PHONY:	clean
+

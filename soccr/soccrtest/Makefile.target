@@ -1,0 +1,39 @@
+export CFLAG
+CFLAG = -Wall
+CFLAG += -c
+CFLAG += -D_BSD
+CFLAG += -D_WITH_DPRINTF
+
+include ../../scripts/msg.mk
+include ../../scripts/tools.mk
+
+
+INCLUDE = -I ../../include
+
+SRC = ../../src
+SRC_DEP = ../../src/freebsd
+
+target := soccrdump
+target += soccrres
+
+.PHONY: all
+all: $(target)
+
+src := $(SRC)/files.o
+libsoccr := ../libsoccr.a
+
+soccrdump: soccrdump.o $(src) $(libsoccr)
+	$(Q) $(CC) -D_WITH_DPRINTF $(INCLUDE_TEST) -o $@ $^
+
+soccrres: soccrres.o $(src) $(libsoccr)
+	$(Q) $(CC) -D_WITH_DPRINTF $(INCLUDE_TEST) -o $@ $^
+
+%.o: %.c 
+	$(call msg-cc, $@)
+	$(Q) $(CC) $(INCLUDE) $(CFLAG) -o $@ $^
+
+
+.PHONY: clean
+clean:
+	$(Q) $(RM) $(target)
+	$(Q) $(RM) soccrdump.o soccrres.o

@@ -9,9 +9,11 @@
 #include <sys/user.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/ptrace.h>
+#include <arpa/inet.h>
 
 #include "common.h"
 #include "emulate.h"
@@ -23,10 +25,17 @@
 #include "parasite_syscall.h"
 #include "ptrace.h"
 #include "rpc-pie-priv.h"
+#include "fdtransport.h"
+#include "../soccr/soccr.h"
+#include "files.h"
 
 #define PROT_ALL (PROT_EXEC | PROT_WRITE | PROT_READ) 
 #define PARASITE_STACK_SIZE	(16 << 10)
 #define RESTORE_STACK_SIGFRAME 0 // TODO Calc SIGFRAMESIZE
+
+#define IPFWADD 0
+
+int parasite_drain_fds_seize(void *ctl, pid_t pid);
 
 struct hello_pid{
 	char hello[256];
@@ -87,7 +96,7 @@ void *compel_parasite_args_p(struct parasite_ctl *ctl){
 static int gen_parasite_saddr(struct sockaddr_un *saddr, int key){
 	int sun_len;
 
-	saddr->sun_family = PF_LOCAL;
+	saddr->sun_family = PF_UNIX;
 	/*
 	 * X/crtools-pr-%d is not root in CRIU for Linux.
 	 * Temporary, CRIU for FreeBSD has X/crtools-pr-%d to root.
@@ -175,11 +184,15 @@ static int parasite_init_daemon(struct parasite_ctl *ctl){
 
 	reg.r_rip = (unsigned long int)ctl->remote_map;
 	reg.r_rbp = (unsigned long int)ctl->remote_map + sizeof(parasite_blob);
+	printf("rbp: %lx\n", reg.r_rbp);
 	reg.r_rbp += RESTORE_STACK_SIGFRAME;
+	printf("rbp: %lx\n", reg.r_rbp);
 	reg.r_rbp += PARASITE_STACK_SIZE;
+	printf("rbp: %lx\n", reg.r_rbp);
 
 	ptrace_set_regs(pid, &reg);
 	ptrace_cont(pid);
+//	step_debug(pid);
 	/*
 	 *  parasite_run include ptrace SETREGS and CONTINUE, 
 	 *  but this function does not work properly. 
@@ -212,12 +225,156 @@ static int make_sock_for(int pid){
 
 
 	//sk = socket(PF_LOCAL, SOCK_SEQPACKET | SOCK_NONBLOCK, 0);
-	sk = socket(PF_LOCAL, SOCK_SEQPACKET, 0);
+	sk = socket(PF_UNIX, SOCK_SEQPACKET, 0);
 
 	return sk;
 }
 
-int injection(pid_t pid){
+int compel_cmds_run (struct parasite_ctl *ctl, int val){
+	/*
+	 * send CMD and wait ACK against CMD
+	 */
+	compel_rpc_call_sync(PARASITE_CMD_DUMP_THREAD, ctl);
+	compel_rpc_call_sync(PARASITE_CMD_DUMP_ITIMERS, ctl);
+	compel_rpc_call_sync(PARASITE_CMD_GET_PID, ctl);
+
+	/*
+	 * Wait for Parasite Engine finishes writing to memory.
+	 * Good method is sync, lock, futex.
+	 * Initial implementation is sleeping process.
+	 * Second implementation is checking data as necessary,
+	 * please implement per CMD.
+	 * I want to implement as polling which especially
+	 * value is changed.
+	 */
+	
+	/* 
+	 * return address is shared memory + args address
+	 * 
+	 */
+	struct hello_pid *hellop; 
+	hellop = (struct hello_pid*) ctl->addr_args;
+
+	/*
+	 * This is checking data as necessary
+	 */
+	while(!(isdigit(hellop->hello[0]) ||
+			       	isalpha(hellop->hello[0])));
+
+	printf("hello: %s\n", hellop->hello);
+	printf("pid: %d\n", hellop->pid);
+
+
+	if (val) {
+		printf("tcpestablished\n");
+		struct parasite_drain_fd pdfd;
+		pdfd.nr_fds = 4;
+       		ctl->addr_args = &pdfd;
+
+		parasite_drain_fds_seize(ctl, ctl->rpid);
+	}
+	
+	return 0;
+}
+
+int injection_clear(struct parasite_ctl *ctl, struct orig *orig) {
+	int status;
+	/*
+	 * the last command of Parasite Daemon is int3.
+	 */
+	printf("waiting stop\n");
+	waitpro(ctl->rpid, &status);
+	printf("stop: %d\n", WSTOPSIG(status));
+	//print_regs(ctl->rpid);
+
+	
+	/*  want to munmap allocated memory size.
+	 *  compel_syscall() use remote_map, so can't
+	 *  unmap address remote_map.
+	 *  Please, munmap in Parasite engine itself 
+	 */
+	/* maybe, I think restore memory in compel_syscall, this routine is bad. */
+	/*
+	compel_syscall(pid, &orig, 0xb, &ret, (unsigned long)remote_fd_map, 0x1000, 0x0, 0x0, 0x0, 0x0);
+	compel_syscall(pid, &orig, 0xb, &ret, (unsigned long)remote_map, 0x0, 0x0, 0x0, 0x0, 0x0);
+	*/
+
+	ptrace_set_regs(ctl->rpid, &orig->reg);
+	printf("restore reg\n");
+
+	return 0;
+}
+
+int parasite_drain_fds_seize(void *ctl, pid_t pid)
+{
+	struct libsoccr_sk_data data = {};
+	struct libsoccr_sk *so;
+	int sock, fd;
+	char srcaddr[20], dstaddr[20];
+	int srcpt, dstpt;
+	int msg = 0, fds = 0;
+	struct sockaddr_in addr;
+	char *queue;
+	int dsize = 0;
+	socklen_t len = sizeof(addr);
+
+	unlink("/local.sock2");
+	sock = listen_gate("/local.sock2");
+
+	compel_rpc_call(PARASITE_CMD_DRAIN_FDS, ctl);
+
+	fds = recvfd(sock, &msg, sizeof(msg));
+	printf("fds %d\n", fds);
+
+	getsockname(fds, (struct sockaddr *)&addr, &len);
+	strncpy(srcaddr, inet_ntoa(addr.sin_addr), sizeof(srcaddr));
+	srcpt = ntohs(addr.sin_port);
+	getpeername(fds, (struct sockaddr *)&addr, &len);
+	strncpy(dstaddr, inet_ntoa(addr.sin_addr), sizeof(dstaddr));
+	dstpt = ntohs(addr.sin_port);
+
+	setipfw(IPFWADD, srcaddr, dstaddr);
+	so = libsoccr_pause(fds);
+	printf("pause\n");
+
+	dsize = libsoccr_save(so, &data, sizeof(data));
+	if(dsize < 0){
+		perror("libsoccr_save");
+		return 1;
+	}
+	close(fds);
+	printf("close, don't send fin\n");
+
+	queue = libsoccr_get_queue_bytes(so, TCP_RECV_QUEUE, 0);
+	fd = open_dump_file(pid, "rcvq");
+	write(fd, queue, data.inq_len);
+	close(fd);
+
+	queue = libsoccr_get_queue_bytes(so,  TCP_SEND_QUEUE, 0);
+	fd = open_dump_file(pid, "sndq");
+	write(fd, queue, data.outq_len);
+	close(fd);
+
+
+	printf("TCP repair mode: off\n");
+
+	fd = open_dump_file(pid, "sock");
+	dprintf(fd, "%s,%d,%s,%d,%u,%u,%u,%u,%u,%u,%x,%d,%x,%d,%d,%d\n",
+			srcaddr, srcpt, dstaddr, dstpt,
+			data.snd_wl1, data.snd_wnd,
+			data.max_window, data.rcv_wnd, data.rcv_wup,
+			data.mss_clamp, data.outq_seq, data.outq_len,
+			data.inq_seq, data.inq_len, data.unsq_len, data.snd_scale);
+	close(fd);
+
+	compel_rpc_sync(PARASITE_CMD_DRAIN_FDS, ctl);
+	libsoccr_close(so);
+	libsoccr_resume(so);
+
+	return 0;
+}
+
+int injection(pid_t pid, int *option){
 	struct orig orig;
 	struct parasite_ctl *ctl;
 	struct infect_ctx *ictx;
@@ -225,12 +382,12 @@ int injection(pid_t pid){
 	void *tmp_map;
 	char buf[] = SHARED_FILE_PATH;
 
-	int fd;
+	int fd, sk;
 	long remote_fd;
 
 	long ret;
 
-	int status;
+	int tcp_established = option[0];
 
 	ctl = (struct parasite_ctl *) malloc(sizeof(struct parasite_ctl));
 
@@ -289,6 +446,8 @@ int injection(pid_t pid){
 
 	memcpy(ctl->local_map, parasite_blob, sizeof(parasite_blob));
 
+	printf("size parasite_blob %x\n", sizeof(parasite_blob));
+	printf("parasite_args %x\n", parasite_sym__export_parasite_args);
 
 	/*
 	 * If you want to debug register, please uncomment
@@ -305,48 +464,7 @@ int injection(pid_t pid){
 	ctl->addr_args = ctl->local_map + parasite_sym__export_parasite_args;
 	parasite_init_daemon(ctl);
 
-	/*
-	 * send CMD and wait ACK against CMD
-	 */
-	compel_rpc_call_sync(PARASITE_CMD_DUMP_THREAD, ctl);
-	compel_rpc_call_sync(PARASITE_CMD_DUMP_ITIMERS, ctl);
-	compel_rpc_call_sync(PARASITE_CMD_GET_PID, ctl);
-
-
-	/*
-	 * Wait for Parasite Engine finishes writing to memory.
-	 * Good method is sync, lock, futex.
-	 * Initial implementation is sleeping process.
-	 * Second implementation is checking data as necessary,
-	 * please implement per CMD.
-	 * I want to implement as polling which especially
-	 * value is changed.
-	 */
-	/*
-	usleep(20);
-	sleep(1);
-	while((int)*ctl->addr_cmd != PARASITE_CMD_GET_PID + 1024){
-	int *a = (int *) ctl->addr_cmd;
-	printf("ctl->addr_cmd %d\n", *a);
-	}
-	*/
-	
-	/* 
-	 * return address is shared memory + args address
-	 * 
-	 */
-	struct hello_pid *hellop; 
-	hellop = (struct hello_pid*) ctl->addr_args;
-
-	/*
-	 * This is checking data as necessary
-	 */
-	while(!(isdigit(hellop->hello[0]) ||
-			       	isalpha(hellop->hello[0])));
-
-	printf("hello: %s\n", hellop->hello);
-	printf("pid: %d\n", hellop->pid);
-
+	compel_cmds_run(ctl, tcp_established);
 
 	/*
 	 * send PARASITE_CMD_FINI to Parasite Daemon,
@@ -354,28 +472,10 @@ int injection(pid_t pid){
 	 */
 
 	curing(ctl);
-	/*
-	 * the last command of Parasite Daemon is int3.
-	 */
-	printf("waiting stop\n");
-	waitpro(ctl->rpid, &status);
-	printf("stop: %d\n", WSTOPSIG(status));
-	//print_regs(ctl->rpid);
-
 	
-	/*  want to munmap allocated memory size.
-	 *  compel_syscall() use remote_map, so can't
-	 *  unmap address remote_map.
-	 *  Please, munmap in Parasite engine itself 
-	 */
-	/* maybe, I think restore memory in compel_syscall, this routine is bad. */
-	/*
-	compel_syscall(pid, &orig, 0xb, &ret, (unsigned long)remote_fd_map, 0x1000, 0x0, 0x0, 0x0, 0x0);
-	compel_syscall(pid, &orig, 0xb, &ret, (unsigned long)remote_map, 0x0, 0x0, 0x0, 0x0, 0x0);
-	*/
-
-	ptrace_set_regs(ctl->rpid, &orig.reg);
-	printf("restore reg\n");
+	injection_clear(ctl, &orig);
 
 	return 0;
 }
+
+

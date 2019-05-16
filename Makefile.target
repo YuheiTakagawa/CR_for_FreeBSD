@@ -6,6 +6,7 @@ CFLAG += -D_WITH_DPRINTF
 
 SRC_DIR = ./src
 INCLUDE = -I ./include
+INCLUDE += -I ./
 
 
 UNAME := ${shell uname}
@@ -18,9 +19,12 @@ endif
 ifeq ($(UNAME), FreeBSD)
 # for FreeBSD include file
 SRC_DEP = ./src/freebsd
+CFLAG += -lprotobuf-c
 CFLAG += -lprocstat
+CFLAG += -lpthread
 CFLAG += -D_BSD
 OBJ += compel/infect.a
+OBJ += soccr/libsoccr.a
 endif
 
 ifneq ($(UNAME), Linux)
@@ -31,6 +35,12 @@ endif
 
 
 OBJ += $(SRC_DIR)/files.o
+OBJ += $(SRC_DIR)/images/rpc.pb-c.o
+OBJ += $(SRC_DIR)/utils.o
+OBJ += $(SRC_DIR)/log.o
+OBJ += $(SRC_DIR)/scm-code.o
+OBJ += $(SRC_DIR)/cr-errno.o
+OBJ += $(SRC_DIR)/cr-service.o
 
 OBJ += $(SRC_DEP)/ptrace.o
 OBJ += $(SRC_DEP)/parasite_syscall.o
@@ -53,16 +63,22 @@ ROBJ += $(SRC_DIR)/restore.o
 compel/infect.a:
 	$(GNUMAKE) -e -C compel
 
+soccr/libsoccr.a:
+	$(GNUMAKE) -e -C soccr
+
 target = crtools
 
 .PHONY: all
 all: $(target)
 
 
-crtools: $(OBJ) $(ROBJ) $(COBJ)
+crtools: $(ROBJ) $(COBJ) $(OBJ)
 	$(call msg-gen, $@)
-	$(Q) $(CC) $(CFLAG) $(INCLUDE) $(SRC_DIR)/crtools.c $^ -o $@
+	$(Q) $(CC) $(CFLAG) $(INCLUDE) $^ $(SRC_DIR)/crtools.c -o $@
 
+.PHONY: install
+install: crtools
+	install $^ /usr/local/sbin/criu
 
 .PHONY: clean
 clean:
