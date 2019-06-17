@@ -198,6 +198,7 @@ int connection(void *data){
 	struct ctl_msg m;
 	char st[] = "I'M TAKAGAWA!\n";
 	int ret = 0;
+	int i = 0;
 
 	sys_write(1, st, 15); 
 

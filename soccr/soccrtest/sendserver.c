@@ -65,12 +65,12 @@ int main(void){
 	printf("from client %s", buf);
 //	write(sock, chs, sizeof(chs));
 
-	for(int i = 0; i < 10000; i++){
+	for(int i = 0; i < 1000000; i++){
 		//read(sock, chs, sizeof(chs));
 		//printf("rsds %s\n", chs);
 		snprintf(chs, sizeof(chs), "wel %03d\n", i);
 		write(sock, chs, sizeof(chs));
-		usleep(100000);
+		//usleep(10000);
 		memset(chs, 0, sizeof(chs));
 	}
 	return 0;

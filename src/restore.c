@@ -14,6 +14,7 @@
 #include "ptrace.h"
 #include "parasite_syscall.h"
 #include "register.h"
+#include "restorer.h"
 #include "setmem.h"
 #include "soccr/soccr.h"
 #include "files.h"
@@ -49,13 +50,13 @@ int restore_socket(int pid, int rfd) {
 
 	fd = open_file(pid, "sock");
 
+	printf("start restore socket\n");
 	read(fd, buf, sizeof(buf));
 	strncpy(srcaddr, strtok(buf, ","), sizeof(srcaddr));
 	srcpt = atoi(strtok(NULL, ","));
 	strncpy(dstaddr, strtok(NULL, ","), sizeof(dstaddr));
 	dstpt = atoi(strtok(NULL, ","));
 	data.snd_wl1 = atoi(strtok(NULL, ","));
-	tmp = atoi(strtok(NULL, ","));
 	data.snd_wnd = atoi(strtok(NULL, ","));
 	data.max_window = atoi(strtok(NULL, ","));
 	data.rcv_wnd = atoi(strtok(NULL, ","));
@@ -69,6 +70,7 @@ int restore_socket(int pid, int rfd) {
 	tmp = atoi(strtok(NULL, ","));
 	close(fd);
 
+	printf("close file\n");
 
 	addr.v4.sin_family = AF_INET;
 	addr.v4.sin_addr.s_addr = inet_addr(srcaddr);
@@ -165,18 +167,27 @@ int restore(pid_t rpid, char *rpath){
 	printf("Restore file: %d\n", rpid); 
 
 	pid = restore_fork(rpid, rpath);
+	printf("finish fork\n");
 	insert_breakpoint(pid, rpath);
+	printf("finish insert breakpoint\n");
 	remap_vm(pid, rpid, revm, &orig);
 	
 	waitpro(pid, &status);
 	setmems(pid, rpid, revm);
-	setregs(pid, rpid);
+/* TODO
+   To restore registers with rt_sigreturn.
+   inject code pie/restorer.c to running processes with linuxulator
+   call restore_threads() from src/restorer.c
+*/
+	restore_threads(pid, rpid);
+//	setregs(pid, rpid);
 //	step_debug(pid);
 
 //	ptrace_cont(pid);
 	
-//	waitpro(pid, &status);
-//	print_regs(pid);
+	waitpro(pid, &status);
+	print_regs(pid);
+//	step_debug(pid);
 
 	/*
 	 * To keep attach

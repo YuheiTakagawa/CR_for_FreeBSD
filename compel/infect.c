@@ -24,6 +24,7 @@
 #include "infect-rpc.h"
 #include "parasite.h"
 #include "parasite-head.h"
+#include "restorer-blob.h"
 #include "parasite_syscall.h"
 #include "ptrace.h"
 #include "rpc-pie-priv.h"
@@ -189,7 +190,7 @@ static int parasite_init_daemon(struct parasite_ctl *ctl){
 
 	ptrace_get_regs(pid, &reg);
 
-	reg.rip = (unsigned long int)ctl->remote_map;
+	reg.rip = (unsigned long int)ctl->remote_map + 0x2;
 	reg.rbp = (unsigned long int)ctl->remote_map + sizeof(parasite_blob);
 	reg.rbp += RESTORE_STACK_SIGFRAME;
 	reg.rbp += PARASITE_STACK_SIZE;
@@ -232,6 +233,192 @@ static int make_sock_for(int pid){
 	sk = socket(PF_UNIX, SOCK_SEQPACKET, 0);
 
 	return sk;
+}
+struct xsave_struct {
+        union {
+                uint8_t extened_state_area[3000];
+        };
+};
+typedef struct {
+        union {
+                struct xsave_struct xsave;
+        };
+        uint8_t has_fpu;
+} fpu_state_64_t;
+
+typedef struct {
+        union {
+                fpu_state_64_t fpu_state_64;
+        };
+        uint8_t has_fpu;
+} fpu_state_t;
+
+
+#define rt_sigcontext sigcontext
+
+typedef struct rt_siginfo {
+        int si_signo;
+        int si_errno;
+        int si_code;
+        int _pad[128];
+} rt_siginfo_t;
+
+typedef struct rt_sigaltstack {
+        void * ss_sp;
+        int ss_flags;
+        size_t ss_size;
+} rt_stack_t;
+
+struct rt_ucontext {
+        unsigned long uc_flags;
+        struct rt_ucontext *uc_link;
+        rt_stack_t uc_stack;
+        struct rt_sigcontext uc_mcontext;
+        k_rtsigset_t uc_sigmask;
+        int __unused[32 - (sizeof(k_rtsigset_t) / sizeof(int))];
+        unsigned long uc_regspace[128] __attribute__((aligned(8)));
+};
+
+struct rt_sigframe {
+        char *pretcode;
+        struct rt_ucontext uc;
+        struct rt_siginfo info;
+        fpu_state_t fpu_state;
+};
+
+
+#define CPREG64(d, s) f->uc.uc_mcontext.d = r->s
+void restore_regs(struct rt_sigframe *f, struct user_regs_struct *r) {
+        CPREG64(rdi, rdi);
+        CPREG64(rsi, rsi);
+        CPREG64(rbp, rbp);
+        CPREG64(rsp, rsp);
+        CPREG64(rbx, rbx);
+        CPREG64(rdx, rdx);
+        CPREG64(rcx, rcx);
+        CPREG64(rip, rip);
+        CPREG64(rax, rax);
+        CPREG64(r8, r8);
+        CPREG64(r9, r9);
+        CPREG64(r10, r10);
+        CPREG64(r11, r11);
+        CPREG64(r12, r12);
+        CPREG64(r13, r13);
+        CPREG64(r14, r14);
+        CPREG64(r15, r15);
+        CPREG64(cs, cs);
+        CPREG64(eflags, eflags);
+}
+
+
+unsigned long inject_restorer(pid_t pid, regs_t *reg){
+	struct orig orig;
+	struct parasite_ctl *ctl;
+	struct infect_ctx *ictx;
+
+	void *tmp_map;
+	char buf[] = SHARED_FILE_PATH;
+	char path[50];
+
+	int fd, sk;
+	long remote_fd;
+
+	long ret;
+
+	int status;
+
+	ctl = (struct parasite_ctl *) malloc(sizeof(struct parasite_ctl)+4984);
+
+	ctl->rpid = pid;
+
+	/*
+	 * move make_sock_for to function compel_prepare
+	 */
+	ictx = &ctl->ictx;
+	ictx->sock = make_sock_for(pid);
+	
+
+	/* 
+	 *
+	 * First, compel mmap syscall to open file for shared memory
+	 * because target process isn't know the file path,
+	 * so write to memory of target process file path. 
+	 * Second, compel target process run mmap syscall map file for shared memory.
+	 * Third, local process run mmap syscall to share memory.
+	 */
+
+	/*
+	 * TODO
+	 * remote_mmap and compel_syscall are passed arguments 'struct parasite_ctl', 
+	 * however current implementation is passing value of pid. This is bad.
+	 * If you want to fix this, you should changed
+	 * CR_for_FreeBSD/src/include/freebsd/parasite_syscall.c
+	 * and introduce struct parasite_ctl to getall.c, restore.c and etc...  */
+	tmp_map = remote_mmap(ctl->rpid, &orig, (void *) 0x0,
+		       	PAGE_SIZE, PROT_ALL, LINUX_MAP_ANONYMOUS | MAP_SHARED, 0x0, 0x0);
+	printf("remote_map:%p\n", tmp_map);
+
+	fd = open(buf, O_RDWR);
+	printf("open file for shared memory: %s, fd: %d\n", buf, fd);
+	
+	inject_syscall_buf(ctl->rpid, buf, tmp_map, 0);
+	compel_syscall(ctl->rpid, &orig, 0x2, &remote_fd,
+		       	(unsigned long)tmp_map, O_RDWR, 0x0, 0x0, 0x0, 0x0);
+	printf("remote_fd:%ld\n", remote_fd);
+
+	ctl->remote_map = remote_mmap(ctl->rpid, &orig, (void *) NULL, 0x6000,
+		       	PROT_ALL, MAP_SHARED | MAP_ANONYMOUS, -1, 0x0);
+	compel_syscall(ctl->rpid, &orig, 0x3, &ret, (unsigned long)remote_fd,
+		       	0x0, 0x0, 0x0, 0x0, 0x0); 
+	printf("remote_fd_map:%p\n", ctl->remote_map);
+
+	snprintf(path, 50, "/proc/%d/map_files/%lx-%lx", ctl->rpid, (unsigned long int)ctl->remote_map, (unsigned long int)ctl->remote_map + 0x6000);
+	fd = open(path, O_RDWR);
+	
+	ctl->local_map = mmap(NULL, 0x6000, PROT_ALL, MAP_SHARED|MAP_FILE, fd, 0);
+	printf("local_map:%p\n", ctl->local_map);
+
+
+
+	/*
+	 * Injection Parasite Engine via shared memory.
+	 *
+	 */
+
+	//while(1){}
+	memcpy(ctl->local_map, restorer_blob, sizeof(restorer_blob));
+	
+
+	/*
+	 * If you want to debug register, please uncomment
+	 */
+	//step_debug(pid);
+
+
+
+	/*
+	 * Prepare communicate to Parasite Engine via socket
+	 *
+	 */
+	ctl->addr_cmd = ctl->local_map + restorer_sym__export_parasite_cmd;
+	ctl->addr_args = ctl->local_map + restorer_sym__export_parasite_args;
+
+	restore_regs(ctl->addr_args, reg);
+
+	reg->rip = (unsigned long int) ctl->remote_map + 0x2;
+        reg->rbp = (unsigned long int) ctl->remote_map + sizeof(restorer_blob);
+        reg->rbp += RESTORE_STACK_SIGFRAME;
+        reg->rbp += PARASITE_STACK_SIZE;
+
+
+        if(ptrace_set_regs(pid, reg) < 0){
+                perror("ptrace(PT_SETREGS, ...)");
+                return 1;
+        }
+
+        ptrace_cont(pid);
+        return 0;
+
 }
 
 int injection(pid_t pid, int *option){
@@ -459,7 +646,7 @@ int parasite_drain_fds_seize(void *ctl, pid_t pid)
 	printf("TCP repair mode: off\n");
 
 	fd = open_dump_file(pid, "sock");
-	dprintf(fd, "%s,%d,%s,%d,%u,0,%u,%u,%u,%u,%u,%x,%d,%x,%d,%d,6\n",
+	dprintf(fd, "%s,%d,%s,%d,%u,%u,%u,%u,%u,%u,%x,%d,%x,%d,%d,6\n",
 			srcaddr, srcpt, dstaddr, dstpt,
 			data.snd_wl1, data.snd_wnd, data.max_window,
 			data.rcv_wnd, data.rcv_wup, data.mss_clamp,

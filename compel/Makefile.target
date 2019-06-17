@@ -23,7 +23,7 @@ USE_FILES += /tmp/shm
 
 
 .PHONY: all
-all: infect.a
+all: infect.a restorer-blob.h
 
 parasite-head.h: pie/parasite-head headgen
 	$(call msg-gen, $@)
@@ -36,6 +36,14 @@ headgen: headgen.c
 
 pie/parasite-head:
 	$(GNUMAKE) -e -C pie 
+
+restorer-blob.h: pie/restorer-blob
+	$(call msg-gen, $@)
+	@$(RM) $@
+	$(Q) ./headgen $< $@
+
+pie/restorer-blob:
+	$(GNUMAKE) -e -C pie -f Makefile.restorer
 
 
 inject += infect-rpc.o
@@ -54,7 +62,7 @@ infect.a: parasite-head.h $(inject) $(USE_FILES)
 
 /tmp/shm:
 	$(call msg-gen, $@)
-	$(Q) dd if=/dev/zero of=/tmp/shm bs=12288 count=1 
+	$(Q) dd if=/dev/zero of=/tmp/shm bs=24576 count=1 
 
 /X:
 	$(call msg-gen, $@)

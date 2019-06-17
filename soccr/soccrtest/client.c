@@ -18,7 +18,7 @@ int main (void){
 	srand(time(NULL));
         sockfd	= socket(AF_INET, SOCK_STREAM, 0);
 	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = inet_addr("192.168.11.30");
+	addr.sin_addr.s_addr = inet_addr("192.168.11.1");
 	addr.sin_port = htons(9090);
 
 	if(connect(sockfd, (struct sockaddr *) &addr, sizeof(addr)) < 0)
@@ -30,9 +30,9 @@ int main (void){
 
 	while(read(sockfd, tmp, sizeof(tmp))){
 		snprintf(buf, sizeof(buf), "HELLO %05d\n", count++);
-		write(sockfd, buf, sizeof(buf));
+	//	write(sockfd, buf, sizeof(buf));
 		printf("from sv: %s\n", tmp);
-//		usleep(100000);
+//		usleep(1000);
 		memset(tmp, '\0', sizeof(tmp));
 	}
 

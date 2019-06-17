@@ -167,6 +167,7 @@ static int get_window(struct libsoccr_sk *sk, struct libsoccr_sk_data *data)
 	socklen_t auxl;
 	auxl = sizeof(data->mss_clamp);
 	getsockopt(sk->fd, SOL_TCP, TCP_MAXSEG,	&data->mss_clamp, &auxl);
+	printf("mss %d\n", data->mss_clamp);
 
 	return 0;
 }
@@ -333,9 +334,25 @@ int libsoccr_restore(struct libsoccr_sk *sk,
 {
 	if (libsoccr_set_sk_data_noq(sk, data, data_size))
 		return -1;
+	printf("mss %d\n", data->mss_clamp);
+	struct tcp_repair_opt opts[1];
+	int onr = 0;
+	opts[onr].opt_code = TCPOPT_MAXSEG;
+	opts[onr].opt_val = data->mss_clamp;
+	onr++;
+	if (setsockopt(sk->fd, SOL_TCP, TCP_REPAIR_OPTIONS,
+				opts, onr * sizeof(struct tcp_repair_opt)) < 0){
+			perror("setsockopt");
+	}
 
 	if (libsoccr_restore_queue(sk, data, sizeof(*data), TCP_RECV_QUEUE, sk->recv_queue))
 		return -1;
+			char srcaddr[20], dstaddr[20];
+			strncpy(srcaddr, inet_ntoa(sk->src_addr->v4.sin_addr), sizeof(srcaddr));
+			printf("srcaddr %s\n", srcaddr);
+			strncpy(dstaddr, inet_ntoa(sk->dst_addr->v4.sin_addr), sizeof(dstaddr));
+			setipfw(IPFWDEL, srcaddr, dstaddr);
+
 
 	if (libsoccr_restore_queue(sk, data, sizeof(*data), TCP_SEND_QUEUE, sk->send_queue))
 		return -1;
@@ -349,7 +366,6 @@ int libsoccr_restore(struct libsoccr_sk *sk,
 	};
 	setsockopt(sk->fd, SOL_TCP, TCP_REPAIR_WINDOW, &mw, sizeof(mw));
 	
-	setsockopt(sk->fd, SOL_TCP, TCP_MAXSEG, &data->mss_clamp, sizeof(data->mss_clamp));
 
 	return 0;
 }
@@ -368,7 +384,11 @@ static int __send_queue(struct libsoccr_sk *sk, int queue, char *buf, uint32_t l
 		if (chunk > max_chunk)
 			chunk = max_chunk;
 
-		printf("off: %d, chunk %d\n", off, chunk);
+	socklen_t mss_clamp;
+	socklen_t auxl;
+	auxl = sizeof(mss_clamp);
+	getsockopt(sk->fd, SOL_TCP, TCP_MAXSEG,	&mss_clamp, &auxl);
+		printf("off: %d, chunk %d, mss %d\n", off, chunk, mss_clamp);
 		ret = send(sk->fd, buf + off, chunk, 0);
 		printf("send ret: %d\n", ret);
 		if (ret <= 0) {
@@ -431,11 +451,7 @@ static int libsoccr_restore_queue(struct libsoccr_sk *sk, struct libsoccr_sk_dat
 
 		if (ulen) {
 			tcp_repair_off(sk->fd);
-			char srcaddr[20], dstaddr[20];
-			strncpy(srcaddr, inet_ntoa(sk->src_addr->v4.sin_addr), sizeof(srcaddr));
-			printf("srcaddr %s\n", srcaddr);
-			strncpy(dstaddr, inet_ntoa(sk->dst_addr->v4.sin_addr), sizeof(dstaddr));
-			setipfw(IPFWDEL, srcaddr, dstaddr);
+
 			if (__send_queue(sk, TCP_SEND_QUEUE, buf + len, ulen))
 				return -3;
 			if (tcp_repair_on(sk->fd))

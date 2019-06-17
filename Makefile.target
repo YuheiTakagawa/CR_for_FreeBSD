@@ -50,6 +50,7 @@ COBJ += $(SRC_DIR)/getall.o
 
 ROBJ += $(SRC_DIR)/setmem.o
 ROBJ += $(SRC_DIR)/breakpoint.o
+ROBJ += $(SRC_DIR)/restorer.o
 ROBJ += $(SRC_DIR)/restore.o
 
 %.o: %.c
