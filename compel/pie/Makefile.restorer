@@ -1,0 +1,40 @@
+COMPELFLAG	:= -fpie
+COMPELFLAG	+= -fno-stack-protector
+COMPELFLAG	+= -lbsd
+ASFLAG		:= -c
+ASFLAG		+= -Wstrict-prototypes
+ASFLAG		+= -D__ASSEMBLY__
+ASFLAG		+= -nostdlib
+ASFLAG		+= -fomit-frame-pointer
+ASFLAG		+= -fno-stack-protector
+
+parasite	+= restore-blob-head.o
+parasite	+= restorer.o
+
+target		:= restorer-blob
+
+INCLUDE		:= -I ./std -I ./ -I ../ -I ../include
+
+LDS		:= ../compel-pack.lds.S
+
+include ../../scripts/msg.mk
+
+all: $(target)
+.PHONY: all
+
+restorer-blob: $(parasite) $(LDS)
+	$(call msg-link, $@)
+	$(Q) $(LD) -pie $(parasite) -o $@ -T $(LDS)
+
+%.o: %.S
+	$(call msg-cc, $@)
+	$(Q) $(CC) $(INCLUDE) $(COMPELFLAG) $(ASFLAG) -o $@ $^
+
+%.o: %.c
+	$(call msg-cc, $@)
+	$(Q) $(CC) $(INCLUDE) $(COMPELFLAG) $(CFLAG) -o $@ $^
+
+clean:
+	$(call msg-clean, "pie")
+	$(Q) $(RM) $(target) $(parasite)
+.PHONY: clean
