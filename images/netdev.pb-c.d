@@ -1,14 +1,13 @@
-images/netdev.pb-c.d images/netdev.pb-c.o: images/netdev.pb-c.c \
- images/netdev.pb-c.h /usr/local/include/protobuf-c/protobuf-c.h \
- /usr/include/assert.h /usr/include/sys/cdefs.h /usr/include/limits.h \
- /usr/include/sys/limits.h /usr/include/machine/_limits.h \
- /usr/include/x86/_limits.h /usr/include/sys/syslimits.h \
- /usr/local/lib/gcc6/gcc/x86_64-portbld-freebsd11.1/6.4.0/include/stddef.h \
+netdev.pb-c.d netdev.pb-c.o: netdev.pb-c.c netdev.pb-c.h \
+ /usr/local/include/protobuf-c/protobuf-c.h /usr/include/assert.h \
+ /usr/include/sys/cdefs.h /usr/include/limits.h /usr/include/sys/limits.h \
+ /usr/include/machine/_limits.h /usr/include/x86/_limits.h \
+ /usr/include/sys/syslimits.h \
+ /usr/local/lib/gcc8/gcc/x86_64-portbld-freebsd13.0/8.3.0/include/stddef.h \
  /usr/include/sys/_types.h /usr/include/machine/_types.h \
  /usr/include/x86/_types.h \
- /usr/local/lib/gcc6/gcc/x86_64-portbld-freebsd11.1/6.4.0/include/stdint.h \
+ /usr/local/lib/gcc8/gcc/x86_64-portbld-freebsd13.0/8.3.0/include/stdint.h \
  /usr/include/stdint.h /usr/include/machine/_stdint.h \
- /usr/include/x86/_stdint.h /usr/include/sys/_stdint.h \
- images/macvlan.pb-c.h images/opts.pb-c.h \
- images/google/protobuf/descriptor.pb-c.h images/tun.pb-c.h \
- images/sysctl.pb-c.h images/sit.pb-c.h
+ /usr/include/x86/_stdint.h /usr/include/sys/_stdint.h macvlan.pb-c.h \
+ opts.pb-c.h google/protobuf/descriptor.pb-c.h tun.pb-c.h sysctl.pb-c.h \
+ sit.pb-c.h
