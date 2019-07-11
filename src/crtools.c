@@ -8,6 +8,7 @@
 #include <fcntl.h>
 
 #include "cr-service.h"
+#include "protobuf.h"
 
 extern int restore(pid_t pid, char *path);
 extern int tracing(pid_t pid, int * options);
@@ -62,6 +63,8 @@ int main(int argc, char *argv[]){
 				return 1;
 		}
 	}
+
+	cr_pb_init();
 
 	for(i = optind; i < argc; i++){
 		if(!(strcmp(argv[i], "restore"))){

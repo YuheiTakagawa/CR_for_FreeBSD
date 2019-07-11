@@ -38,14 +38,17 @@ endif
 
 
 OBJ += $(SRC_DIR)/files.o
-OBJ += $(SRC_DIR)/utils.o
+OBJ += $(SRC_DIR)/util.o
 OBJ += $(SRC_DIR)/log.o
 OBJ += $(SRC_DIR)/scm-code.o
 OBJ += $(SRC_DIR)/cr-errno.o
 OBJ += $(SRC_DIR)/cr-service.o
+OBJ += $(SRC_DIR)/bfd.o
 OBJ += $(SRC_DIR)/image.o
+OBJ += $(SRC_DIR)/image-desc.o
 OBJ += $(SRC_DIR)/protobuf.o
-OBJ += $(SRC_DIR)/proc_parse.o
+OBJ += $(SRC_DIR)/protobuf-desc.o
+#OBJ += $(SRC_DIR)/proc_parse.o
 
 OBJ += $(SRC_DEP)/ptrace.o
 OBJ += $(SRC_DEP)/parasite_syscall.o

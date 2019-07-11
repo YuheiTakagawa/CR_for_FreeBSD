@@ -4,29 +4,35 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <sys/stat.h>
+#include <stdbool.h>
+
+
 #include "crtools.h"
-#include "magic.h"
+//#include "magic.h"
 #include "cr_options.h"
-#include "imgset.h"
 #include "image.h"
-#include "pstree.h"
-#include "stats.h"
+#include "imgset.h"
+#include "image-desc.h"
+//#include "pstree.h"
+//#include "stats.h"
 //#include "cgroup.h"
-#include "lsm.h"
-#include "protobuf.h"
+//#include "lsm.h"
+//#include "protobuf.h"
 #include "xmalloc.h"
+
 #include "images/inventory.pb-c.h"
 #include "images/pagemap.pb-c.h"
-#include "proc_parse.h"
-#include "img-remote.h"
+//#include "proc_parse.h"
+//#include "img-remote.h"
 //#include "namespaces.h"
 
+typedef uint32_t	u32;
 bool ns_per_id = false;
 bool img_common_magic = true;
 TaskKobjIdsEntry *root_ids;
 u32 root_cg_set;
 Lsmtype image_lsm;
-
+/*
 int check_img_inventory(void)
 {
 	int ret = -1;
@@ -72,11 +78,11 @@ int check_img_inventory(void)
 	switch (he->img_version) {
 	case CRTOOLS_IMAGES_V1:
 		/* good old images. OK */
-		img_common_magic = false;
-		break;
-	case CRTOOLS_IMAGES_V1_1:
+//		img_common_magic = false;
+//		break;
+//	case CRTOOLS_IMAGES_V1_1:
 		/* newer images with extra magic in the head */
-		break;
+/*		break;
 	default:
 		pr_err("Not supported images version %u\n", he->img_version);
 		goto out_err;
@@ -120,7 +126,7 @@ int inventory_save_uptime(InventoryEntry *he)
 	 * dump_uptime is used to detect whether a process was handled
 	 * before or it is a new process with the same pid.
 	 */
-	if (parse_uptime(&he->dump_uptime))
+/*	if (parse_uptime(&he->dump_uptime))
 		return -1;
 
 	he->has_dump_uptime = true;
@@ -263,7 +269,7 @@ struct cr_imgset *cr_imgset_open_range(int pid, int from, int to,
 		if (!img) {
 			if (!(flags & O_CREAT))
 				/* caller should check himself */
-				continue;
+/*				continue;
 			goto err;
 		}
 
@@ -284,9 +290,10 @@ struct cr_imgset *cr_task_imgset_open(int pid, int mode)
 
 struct cr_imgset *cr_glob_imgset_open(int mode)
 {
-	return cr_imgset_open(-1 /* ignored */, GLOB, mode);
+	return cr_imgset_open(-1 /* ignored *//*, GLOB, mode);
 }
 
+*/
 static int do_open_image(struct cr_img *img, int dfd, int type, unsigned long flags, char *path);
 
 struct cr_img *open_image_at(int dfd, int type, unsigned long flags, ...)
@@ -297,6 +304,7 @@ struct cr_img *open_image_at(int dfd, int type, unsigned long flags, ...)
 	va_list args;
 	bool lazy = false;
 
+	dfd = open(".", O_DIRECT);
 	if (dfd == -1) {
 		dfd = get_service_fd(IMG_FD_OFF);
 		lazy = (flags & O_CREAT);
@@ -374,12 +382,15 @@ static int img_write_magic(struct cr_img *img, int oflags, int type)
 
 int do_open_remote_image(int dfd, char *path, int flags)
 {
+	
 	char *snapshot_id = NULL;
 	int ret, save;
+	/*
 
 	/* When using namespaces, the current dir is changed so we need to
 	 * change to previous working dir and back to correctly open the image
 	 * proxy and cache sockets. */
+	/*
 	save = open(".", O_RDONLY);
 	if (save < 0) {
 		pr_perror("unable to open current working directory");
@@ -412,10 +423,10 @@ int do_open_remote_image(int dfd, char *path, int flags)
 		return -1;
 	}
 	close(save);
-
+*/
 	return ret;
 }
-
+/*
 struct openat_args {
 	char	path[PATH_MAX];
 	int	flags;
@@ -434,6 +445,7 @@ static int userns_openat(void *arg, int dfd, int pid)
 
 	return ret;
 }
+*/
 
 static int do_open_image(struct cr_img *img, int dfd, int type, unsigned long oflags, char *path)
 {
@@ -441,9 +453,9 @@ static int do_open_image(struct cr_img *img, int dfd, int type, unsigned long of
 
 	flags = oflags & ~(O_NOBUF | O_SERVICE | O_FORCE_LOCAL);
 
-	if (opts.remote && !(oflags & O_FORCE_LOCAL))
-		ret = do_open_remote_image(dfd, path, flags);
-	else {
+	//if (opts.remote && !(oflags & O_FORCE_LOCAL))
+	//	ret = do_open_remote_image(dfd, path, flags);
+//	else {
 		/*
 		 * For pages images dedup we need to open images read-write on
 		 * restore, that may require proper capabilities, so we ask
@@ -464,8 +476,11 @@ static int do_open_image(struct cr_img *img, int dfd, int type, unsigned long of
 				errno = pa.err;
 		} else
 		*/
+	
+	printf("path %s\n", path);
+	printf("dfd %d\n", dfd);
 			ret = openat(dfd, path, flags, CR_FD_PERM);
-	}
+//	}
 	if (ret < 0) {
 		if (!(flags & O_CREAT) && (errno == ENOENT || ret == -ENOENT)) {
 			pr_info("No %s image\n", path);
@@ -506,7 +521,7 @@ skip_magic:
 err:
 	return -1;
 }
-
+/*
 int open_image_lazy(struct cr_img *img)
 {
 	int dfd;
@@ -523,6 +538,7 @@ int open_image_lazy(struct cr_img *img)
 	xfree(path);
 	return 0;
 }
+*/
 
 void close_image(struct cr_img *img)
 {
@@ -532,6 +548,7 @@ void close_image(struct cr_img *img)
 		 * subsequent restore doesn't read wrong or fake
 		 * data from it.
 		 */
+	
 		unlinkat(get_service_fd(IMG_FD_OFF), img->path, 0);
 		xfree(img->path);
 	} else if (!empty_image(img))
@@ -539,7 +556,7 @@ void close_image(struct cr_img *img)
 
 	xfree(img);
 }
-
+/*
 struct cr_img *img_from_fd(int fd)
 {
 	struct cr_img *img;
@@ -605,7 +622,7 @@ void up_page_ids_base(void)
 	 * making page server produce page images with
 	 * higher IDs.
 	 */
-
+/*
 	BUG_ON(page_ids != 1);
 	page_ids += 0x10000;
 }
@@ -661,6 +678,7 @@ int write_img_buf(struct cr_img *img, const void *ptr, int size)
  *	0  on EOF (silently)
  *	-1 on error (error message is printed)
  */
+
 int read_img_buf_eof(struct cr_img *img, void *ptr, int size)
 {
 	int ret;
@@ -684,6 +702,7 @@ int read_img_buf_eof(struct cr_img *img, void *ptr, int size)
  *	1  on success
  *	-1 on error or EOF (error message is printed)
  */
+
 int read_img_buf(struct cr_img *img, void *ptr, int size)
 {
 	int ret;
@@ -701,7 +720,7 @@ int read_img_buf(struct cr_img *img, void *ptr, int size)
  * read_img_str -- same as read_img_buf, but allocates memory for
  * the buffer and puts the '\0' at the end
  */
-
+/*
 int read_img_str(struct cr_img *img, char **pstr, int size)
 {
 	int ret;
@@ -733,3 +752,4 @@ off_t img_raw_size(struct cr_img *img)
 
 	return stat.st_size;
 }
+*/

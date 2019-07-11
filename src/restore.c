@@ -8,6 +8,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#define PACKAGE 1
 #include "breakpoint.h"
 #include "common.h"
 #include "fds.h"
@@ -17,6 +18,9 @@
 #include "setmem.h"
 #include "soccr/soccr.h"
 #include "files.h"
+#include "protobuf.h"
+#include "image.h"
+#include "images/inventory.pb-c.h"
 
 #define IPFWDEL 1
 
@@ -36,6 +40,7 @@ int target(char *path, char *argv[]){
 }
 
 int restore_socket(int pid, int rfd) {
+	/*
 	int rst, fd;
 	int dsize;
 	char *queue;
@@ -109,11 +114,11 @@ int restore_socket(int pid, int rfd) {
 
 	printf("resume so_rst\n");
 	libsoccr_resume(so_rst);
-/* unfilter packet */
+// unfilter packet 
 	printf("unfilter packet\n");
 //	setipfw(IPFWDEL, "192.168.11.1", "192.168.11.30");
 	setipfw(IPFWDEL, srcaddr, dstaddr);
-
+*/
 	return 0;
 }
 
@@ -157,18 +162,44 @@ int restore(pid_t rpid, char *rpath){
 	pid_t pid;
 	struct orig orig;
 	struct remap_vm_struct revm[BUFSIZE];
+	struct cr_img *img;
+	InventoryEntry *he;
+	CoreEntry *ce;
 
 	printf("CMD : %s\n", rpath);
 	printf("PPID: %d\n", getpid());
 	printf("Restore file: %d\n", rpid); 
 
-	pid = restore_fork(rpid, rpath);
-	insert_breakpoint(pid, rpath);
-	remap_vm(pid, rpid, revm, &orig);
+	img = open_image(CR_FD_INVENTORY, O_RSTR);
+	if (!img)
+		return -1;
+
+	if (pb_read_one(img, &he, PB_INVENTORY) < 0)
+		return -1;
+	printf("he fdinfo %d\n", he->has_fdinfo_per_id);
+	printf("he imgv %d\n", he->img_version);
+	printf("he root ids vm %d\n", he->root_ids->vm_id);
+	printf("he lsmtype %d\n", he->lsmtype);
+
+	close_image(img);
+
+	img = open_image(CR_FD_CORE, O_RSTR, rpid);
+	if (!img)
+		return -1;
+	if (pb_read_one(img, &ce, PB_CORE) < 0)
+		return -1;
+	printf("ce mtype %d\n", ce->mtype);
+	printf("ce thread_info  gpregs r15 %lx\n", ce->thread_info->gpregs->r15);
+	printf("ce thread_info  gpregs r13 %lx\n", ce->thread_info->gpregs->r13);
+	printf("ce thread_info  gpregs ax %lx\n", ce->thread_info->gpregs->ax);
+
+//	pid = restore_fork(rpid, rpath);
+//	insert_breakpoint(pid, rpath);
+//	remap_vm(pid, rpid, revm, &orig);
 	
-	waitpro(pid, &status);
-	setmems(pid, rpid, revm);
-	setregs(pid, rpid);
+//	waitpro(pid, &status);
+//	setmems(pid, rpid, revm);
+//	setregs(pid, rpid);
 //	step_debug(pid);
 
 //	ptrace_cont(pid);
@@ -182,8 +213,8 @@ int restore(pid_t rpid, char *rpath){
 	 * if detach from process, uncomment ptrace_detach
 	 */
 //	while(1){}
-	ptrace_detach(pid);
-	printf("detach\n");
+//	ptrace_detach(pid);
+//	printf("detach\n");
 	
 	return pid;
 }
@@ -210,4 +241,3 @@ int main(int argc, char* argv[]){
 int cr_restore_tasks(int pid, char *rpath){
 	return restore(pid, rpath);
 }
-	
