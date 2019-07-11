@@ -157,7 +157,7 @@ int restore_fork(int filePid, char *exec_path){
 	return 0;
 }
 
-int restore(pid_t rpid, char *rpath){
+int restore(pid_t rpid, char *rpath, int dfd){
 	int status;
 	pid_t pid;
 	struct orig orig;
@@ -169,8 +169,13 @@ int restore(pid_t rpid, char *rpath){
 	printf("CMD : %s\n", rpath);
 	printf("PPID: %d\n", getpid());
 	printf("Restore file: %d\n", rpid); 
+	
+	pid = restore_fork(rpid, rpath);
+	insert_breakpoint(pid, rpath);
+	remap_vm(pid, rpid, revm, &orig);
+	waitpro(pid, &status);
 
-	img = open_image(CR_FD_INVENTORY, O_RSTR);
+	img = open_image_at(dfd, CR_FD_INVENTORY, O_RSTR);
 	if (!img)
 		return -1;
 
@@ -183,38 +188,33 @@ int restore(pid_t rpid, char *rpath){
 
 	close_image(img);
 
-	img = open_image(CR_FD_CORE, O_RSTR, rpid);
+	
+	setmems(pid, rpid, revm);
+
+	img = open_image_at(dfd, CR_FD_CORE, O_RSTR, rpid);
 	if (!img)
 		return -1;
 	if (pb_read_one(img, &ce, PB_CORE) < 0)
 		return -1;
-	printf("ce mtype %d\n", ce->mtype);
-	printf("ce thread_info  gpregs r15 %lx\n", ce->thread_info->gpregs->r15);
-	printf("ce thread_info  gpregs r13 %lx\n", ce->thread_info->gpregs->r13);
-	printf("ce thread_info  gpregs ax %lx\n", ce->thread_info->gpregs->ax);
-
-//	pid = restore_fork(rpid, rpath);
-//	insert_breakpoint(pid, rpath);
-//	remap_vm(pid, rpid, revm, &orig);
 	
-//	waitpro(pid, &status);
-//	setmems(pid, rpid, revm);
-//	setregs(pid, rpid);
-//	step_debug(pid);
+	close_image(img);
 
-//	ptrace_cont(pid);
+	setregs(pid, ce);
+	step_debug(pid);
+
+	ptrace_cont(pid);
 //	sleep(10);
 	
-//	waitpro(pid, &status);
-//	print_regs(pid);
+	waitpro(pid, &status);
+	print_regs(pid);
 
 	/*
 	 * To keep attach
 	 * if detach from process, uncomment ptrace_detach
 	 */
 //	while(1){}
-//	ptrace_detach(pid);
-//	printf("detach\n");
+	ptrace_detach(pid);
+	printf("detach\n");
 	
 	return pid;
 }
@@ -238,6 +238,6 @@ int main(int argc, char* argv[]){
 */
 
 //int cr_restore_tasks(void) {
-int cr_restore_tasks(int pid, char *rpath){
-	return restore(pid, rpath);
+int cr_restore_tasks(int pid, char *rpath, int dfd){
+	return restore(pid, rpath, dfd);
 }

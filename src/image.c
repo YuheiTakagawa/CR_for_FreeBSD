@@ -17,7 +17,7 @@
 //#include "stats.h"
 //#include "cgroup.h"
 //#include "lsm.h"
-//#include "protobuf.h"
+#include "protobuf.h"
 #include "xmalloc.h"
 
 #include "images/inventory.pb-c.h"
@@ -32,7 +32,6 @@ bool img_common_magic = true;
 TaskKobjIdsEntry *root_ids;
 u32 root_cg_set;
 Lsmtype image_lsm;
-/*
 int check_img_inventory(void)
 {
 	int ret = -1;
@@ -78,11 +77,11 @@ int check_img_inventory(void)
 	switch (he->img_version) {
 	case CRTOOLS_IMAGES_V1:
 		/* good old images. OK */
-//		img_common_magic = false;
-//		break;
-//	case CRTOOLS_IMAGES_V1_1:
+		img_common_magic = false;
+		break;
+	case CRTOOLS_IMAGES_V1_1:
 		/* newer images with extra magic in the head */
-/*		break;
+		break;
 	default:
 		pr_err("Not supported images version %u\n", he->img_version);
 		goto out_err;
@@ -97,6 +96,7 @@ out_close:
 	return ret;
 }
 
+/*
 int write_img_inventory(InventoryEntry *he)
 {
 	struct cr_img *img;
@@ -116,11 +116,13 @@ int write_img_inventory(InventoryEntry *he)
 		return -1;
 	return 0;
 }
-
+*/
+/*
 int inventory_save_uptime(InventoryEntry *he)
 {
 	if (!opts.track_mem)
 		return 0;
+*/
 
 	/*
 	 * dump_uptime is used to detect whether a process was handled
@@ -268,6 +270,7 @@ struct cr_imgset *cr_imgset_open_range(int pid, int from, int to,
 		img = open_image(i, flags, pid);
 		if (!img) {
 			if (!(flags & O_CREAT))
+*/
 				/* caller should check himself */
 /*				continue;
 			goto err;
@@ -290,10 +293,10 @@ struct cr_imgset *cr_task_imgset_open(int pid, int mode)
 
 struct cr_imgset *cr_glob_imgset_open(int mode)
 {
-	return cr_imgset_open(-1 /* ignored *//*, GLOB, mode);
-}
-
 */
+//	return cr_imgset_open(-1, GLOB, mode);
+//}
+
 static int do_open_image(struct cr_img *img, int dfd, int type, unsigned long flags, char *path);
 
 struct cr_img *open_image_at(int dfd, int type, unsigned long flags, ...)
@@ -304,10 +307,10 @@ struct cr_img *open_image_at(int dfd, int type, unsigned long flags, ...)
 	va_list args;
 	bool lazy = false;
 
-	dfd = open(".", O_DIRECT);
 	if (dfd == -1) {
-		dfd = get_service_fd(IMG_FD_OFF);
-		lazy = (flags & O_CREAT);
+		dfd = open(".", O_DIRECT);
+		//dfd = get_service_fd(IMG_FD_OFF);
+		//lazy = (flags & O_CREAT);
 	}
 
 	img = xmalloc(sizeof(*img));
@@ -383,9 +386,8 @@ static int img_write_magic(struct cr_img *img, int oflags, int type)
 int do_open_remote_image(int dfd, char *path, int flags)
 {
 	
-	char *snapshot_id = NULL;
-	int ret, save;
-	/*
+	//char *snapshot_id = NULL;
+	int ret = 0;//, save;
 
 	/* When using namespaces, the current dir is changed so we need to
 	 * change to previous working dir and back to correctly open the image
@@ -477,9 +479,7 @@ static int do_open_image(struct cr_img *img, int dfd, int type, unsigned long of
 		} else
 		*/
 	
-	printf("path %s\n", path);
-	printf("dfd %d\n", dfd);
-			ret = openat(dfd, path, flags, CR_FD_PERM);
+	ret = openat(dfd, path, flags, CR_FD_PERM);
 //	}
 	if (ret < 0) {
 		if (!(flags & O_CREAT) && (errno == ENOENT || ret == -ENOENT)) {
@@ -615,6 +615,7 @@ static unsigned long page_ids = 1;
 
 void up_page_ids_base(void)
 {
+*/
 	/*
 	 * When page server and criu dump work on
 	 * the same dir, the shmem pagemaps and regular
@@ -649,7 +650,7 @@ struct cr_img *open_pages_image(unsigned long flags, struct cr_img *pmi, u32 *id
 {
 	return open_pages_image_at(get_service_fd(IMG_FD_OFF), flags, pmi, id);
 }
-
+*/
 /*
  * Write buffer @ptr of @size bytes into @fd file
  * Returns

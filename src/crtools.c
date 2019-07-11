@@ -10,7 +10,7 @@
 #include "cr-service.h"
 #include "protobuf.h"
 
-extern int restore(pid_t pid, char *path);
+extern int restore(pid_t pid, char *path, int dfd);
 extern int tracing(pid_t pid, int * options);
 
 int usage(void){
@@ -27,10 +27,12 @@ int main(int argc, char *argv[]){
 	int i;
 	int pid = 0;
 	char *path = NULL;
+	char *dpath = NULL;
 	int options[10];
 	struct option longopts[] = {
 		{ "version",	no_argument,		0, 'V' },
 		{ "pid",	required_argument,	0, 'p' },
+		{ "d",		required_argument,	0, 'd' },
 		{ "help",	no_argument,		0, 'h' },
 		{ "tcp",	no_argument,		0, 't' },
 	};
@@ -41,7 +43,7 @@ int main(int argc, char *argv[]){
 
 	int opt;
 	int longindex;
-	while((opt = getopt_long(argc, argv, "p:e:Vht", longopts, &longindex)) != -1){
+	while((opt = getopt_long(argc, argv, "p:e:d:Vht", longopts, &longindex)) != -1){
 		switch(opt){
 			case 'V':
 				printf("Version: 3.1\n");
@@ -51,6 +53,10 @@ int main(int argc, char *argv[]){
 				break;
 			case 'e':
 				path = optarg;
+				break;
+			case 'd':
+				dpath = optarg;
+				printf("dpath: %s\n", dpath);
 				break;
 			case 't':
 				options[0] = 1;
@@ -72,7 +78,8 @@ int main(int argc, char *argv[]){
 				goto usage;
 			if(pid == 0)
 				goto usage;
-			restore(pid, path);
+			int dfd = open(dpath, O_DIRECT);
+			restore(pid, path, dfd);
 			break;
 		}
 		if(!(strcmp(argv[i], "dump"))){
