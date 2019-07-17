@@ -135,8 +135,8 @@ static inline int img_raw_fd(struct cr_img *img)
 {
 	if (!img)
 		return -1;
-	if (lazy_image(img) && open_image_lazy(img))
-		return -1;
+//	if (lazy_image(img) && open_image_lazy(img))
+//		return -1;
 
 	BUG_ON(bfd_buffered(&img->_x));
 	return img->_x.fd;

@@ -627,7 +627,7 @@ void up_page_ids_base(void)
 	BUG_ON(page_ids != 1);
 	page_ids += 0x10000;
 }
-
+*/
 struct cr_img *open_pages_image_at(int dfd, unsigned long flags, struct cr_img *pmi, u32 *id)
 {
 	if (flags == O_RDONLY || flags == O_RDWR) {
@@ -636,16 +636,16 @@ struct cr_img *open_pages_image_at(int dfd, unsigned long flags, struct cr_img *
 			return NULL;
 		*id = h->pages_id;
 		pagemap_head__free_unpacked(h, NULL);
-	} else {
+	} /*else {
 		PagemapHead h = PAGEMAP_HEAD__INIT;
 		*id = h.pages_id = page_ids++;
 		if (pb_write_one(pmi, &h, PB_PAGEMAP_HEAD) < 0)
 			return NULL;
 	}
-
+*/
 	return open_image_at(dfd, CR_FD_PAGES, flags, *id);
 }
-
+/*
 struct cr_img *open_pages_image(unsigned long flags, struct cr_img *pmi, u32 *id)
 {
 	return open_pages_image_at(get_service_fd(IMG_FD_OFF), flags, pmi, id);
@@ -741,7 +741,7 @@ int read_img_str(struct cr_img *img, char **pstr, int size)
 	*pstr = str;
 	return 0;
 }
-
+*/
 off_t img_raw_size(struct cr_img *img)
 {
 	struct stat stat;
@@ -753,4 +753,4 @@ off_t img_raw_size(struct cr_img *img)
 
 	return stat.st_size;
 }
-*/
+

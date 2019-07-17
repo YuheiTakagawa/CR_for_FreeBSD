@@ -20,6 +20,7 @@
 #include "files.h"
 #include "protobuf.h"
 #include "image.h"
+#include "pagemap.h"
 #include "images/inventory.pb-c.h"
 
 #define IPFWDEL 1
@@ -156,6 +157,118 @@ int restore_fork(int filePid, char *exec_path){
 	target(exec_path, NULL);
 	return 0;
 }
+#define PAGEMAP_ENTRY_SIZE_ESTIMATE 16
+
+
+static void free_pagemaps(struct page_read *pr)
+{
+	int i;
+
+	for (i = 0; i < pr->nr_pmes; i++)
+		pagemap_entry__free_unpacked(pr->pmes[i], NULL);
+
+	xfree(pr->pmes);
+}
+
+static int init_pagemaps(struct page_read *pr, int dfd, int pid) {
+	PagemapHead *h;
+	PagemapEntry **pmes = NULL;
+	PagemapEntry *pme;
+
+	off_t fsize;
+	fsize = img_raw_size(pr->pmi);
+	int nr_pmes = fsize / PAGEMAP_ENTRY_SIZE_ESTIMATE + 1;
+	pr->pmes = xzalloc(nr_pmes * sizeof(*pmes));
+
+	for(int i = 0; i < nr_pmes; i++){
+		if(pb_read_one_eof(pr->pmi, &pr->pmes[i], PB_PAGEMAP) <= 0){
+			break;
+		}
+		printf("addr %lx, pages %d, flags%d\n", pr->pmes[i]->vaddr, pr->pmes[i]->nr_pages, pr->pmes[i]->flags);
+	}
+
+	return 1;
+}
+
+static void close_page_read(struct page_read *pr){
+	int ret;
+
+	if (pr->pmi)
+		close_image(pr->pmi);
+	if (pr->pi)
+		close_image(pr->pi);
+
+	if (pr->pmes)
+		free_pagemaps(pr);
+}
+
+int read_pagemap_page(struct page_read *pr, unsigned long vaddr, unsigned long len, void *buf, unsigned flags){
+	int fd = img_raw_fd(pr->pi);
+	ssize_t ret;
+	size_t curr = 0;
+
+	while(1) {
+		ret = pread(fd, buf + curr, len - curr, pr->pi_off + curr);
+		if (ret < 1) {
+			printf("Can't read mapping page %zd", ret);
+			return -1;
+		}
+		printf("buf: %s\n", buf);
+		curr += ret;
+		if (curr == len)
+			break;
+	}
+	return 0;
+}
+
+int open_page_read_at(int dfd, unsigned long pid, struct page_read *pr, int pr_flags){
+	int flags, i_typ;
+
+	switch (pr_flags & PR_TYPE_MASK) {
+		case PR_TASK:
+			i_typ = CR_FD_PAGEMAP;
+			break;
+		default:
+			return -1;
+	}
+	pr->pmi = open_image_at(dfd, i_typ, O_RSTR, pid);
+//	pr->pmi = open_image_at(dfd, CR_FD_PAGEMAP, O_RSTR, pid);
+	if (!pr->pmi)
+		return -1;
+
+	if (empty_image(pr->pmi)) {
+		close_image(pr->pmi);
+		return 0;
+	}
+
+	pr->pi = open_pages_image_at(dfd, O_RSTR, pr->pmi, &pr->pages_img_id);
+	if (!pr->pi) {
+		close_page_read(pr);
+		return -1;
+	}
+
+	if (init_pagemaps(pr, dfd, pid)) {
+//		close_page_read(pr);
+		return -1;
+	}
+
+	pr->read_pages = read_pagemap_page;
+	return 1;
+}
+
+
+int prepare_mappings(int dfd, pid_t pid){
+	int ret;
+	struct page_read pr;
+	char buf[4096];
+
+	ret = open_page_read_at(dfd, pid, &pr, PR_TASK);
+	if (ret <= 0)
+		return -1;
+//	pr.read_pages(&pr, 0x0, 0x1000, buf, 0x0);
+//	printf("%s\n", buf);
+	return 0;
+}
 
 int restore(pid_t rpid, char *rpath, int dfd){
 	int status;
@@ -175,12 +288,14 @@ int restore(pid_t rpid, char *rpath, int dfd){
 	remap_vm(pid, rpid, revm, &orig);
 	waitpro(pid, &status);
 
+	
 	img = open_image_at(dfd, CR_FD_INVENTORY, O_RSTR);
 	if (!img)
 		return -1;
 
 	if (pb_read_one(img, &he, PB_INVENTORY) < 0)
 		return -1;
+
 	printf("he fdinfo %d\n", he->has_fdinfo_per_id);
 	printf("he imgv %d\n", he->img_version);
 	printf("he root ids vm %d\n", he->root_ids->vm_id);
@@ -188,33 +303,37 @@ int restore(pid_t rpid, char *rpath, int dfd){
 
 	close_image(img);
 
-	
-	setmems(pid, rpid, revm);
+	if (prepare_mappings(dfd, rpid) < 0)
+		perror("prepare_mappings");
 
+	//setmems(pid, rpid, revm);
+
+	
 	img = open_image_at(dfd, CR_FD_CORE, O_RSTR, rpid);
 	if (!img)
 		return -1;
 	if (pb_read_one(img, &ce, PB_CORE) < 0)
 		return -1;
+	printf("ce %lx\n", ce->thread_info->gpregs->r15);
 	
 	close_image(img);
 
-	setregs(pid, ce);
-	step_debug(pid);
+//	setregs(pid, ce);
+//	step_debug(pid);
 
-	ptrace_cont(pid);
+//	ptrace_cont(pid);
 //	sleep(10);
 	
-	waitpro(pid, &status);
-	print_regs(pid);
+//	waitpro(pid, &status);
+//	print_regs(pid);
 
 	/*
 	 * To keep attach
 	 * if detach from process, uncomment ptrace_detach
 	 */
 //	while(1){}
-	ptrace_detach(pid);
-	printf("detach\n");
+//	ptrace_detach(pid);
+//	printf("detach\n");
 	
 	return pid;
 }

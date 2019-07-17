@@ -39,11 +39,11 @@ int setmems(pid_t pid, pid_t filePid, struct remap_vm_struct *revm){
 int write_mem(int read_fd, int write_fd, long int offset){
         char buf[BUFSIZE];
         int rnum;
+	int cnt;
 
         lseek(write_fd, offset, SEEK_SET);
 
         while(1){
-
                 rnum = read(read_fd, buf, sizeof(buf));
                 if(rnum > 0){
                         write(write_fd, buf, rnum);
