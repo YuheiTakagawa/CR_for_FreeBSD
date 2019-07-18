@@ -180,14 +180,17 @@ static int init_pagemaps(struct page_read *pr, int dfd, int pid) {
 	int nr_pmes = fsize / PAGEMAP_ENTRY_SIZE_ESTIMATE + 1;
 	pr->pmes = xzalloc(nr_pmes * sizeof(*pmes));
 
+	pr->nr_pmes = 0;
+	pr->curr_pme = -1;
 	for(int i = 0; i < nr_pmes; i++){
 		if(pb_read_one_eof(pr->pmi, &pr->pmes[i], PB_PAGEMAP) <= 0){
 			break;
 		}
+		pr->nr_pmes++;
 		printf("addr %lx, pages %d, flags%d\n", pr->pmes[i]->vaddr, pr->pmes[i]->nr_pages, pr->pmes[i]->flags);
 	}
 
-	return 1;
+	return 0;
 }
 
 static void close_page_read(struct page_read *pr){
@@ -202,22 +205,43 @@ static void close_page_read(struct page_read *pr){
 		free_pagemaps(pr);
 }
 
-int read_pagemap_page(struct page_read *pr, unsigned long vaddr, unsigned long len, void *buf, unsigned flags){
+
+static int advance(struct page_read *pr)
+{
+	pr->curr_pme++;
+	if (pr->curr_pme >= pr->nr_pmes)
+		return 0;
+
+	pr->pe = pr->pmes[pr->curr_pme];
+	pr->cvaddr = pr->pe->vaddr;
+
+	return 1;
+}
+
+int read_pagemap_page(struct page_read *pr, unsigned long vaddr, int nr, void *buf, unsigned flags){
 	int fd = img_raw_fd(pr->pi);
 	ssize_t ret;
 	size_t curr = 0;
+	int len = nr * PAGE_SIZE;
 
+//	printf("len: %d\n", len);
+//	printf("off: %lx\n", pr->pi_off);
 	while(1) {
+//		printf("curr %ld\n", curr);
+//		printf("len -curr %ld\n", len - curr);
+//		printf("off -curr %ld\n", pr->pi_off + curr);
 		ret = pread(fd, buf + curr, len - curr, pr->pi_off + curr);
 		if (ret < 1) {
 			printf("Can't read mapping page %zd", ret);
 			return -1;
 		}
-		printf("buf: %s\n", buf);
+//		printf("offset %lx\n", pr->pi_off + curr);
+//		write(1, buf + curr, len - curr);
 		curr += ret;
 		if (curr == len)
 			break;
 	}
+//	printf("fini\n");
 	return 0;
 }
 
@@ -232,7 +256,6 @@ int open_page_read_at(int dfd, unsigned long pid, struct page_read *pr, int pr_f
 			return -1;
 	}
 	pr->pmi = open_image_at(dfd, i_typ, O_RSTR, pid);
-//	pr->pmi = open_image_at(dfd, CR_FD_PAGEMAP, O_RSTR, pid);
 	if (!pr->pmi)
 		return -1;
 
@@ -248,11 +271,12 @@ int open_page_read_at(int dfd, unsigned long pid, struct page_read *pr, int pr_f
 	}
 
 	if (init_pagemaps(pr, dfd, pid)) {
-//		close_page_read(pr);
+		close_page_read(pr);
 		return -1;
 	}
 
 	pr->read_pages = read_pagemap_page;
+	pr->advance = advance;
 	return 1;
 }
 
@@ -261,12 +285,36 @@ int prepare_mappings(int dfd, pid_t pid){
 	int ret;
 	struct page_read pr;
 	char buf[4096];
+	unsigned long len;
+	unsigned long va = 0;
 
+	pr.pi_off = 0;
+	pr.curr_pme = 0;
+	pr.cvaddr = 0;
+	pr.pe = NULL;
 	ret = open_page_read_at(dfd, pid, &pr, PR_TASK);
 	if (ret <= 0)
 		return -1;
-//	pr.read_pages(&pr, 0x0, 0x1000, buf, 0x0);
-//	printf("%s\n", buf);
+	while(1) {
+		ret = pr.advance(&pr);
+		if (ret <= 0){
+	//		printf("pme %lx\n", pr.pe->vaddr);
+			break;
+		}
+		printf("pme %lx\n", pr.pe->vaddr);
+		for(int i = 0; i < pr.pe->nr_pages; i++){
+			pr.read_pages(&pr, va, 1, buf, 0x0);
+			va += 1 * PAGE_SIZE;
+			len = 1 * PAGE_SIZE;
+			pr.pi_off += len;
+		}
+		//va += pr.pe->nr_pages * PAGE_SIZE;
+		//printf("va %lx\n", va); 
+		pr.cvaddr += pr.pe->nr_pages * PAGE_SIZE;
+//		printf("cvaddr %lx\n", pr.cvaddr);
+//		printf("len %ld\n", len);
+//		printf("va %lx, nr %d\n", va, pr.pe->nr_pages);
+	}
 	return 0;
 }
 
@@ -303,8 +351,7 @@ int restore(pid_t rpid, char *rpath, int dfd){
 
 	close_image(img);
 
-	if (prepare_mappings(dfd, rpid) < 0)
-		perror("prepare_mappings");
+	prepare_mappings(dfd, rpid);
 
 	//setmems(pid, rpid, revm);
 
