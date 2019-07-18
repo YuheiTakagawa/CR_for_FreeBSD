@@ -224,24 +224,16 @@ int read_pagemap_page(struct page_read *pr, unsigned long vaddr, int nr, void *b
 	size_t curr = 0;
 	int len = nr * PAGE_SIZE;
 
-//	printf("len: %d\n", len);
-//	printf("off: %lx\n", pr->pi_off);
 	while(1) {
-//		printf("curr %ld\n", curr);
-//		printf("len -curr %ld\n", len - curr);
-//		printf("off -curr %ld\n", pr->pi_off + curr);
 		ret = pread(fd, buf + curr, len - curr, pr->pi_off + curr);
 		if (ret < 1) {
 			printf("Can't read mapping page %zd", ret);
 			return -1;
 		}
-//		printf("offset %lx\n", pr->pi_off + curr);
-//		write(1, buf + curr, len - curr);
 		curr += ret;
 		if (curr == len)
 			break;
 	}
-//	printf("fini\n");
 	return 0;
 }
 
@@ -281,7 +273,7 @@ int open_page_read_at(int dfd, unsigned long pid, struct page_read *pr, int pr_f
 }
 
 
-int prepare_mappings(int dfd, pid_t pid){
+int prepare_mappings(int dfd, pid_t rpid, pid_t pid){
 	int ret;
 	struct page_read pr;
 	char buf[4096];
@@ -292,29 +284,28 @@ int prepare_mappings(int dfd, pid_t pid){
 	pr.curr_pme = 0;
 	pr.cvaddr = 0;
 	pr.pe = NULL;
-	ret = open_page_read_at(dfd, pid, &pr, PR_TASK);
+	int write_fd = open_file(pid, "mem");
+	ret = open_page_read_at(dfd, rpid, &pr, PR_TASK);
 	if (ret <= 0)
 		return -1;
 	while(1) {
 		ret = pr.advance(&pr);
 		if (ret <= 0){
-	//		printf("pme %lx\n", pr.pe->vaddr);
 			break;
 		}
 		printf("pme %lx\n", pr.pe->vaddr);
 		for(int i = 0; i < pr.pe->nr_pages; i++){
 			pr.read_pages(&pr, va, 1, buf, 0x0);
+			lseek(write_fd, pr.pe->vaddr + i * PAGE_SIZE, SEEK_SET);
+			if(write(write_fd, buf, sizeof(buf))<0)
+				perror("write");
 			va += 1 * PAGE_SIZE;
 			len = 1 * PAGE_SIZE;
 			pr.pi_off += len;
 		}
-		//va += pr.pe->nr_pages * PAGE_SIZE;
-		//printf("va %lx\n", va); 
 		pr.cvaddr += pr.pe->nr_pages * PAGE_SIZE;
-//		printf("cvaddr %lx\n", pr.cvaddr);
-//		printf("len %ld\n", len);
-//		printf("va %lx, nr %d\n", va, pr.pe->nr_pages);
 	}
+	close(write_fd);
 	return 0;
 }
 
@@ -333,7 +324,7 @@ int restore(pid_t rpid, char *rpath, int dfd){
 	
 	pid = restore_fork(rpid, rpath);
 	insert_breakpoint(pid, rpath);
-	remap_vm(pid, rpid, revm, &orig);
+	//remap_vm(pid, rpid, revm, &orig);
 	waitpro(pid, &status);
 
 	
@@ -351,7 +342,7 @@ int restore(pid_t rpid, char *rpath, int dfd){
 
 	close_image(img);
 
-	prepare_mappings(dfd, rpid);
+	prepare_mappings(dfd, rpid, pid);
 
 	//setmems(pid, rpid, revm);
 
@@ -365,14 +356,14 @@ int restore(pid_t rpid, char *rpath, int dfd){
 	
 	close_image(img);
 
-//	setregs(pid, ce);
+	setregs(pid, ce);
 //	step_debug(pid);
 
-//	ptrace_cont(pid);
+	ptrace_cont(pid);
 //	sleep(10);
 	
-//	waitpro(pid, &status);
-//	print_regs(pid);
+	waitpro(pid, &status);
+	print_regs(pid);
 
 	/*
 	 * To keep attach
