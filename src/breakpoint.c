@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+
+#include <sys/wait.h>
  
 #include "breakpoint.h"
 #include "common.h"
@@ -101,11 +103,15 @@ void insert_breakpoint(pid_t pid, char *elfpath){
 	Elf64_Addr entry_point;
 	uint8_t code_orig[BUILTIN_SYSCALL_SIZE];
 
+	entry_point = get_entry_point(elfpath);
+//	entry_point = 0x400530;
 	memcpy(code_orig, code_int3, sizeof(code_orig));
 
 	waitpro(pid, &status);
-	entry_point = get_entry_point(elfpath);
-	ptrace_swap_area(pid, (void *)entry_point, (void *)code_orig, sizeof(code_orig));
+	printf("%d\n", WSTOPSIG(status));
+	if (ptrace_swap_area(pid, (void *)entry_point, (void *)code_orig, sizeof(code_orig)) <0 )
+		perror("ptrace swap");
+	printf("pid %d\n", pid);
 	ptrace_cont(pid);
 }
 	

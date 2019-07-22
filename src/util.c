@@ -9,6 +9,8 @@
 #include <signal.h>
 #include <unistd.h>
 
+#include "xmalloc.h"
+#include "vma.h"
 #include "servicefd.h"
 #include "log.h"
 
@@ -55,4 +57,18 @@ int read_fd_link(int lfd, char *buf, size_t size)
 	buf[ret] = 0;
 
 	return ret;
+}
+
+struct vma_area *alloc_vma_area(void)
+{
+	struct vma_area *p;
+
+	p = xzalloc(sizeof(*p) + sizeof(VmaEntry));
+	if (p) {
+		p->e = (VmaEntry *)(p + 1);
+		vma_entry__init(p->e);
+		p->e->fd = -1;
+	}
+
+	return p;
 }

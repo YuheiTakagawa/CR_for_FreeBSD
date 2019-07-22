@@ -104,8 +104,10 @@ int ptrace_peek_area(pid_t pid, void *dst, void *addr, long bytes){
 	for(w = 0; w < bytes / sizeof(long); w++){
 		unsigned long *d = dst, *a = addr;
 		d[w] = ptrace(PT_READ_D, pid, (caddr_t)a + w, 0);
-	       	if(d[w] == -1U && errno)
+	       	if(d[w] == -1U && errno){
+			perror("ptrace PT_READ_D");
 	       		goto err;
+		}
 	}
 	return 0;
 err:
@@ -118,8 +120,10 @@ int ptrace_poke_area(pid_t pid, void *src, void *addr, long bytes){
 		return -1;
 	for(w = 0; w < bytes /sizeof(long); w++){
 		unsigned long *s = src, *a = addr;
-		if(ptrace(PT_WRITE_D, pid, (caddr_t)a + w, s[w]))
+		if(ptrace(PT_WRITE_D, pid, (caddr_t)a + w, s[w])){
+			perror("ptrace PT_WRITE_D");
 			goto err;
+		}
 	}
 	return 0;
 err:

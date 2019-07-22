@@ -21,7 +21,10 @@
 #include "protobuf.h"
 #include "image.h"
 #include "pagemap.h"
+#include "vma.h"
 #include "images/inventory.pb-c.h"
+#include "images/mm.pb-c.h"
+#include "getmap.h"
 
 #define IPFWDEL 1
 
@@ -138,12 +141,15 @@ int restore_fork(int filePid, char *exec_path){
 		return pid;
 	}
 
+	/*
 	read_fd_list(filePid, fds);
 	for(i = 0; fds[i].fd != -2 ; i++){
 		printf("fd:%d, off:%ld, path:%s\n", fds[i].fd, fds[i].offset, fds[i].path);
+*/
 		/*
 		 *  if restore tty info, have to implement restoring ttys
 		 */
+/*
 		if(strstr(fds[i].path, "/dev/pts") == NULL){
 			if((strstr(fds[i].path, "internet")) ||
 				(strstr(fds[i].path, "socket"))){
@@ -154,6 +160,7 @@ int restore_fork(int filePid, char *exec_path){
 			fd = prepare_restore_files(fds[i].path, fds[i].fd, fds[i].offset);
 		}
 	}
+	*/
 	target(exec_path, NULL);
 	return 0;
 }
@@ -309,6 +316,166 @@ int prepare_mappings(int dfd, pid_t rpid, pid_t pid){
 	return 0;
 }
 
+struct rst_info {
+	struct vm_area_list vmas;
+	struct _MmEntry *mm;
+};
+
+void remap_mem2_mmap(pid_t pid, struct vma_area *vma) {
+	long ret;
+	int status;
+	void *remote_map;
+	struct orig orig;
+	remote_map = remote_mmap(pid, &orig,
+			vma->e->start, vma->e->end - vma->e->start, vma->e->prot, vma->e->flags | 0x20, 0x0, 0x0);
+	printf("remote_map: %p\n", remote_map);
+	ptrace_cont(pid);
+	waitpro(pid, &status);
+	printf("stopped: %d\n", WSTOPSIG(status));
+
+}
+
+void remap_mem2_munmap(pid_t pid, struct vma_area *vma) {
+	long ret;
+	int status;
+	void *remote_map;
+	struct orig orig;
+	compel_syscall(pid, &orig,
+			11, &ret, vma->e->start, vma->e->end - vma->e->start, 0x0, 0x0, 0x0, 0x0);
+	ptrace_cont(pid);
+	waitpro(pid, &status);
+	printf("stopped: %d\n", WSTOPSIG(status));
+
+}
+
+#define MREMAP_MAYMOVE	1
+#define MREMAP_FIXED	2
+
+
+void call_mremap(pid_t pid) {
+	long ret;
+	int status;
+	struct orig orig;
+	void *buf;
+
+	unsigned long int old_addr, new_addr, remote_map;
+	size_t old_size, new_size;
+	int flags = MREMAP_MAYMOVE | MREMAP_FIXED;
+	old_size = 0x1c2000;
+	new_size = 0x1c2000;
+	old_addr = 0x800a00000;
+	new_addr = 0x7ffff7a0e000;
+
+	compel_syscall(pid, &orig,
+			11, &ret, 0x7fffdffff000, 0x1ffe0000, 0x0, 0x0, 0x0, 0x0);
+	ptrace_cont(pid);
+	waitpro(pid, &status);
+
+	remote_map = remote_mmap(pid, &orig,
+			new_addr, new_size, PROT_EXEC|PROT_READ |PROT_WRITE, 0x22, 0x0, 0x0);
+//	compel_syscall(pid, &orig,
+//			25, &ret, (void *)old_addr, old_size, new_size, flags, (void *)new_addr, 0x0);
+	ptrace_cont(pid);
+	waitpro(pid, &status);
+	printf("mremap stopped: %d\n", WSTOPSIG(status));
+
+	int fd = open("/compat/linux/usr/lib64/libc.so.6", O_RDONLY);
+	buf = mmap(0x0, new_size, PROT_READ, MAP_FILE|MAP_PRIVATE, fd, 0);
+	printf("libc.so %lx\n", buf);
+	
+	int write_fd = open_file(pid, "mem");
+	lseek(write_fd, new_addr, SEEK_SET);
+	if (write(write_fd, (char *)buf, new_size) < 0){
+		perror("write");
+	}
+	close(fd);
+	munmap(buf, new_size);
+
+	new_addr = 0x7ffff7ddb000;
+	new_size = 0x7ffff7dfd000 - new_addr;
+	remote_map = remote_mmap(pid, &orig,
+			new_addr, new_size, PROT_EXEC|PROT_READ |PROT_WRITE, 0x22, 0x0, 0x0);
+	ptrace_cont(pid);
+	waitpro(pid, &status);
+
+	fd = open("/compat/linux/usr/lib64/ld-2.17.so", O_RDONLY);
+	buf = mmap(0x0, new_size, PROT_READ, MAP_FILE|MAP_PRIVATE, fd, 0);
+	printf("ld.so %lx\n", buf);
+	lseek(write_fd, new_addr, SEEK_SET);
+	write(write_fd, (char *)buf, new_size);
+	munmap(buf, new_size);
+	close(fd);
+
+	close(write_fd);
+
+}
+
+int prepare_mm_pid(int dfd, pid_t rpid, pid_t pid){
+	int ret = -1, vn = 0;
+	struct cr_img *img;
+	struct rst_info *ri;
+
+	ri = xzalloc(sizeof(*ri));
+	//ri->mm = xzalloc(sizeof(struct _MmEntry));
+
+	img = open_image_at(dfd, CR_FD_MM, O_RSTR, rpid);
+	if (!img)
+		return -1;
+ 
+	ret = pb_read_one_eof(img, &ri->mm, PB_MM);
+	close_image(img);
+	if (ret <= 0)
+		return ret;
+
+	img = NULL;
+
+	while (vn < ri->mm->n_vmas || img != NULL) {
+		struct vma_area *vma;
+
+		ret = -1;
+		vma = alloc_vma_area();
+		if (!vma)
+			break;
+
+		ret = 0;
+		ri->vmas.nr++;
+		if (!img)
+			vma->e = ri->mm->vmas[vn++];
+		printf("%lx-%lx: %lx, %lx\n", vma->e->start, vma->e->end, vma->e->prot, vma->e->flags);
+		if (vma->e->start == 0x400000 || vma->e->start > 0x800000000000 || vma->e->end == 0x7ffffffff000)
+			continue;
+		if (vma->e->prot & PROT_EXEC) {
+			continue;
+		}
+		remap_mem2_munmap(pid, vma);
+	}
+	ri->vmas.nr = 0;
+	vn = 0;
+	while (vn < ri->mm->n_vmas) {
+		struct vma_area *vma;
+
+		ret = -1;
+		vma = alloc_vma_area();
+		if (!vma){
+			break;
+		}
+		ret = 0;
+		ri->vmas.nr++;
+		if (!img)
+			vma->e = ri->mm->vmas[vn++];
+		printf("%lx-%lx: %lx, %lx\n", vma->e->start, vma->e->end, vma->e->prot, vma->e->flags);
+		if (vma->e->start == 0x400000 || vma->e->start > 0x800000000000 || vma->e->end == 0x7ffffffff000)
+			continue;
+		if (vma->e->prot & PROT_EXEC) {
+			continue;
+		}
+		if (vma->e->prot == PROT_READ)
+			vma->e->prot |= PROT_WRITE;
+		remap_mem2_mmap(pid, vma);
+	}
+	return 0;
+}
+
 int restore(pid_t rpid, char *rpath, int dfd){
 	int status;
 	pid_t pid;
@@ -324,8 +491,11 @@ int restore(pid_t rpid, char *rpath, int dfd){
 	
 	pid = restore_fork(rpid, rpath);
 	insert_breakpoint(pid, rpath);
+	struct vmds vmds;
 	//remap_vm(pid, rpid, revm, &orig);
 	waitpro(pid, &status);
+	show_vmmap(pid, &vmds);
+	call_mremap(pid);
 
 	
 	img = open_image_at(dfd, CR_FD_INVENTORY, O_RSTR);
@@ -341,6 +511,10 @@ int restore(pid_t rpid, char *rpath, int dfd){
 	printf("he lsmtype %d\n", he->lsmtype);
 
 	close_image(img);
+
+
+	if (prepare_mm_pid(dfd, rpid, pid) < 0)
+		return -1;
 
 	prepare_mappings(dfd, rpid, pid);
 
@@ -369,8 +543,8 @@ int restore(pid_t rpid, char *rpath, int dfd){
 	 * To keep attach
 	 * if detach from process, uncomment ptrace_detach
 	 */
-//	while(1){}
-//	ptrace_detach(pid);
+	while(1){}
+	ptrace_detach(pid);
 //	printf("detach\n");
 	
 	return pid;
