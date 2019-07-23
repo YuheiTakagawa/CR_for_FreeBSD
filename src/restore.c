@@ -351,6 +351,20 @@ void remap_mem2_munmap(pid_t pid, struct vma_area *vma) {
 #define MREMAP_MAYMOVE	1
 #define MREMAP_FIXED	2
 
+void restore_library(int write_fd, char *path, unsigned long int addr, size_t size){
+	int fd;
+	void *buf;
+
+	fd = open(path, O_RDONLY);
+	buf = mmap(0x0, size, PROT_READ, MAP_FILE | MAP_PRIVATE, fd, 0);
+	lseek(write_fd, addr, SEEK_SET);
+
+	if (write(write_fd, buf, size) < 0) {
+		perror("write");
+	}
+	close(fd);
+	munmap(buf, size);
+}
 
 void call_mremap(pid_t pid) {
 	long ret;
@@ -366,47 +380,14 @@ void call_mremap(pid_t pid) {
 	old_addr = 0x800a00000;
 	new_addr = 0x7ffff7a0e000;
 
-	compel_syscall(pid, &orig,
-			11, &ret, 0x7fffdffff000, 0x1ffe0000, 0x0, 0x0, 0x0, 0x0);
-	ptrace_cont(pid);
-	waitpro(pid, &status);
-
-	remote_map = remote_mmap(pid, &orig,
-			new_addr, new_size, PROT_EXEC|PROT_READ |PROT_WRITE, 0x22, 0x0, 0x0);
-//	compel_syscall(pid, &orig,
-//			25, &ret, (void *)old_addr, old_size, new_size, flags, (void *)new_addr, 0x0);
-	ptrace_cont(pid);
-	waitpro(pid, &status);
-	printf("mremap stopped: %d\n", WSTOPSIG(status));
-
-	int fd = open("/compat/linux/usr/lib64/libc.so.6", O_RDONLY);
-	buf = mmap(0x0, new_size, PROT_READ, MAP_FILE|MAP_PRIVATE, fd, 0);
-	printf("libc.so %lx\n", buf);
-	
 	int write_fd = open_file(pid, "mem");
-	lseek(write_fd, new_addr, SEEK_SET);
-	if (write(write_fd, (char *)buf, new_size) < 0){
-		perror("write");
-	}
-	close(fd);
-	munmap(buf, new_size);
+
+	restore_library(write_fd, "/compat/linux/usr/lib64/libc.so.6", new_addr, new_size);
 
 	new_addr = 0x7ffff7ddb000;
 	new_size = 0x7ffff7dfd000 - new_addr;
-	remote_map = remote_mmap(pid, &orig,
-			new_addr, new_size, PROT_EXEC|PROT_READ |PROT_WRITE, 0x22, 0x0, 0x0);
-	ptrace_cont(pid);
-	waitpro(pid, &status);
 
-	fd = open("/compat/linux/usr/lib64/ld-2.17.so", O_RDONLY);
-	buf = mmap(0x0, new_size, PROT_READ, MAP_FILE|MAP_PRIVATE, fd, 0);
-	printf("ld.so %lx\n", buf);
-	lseek(write_fd, new_addr, SEEK_SET);
-	write(write_fd, (char *)buf, new_size);
-	munmap(buf, new_size);
-	close(fd);
-
-	close(write_fd);
+	restore_library(write_fd, "/compat/linux/usr/lib64/ld-2.17.so", new_addr, new_size);
 
 }
 
@@ -428,7 +409,6 @@ int prepare_mm_pid(int dfd, pid_t rpid, pid_t pid){
 		return ret;
 
 	img = NULL;
-
 	while (vn < ri->mm->n_vmas || img != NULL) {
 		struct vma_area *vma;
 
@@ -444,9 +424,6 @@ int prepare_mm_pid(int dfd, pid_t rpid, pid_t pid){
 		printf("%lx-%lx: %lx, %lx\n", vma->e->start, vma->e->end, vma->e->prot, vma->e->flags);
 		if (vma->e->start == 0x400000 || vma->e->start > 0x800000000000 || vma->e->end == 0x7ffffffff000)
 			continue;
-		if (vma->e->prot & PROT_EXEC) {
-			continue;
-		}
 		remap_mem2_munmap(pid, vma);
 	}
 	ri->vmas.nr = 0;
@@ -466,9 +443,6 @@ int prepare_mm_pid(int dfd, pid_t rpid, pid_t pid){
 		printf("%lx-%lx: %lx, %lx\n", vma->e->start, vma->e->end, vma->e->prot, vma->e->flags);
 		if (vma->e->start == 0x400000 || vma->e->start > 0x800000000000 || vma->e->end == 0x7ffffffff000)
 			continue;
-		if (vma->e->prot & PROT_EXEC) {
-			continue;
-		}
 		if (vma->e->prot == PROT_READ)
 			vma->e->prot |= PROT_WRITE;
 		remap_mem2_mmap(pid, vma);
@@ -495,7 +469,6 @@ int restore(pid_t rpid, char *rpath, int dfd){
 	//remap_vm(pid, rpid, revm, &orig);
 	waitpro(pid, &status);
 	show_vmmap(pid, &vmds);
-	call_mremap(pid);
 
 	
 	img = open_image_at(dfd, CR_FD_INVENTORY, O_RSTR);
@@ -517,6 +490,7 @@ int restore(pid_t rpid, char *rpath, int dfd){
 		return -1;
 
 	prepare_mappings(dfd, rpid, pid);
+	call_mremap(pid);
 
 	//setmems(pid, rpid, revm);
 
