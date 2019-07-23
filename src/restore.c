@@ -348,9 +348,6 @@ void remap_mem2_munmap(pid_t pid, struct vma_area *vma) {
 
 }
 
-#define MREMAP_MAYMOVE	1
-#define MREMAP_FIXED	2
-
 void restore_library(int write_fd, char *path, unsigned long int addr, size_t size){
 	int fd;
 	void *buf;
@@ -367,27 +364,51 @@ void restore_library(int write_fd, char *path, unsigned long int addr, size_t si
 }
 
 void call_mremap(pid_t pid) {
-	long ret;
-	int status;
-	struct orig orig;
-	void *buf;
+	unsigned long int addr;
+	size_t size;
+	int write_fd;
 
-	unsigned long int old_addr, new_addr, remote_map;
-	size_t old_size, new_size;
-	int flags = MREMAP_MAYMOVE | MREMAP_FIXED;
-	old_size = 0x1c2000;
-	new_size = 0x1c2000;
-	old_addr = 0x800a00000;
-	new_addr = 0x7ffff7a0e000;
+	write_fd = open_file(pid, "mem");
+/**
+	size = 0x1c2000;
+	addr = 0x7ffff7a0e000;
+*/
+	addr = 0x7ffff73b7000;
+	size = 0x7ffff7579000 - addr;
 
-	int write_fd = open_file(pid, "mem");
+	restore_library(write_fd, "/compat/linux/usr/lib64/libc.so.6", addr, size);
 
-	restore_library(write_fd, "/compat/linux/usr/lib64/libc.so.6", new_addr, new_size);
+	addr = 0x7ffff7ddb000;
+	size = 0x7ffff7dfd000 - addr;
 
-	new_addr = 0x7ffff7ddb000;
-	new_size = 0x7ffff7dfd000 - new_addr;
+	restore_library(write_fd, "/compat/linux/usr/lib64/ld-2.17.so", addr, size);
 
-	restore_library(write_fd, "/compat/linux/usr/lib64/ld-2.17.so", new_addr, new_size);
+	addr = 0x7ffff6fa1000;
+	size = 0x7ffff6fad000 - addr;
+
+	restore_library(write_fd, "/compat/linux/usr/lib64/libnss_files-2.17.so", addr, size);
+
+	addr = 0x7ffff71b4000;
+	size = 0x7ffff71b6000 - addr;
+
+	restore_library(write_fd, "/compat/linux/usr/lib64/libfreebl3.so", addr, size);
+
+	addr = 0x7ffff7784000;
+	size = 0x7ffff778c000 - addr;
+
+	restore_library(write_fd, "/compat/linux/usr/lib64/libcrypt-2.17.so", addr, size);
+
+	addr = 0x7ffff79bb000;
+	size = 0x7ffff79d2000 - addr;
+
+	restore_library(write_fd, "/compat/linux/usr/lib64/libpthread-2.17.so", addr, size);
+
+	addr = 0x7ffff7bd7000;
+	size = 0x7ffff7bd9000 - addr;
+
+	restore_library(write_fd, "/compat/linux/usr/lib64/libdl-2.17.so", addr, size);
+
+	
 
 }
 
@@ -395,6 +416,8 @@ int prepare_mm_pid(int dfd, pid_t rpid, pid_t pid){
 	int ret = -1, vn = 0;
 	struct cr_img *img;
 	struct rst_info *ri;
+	long ret2;
+	struct orig orig;
 
 	ri = xzalloc(sizeof(*ri));
 	//ri->mm = xzalloc(sizeof(struct _MmEntry));
@@ -409,6 +432,9 @@ int prepare_mm_pid(int dfd, pid_t rpid, pid_t pid){
 		return ret;
 
 	img = NULL;
+
+	compel_syscall(pid, &orig,
+			11, &ret2, 0x800949000, 0x801e03000- 0x800949000, 0x0,0x0,0x0,0x0);
 	while (vn < ri->mm->n_vmas || img != NULL) {
 		struct vma_area *vma;
 
@@ -501,23 +527,25 @@ int restore(pid_t rpid, char *rpath, int dfd){
 	if (pb_read_one(img, &ce, PB_CORE) < 0)
 		return -1;
 	printf("ce %lx\n", ce->thread_info->gpregs->r15);
+	printf("nsigaction %ld, max %d\n", ce->tc->n_sigactions, SIGMAX);
+	printf("sigaction %lx, flags %lx, restorer %lx, mask %lx\n", ce->tc->sigactions[0]->sigaction, ce->tc->sigactions[0]->flags, ce->tc->sigactions[0]->restorer, ce->tc->sigactions[0]->mask);
 	
 	close_image(img);
 
 	setregs(pid, ce);
 //	step_debug(pid);
 
-	ptrace_cont(pid);
+//	ptrace_cont(pid);
 //	sleep(10);
 	
-	waitpro(pid, &status);
-	print_regs(pid);
+//	waitpro(pid, &status);
+//	print_regs(pid);
 
 	/*
 	 * To keep attach
 	 * if detach from process, uncomment ptrace_detach
 	 */
-	while(1){}
+//	while(1){}
 	ptrace_detach(pid);
 //	printf("detach\n");
 	

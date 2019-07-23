@@ -87,6 +87,7 @@ int compel_execute_syscall(pid_t pid, struct orig *orig, struct reg *regs){
 	memcpy(code_orig, code_syscall, sizeof(code_orig));
 
 	/* injection syscall 0xcc050f int3 */	
+	printf("ip %lx\n", orig->reg.r_rip);
 	if(ptrace_swap_area(pid, (void *)rip, (void *)code_orig, sizeof(code_orig))){
 		return -1;
 	}
@@ -123,6 +124,10 @@ void compel_syscall(pid_t pid, struct orig *orig, int nr, long *ret,
 	reg.r_r8  = arg5;
 	reg.r_r9  = arg6;
 
+	if (reg.r_rip == 0x0){
+		orig->reg.r_rip = 0x444230;
+		reg.r_rip = 0x444230;
+	}
 	compel_execute_syscall(pid, orig, &reg);
 	*ret = get_user_reg(reg, r_rax);
 	printf("return: %lx\n", *ret);
@@ -154,9 +159,10 @@ void restore_setregs(pid_t pid, struct reg orig){
 }
 
 void restore_memory(pid_t pid, struct orig *orig){
+	printf("rip %lx, text %x, addr %x\n", orig->reg.r_rip, orig->text, orig->addr);
 	ptrace_write_i(pid, orig->reg.r_rip, orig->text);
 	if(orig->addr != 0x0)
-	ptrace_write_d(pid, (unsigned long int)orig->addr, orig->data);
+		ptrace_write_d(pid, (unsigned long int)orig->addr, orig->data);
 }
 
 void restore_orig(pid_t pid, struct orig *orig){
