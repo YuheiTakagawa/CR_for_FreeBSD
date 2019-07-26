@@ -87,7 +87,6 @@ int compel_execute_syscall(pid_t pid, struct orig *orig, struct reg *regs){
 	memcpy(code_orig, code_syscall, sizeof(code_orig));
 
 	/* injection syscall 0xcc050f int3 */	
-	printf("ip %lx\n", orig->reg.r_rip);
 	if(ptrace_swap_area(pid, (void *)rip, (void *)code_orig, sizeof(code_orig))){
 		return -1;
 	}

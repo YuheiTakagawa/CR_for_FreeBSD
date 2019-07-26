@@ -57,6 +57,7 @@ int setregs(pid_t pid, CoreEntry *ce){
 	struct reg reg;
 	struct linuxreg *linuxreg;
 	int fd;
+	unsigned long int fs_base;
 
 
 	memset(&reg, 0, sizeof(reg));
@@ -89,6 +90,7 @@ int setregs(pid_t pid, CoreEntry *ce){
 	reg.r_r13 = linuxreg->r13;
 	reg.r_r14 = linuxreg->r14;
 	reg.r_r15 = linuxreg->r15;
+	fs_base = linuxreg->fs_base;
 
 /*      reg.r_cs = 0x43;
 	reg.r_ss = 0x3b;
@@ -98,7 +100,9 @@ int setregs(pid_t pid, CoreEntry *ce){
 	reg.r_gs = 0x0;
 */      
 	
+	printf("fs_base %lx\n", fs_base);
 	check_rip_syscall(pid, reg.r_rip);
+	ptrace_set_fsbase(pid, &fs_base);
 
 	if(ptrace_set_regs(pid, &reg) < 0){
 	perror("ptrace(PT_SETREGS, ...)");

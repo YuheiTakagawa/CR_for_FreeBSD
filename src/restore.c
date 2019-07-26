@@ -25,9 +25,25 @@
 #include "images/inventory.pb-c.h"
 #include "images/mm.pb-c.h"
 #include "getmap.h"
+#include "types.h"
 
 #define IPFWDEL 1
 
+
+
+typedef struct {
+        unsigned long int sig[1024/(8*sizeof(unsigned long int))];
+}__linux_sigset_t;
+
+struct linuxsigaction {
+        void (*rt_sa_handler) (int);
+        __linux_sigset_t rt_sa_mask;
+        int rt_sa_flags;
+        void (*rt_sa_restorer) (void);
+};
+
+void *shared_local_map;
+void *shared_remote_map;
 
 int target(char *path, char* argv[]);
 
@@ -127,6 +143,7 @@ int restore_socket(int pid, int rfd) {
 }
 
 int restore_fork(int filePid, char *exec_path){
+	int status;
 	int fd;
 	int i;
 	struct restore_fd_struct fds[1024];
@@ -161,6 +178,20 @@ int restore_fork(int filePid, char *exec_path){
 		}
 	}
 	*/
+	pid = fork();
+	if(pid < 0){
+		perror("fork");
+		exit(1);
+	}
+//	if(pid == 0){
+//		char *exec[] = {exec_path, NULL};
+//		execvp(exec[0], exec);
+//	}
+	if(pid != 0){
+		waitpro(pid, &status);
+		if(WIFSTOPPED(status))
+			ptrace_detach(pid);
+	}
 	target(exec_path, NULL);
 	return 0;
 }
@@ -184,7 +215,7 @@ static int init_pagemaps(struct page_read *pr, int dfd, int pid) {
 
 	off_t fsize;
 	fsize = img_raw_size(pr->pmi);
-	int nr_pmes = fsize / PAGEMAP_ENTRY_SIZE_ESTIMATE + 1;
+	int nr_pmes = fsize / PAGEMAP_ENTRY_SIZE_ESTIMATE + 2;
 	pr->pmes = xzalloc(nr_pmes * sizeof(*pmes));
 
 	pr->nr_pmes = 0;
@@ -279,6 +310,33 @@ int open_page_read_at(int dfd, unsigned long pid, struct page_read *pr, int pr_f
 	return 1;
 }
 
+static void insert_trampoline64(uintptr_t from, uintptr_t to, int fd)
+{
+	struct {
+		u16	movabs;
+		u64	imm64;
+		u16	jmp_rax;
+		u32	guards;
+	} __packed jmp = {
+		.movabs		= 0xb848,
+		.imm64		= to,
+		.jmp_rax	= 0xe0ff,
+		.guards		= 0xcccccccc,
+	};
+
+	//memcpy((void *)from, &jmp, sizeof(jmp));
+	lseek(fd, from, SEEK_SET);
+	write(fd, &jmp, sizeof(jmp));
+}
+
+void vdso_redirect(int fd){
+
+	insert_trampoline64(0x7ffff7ffa000 + 0xb50, 0x00007ffffffff540, fd);
+	insert_trampoline64(0x7ffff7ffa000 + 0x600, 0x00007ffffffff520, fd);
+	insert_trampoline64(0x7ffff7ffa000 + 0xe10, 0x00007ffffffff530, fd);
+	insert_trampoline64(0x7ffff7ffa000 + 0xe30, 0x00007ffffffff550, fd);
+}
+
 
 int prepare_mappings(int dfd, pid_t rpid, pid_t pid){
 	int ret;
@@ -300,10 +358,11 @@ int prepare_mappings(int dfd, pid_t rpid, pid_t pid){
 		if (ret <= 0){
 			break;
 		}
-		printf("pme %lx\n", pr.pe->vaddr);
+		printf("pme %lx, num %d\n", pr.pe->vaddr, pr.pe->nr_pages);
 		for(int i = 0; i < pr.pe->nr_pages; i++){
 			pr.read_pages(&pr, va, 1, buf, 0x0);
-			lseek(write_fd, pr.pe->vaddr + i * PAGE_SIZE, SEEK_SET);
+			if(lseek(write_fd, pr.pe->vaddr + i * PAGE_SIZE, SEEK_SET) < 0)
+				perror("lseek");
 			if(write(write_fd, buf, sizeof(buf))<0)
 				perror("write");
 			va += 1 * PAGE_SIZE;
@@ -328,10 +387,10 @@ void remap_mem2_mmap(pid_t pid, struct vma_area *vma) {
 	struct orig orig;
 	remote_map = remote_mmap(pid, &orig,
 			vma->e->start, vma->e->end - vma->e->start, vma->e->prot, vma->e->flags | 0x20, 0x0, 0x0);
-	printf("remote_map: %p\n", remote_map);
+//	printf("remote_map: %p\n", remote_map);
 	ptrace_cont(pid);
 	waitpro(pid, &status);
-	printf("stopped: %d\n", WSTOPSIG(status));
+//	printf("stopped: %d\n", WSTOPSIG(status));
 
 }
 
@@ -408,6 +467,7 @@ void call_mremap(pid_t pid) {
 
 	restore_library(write_fd, "/compat/linux/usr/lib64/libdl-2.17.so", addr, size);
 
+	close(write_fd);
 	
 
 }
@@ -475,27 +535,58 @@ int prepare_mm_pid(int dfd, pid_t rpid, pid_t pid){
 	}
 	return 0;
 }
+void restore_sigactions(pid_t pid, int n_sigactions, SaEntry  **sa) {
+	int sig;
+	int i;
+	SaEntry *e;
+	struct orig orig;
+	long ret;
+	struct linuxsigaction *act = shared_local_map;
+	struct linuxsigaction a;
 
-int restore(pid_t rpid, char *rpath, int dfd){
+	int fd = open_file(pid, "mem");
+	if (fd < 0 )
+		perror("open");
+	printf("n_sigaction %d\n", n_sigactions);
+	printf("shared_local_map %p\n", shared_local_map);
+	for (sig = 1, i = 0; sig <= n_sigactions; sig++) {
+		memset(act, 0, sizeof(*act));
+//		memset(&a, 0x00, sizeof(a));
+		e = sa[i++];
+		act->rt_sa_handler = e->sigaction;
+		act->rt_sa_flags = e->flags;
+		act->rt_sa_restorer = e->restorer;
+		printf("i: %d, sigaction %lx, flags %lx, restorer %lx, mask %lx\n", i, e->sigaction, e->flags, e->restorer, e->mask);
+		printf("act->rt_sa_mask.sig %p, size %d\n", act->rt_sa_mask.sig, sizeof(act->rt_sa_mask.sig));
+		if(&act->rt_sa_mask != NULL && e->mask != NULL)
+			memcpy(act->rt_sa_mask.sig,  &e->mask, sizeof(act->rt_sa_mask.sig));
+		/*
+		if (lseek(fd, shared_remote_map, SEEK_SET) < 0)
+			perror("lseek");
+		if (read(fd, &a, sizeof(a)) < 0) {
+			perror("read");
+		}
+*/
+		compel_syscall(pid, &orig, 13, &ret,
+				(unsigned long int)sig, (unsigned long int)shared_remote_map, 0x0, 0x8, 0x0, 0x0);
+	}
+	printf("finished restore sigaction\n");
+}
+
+int restore_process(pid_t pid, char *rpath, pid_t rpid, int dfd, int child){
 	int status;
-	pid_t pid;
 	struct orig orig;
 	struct remap_vm_struct revm[BUFSIZE];
 	struct cr_img *img;
 	InventoryEntry *he;
 	CoreEntry *ce;
 
-	printf("CMD : %s\n", rpath);
-	printf("PPID: %d\n", getpid());
-	printf("Restore file: %d\n", rpid); 
-	
-	pid = restore_fork(rpid, rpath);
+
 	insert_breakpoint(pid, rpath);
+	waitpro(pid, &status);
+	printf("stop: %d\n", WIFSTOPPED(status));
 	struct vmds vmds;
 	//remap_vm(pid, rpid, revm, &orig);
-	waitpro(pid, &status);
-	show_vmmap(pid, &vmds);
-
 	
 	img = open_image_at(dfd, CR_FD_INVENTORY, O_RSTR);
 	if (!img)
@@ -504,10 +595,10 @@ int restore(pid_t rpid, char *rpath, int dfd){
 	if (pb_read_one(img, &he, PB_INVENTORY) < 0)
 		return -1;
 
-	printf("he fdinfo %d\n", he->has_fdinfo_per_id);
-	printf("he imgv %d\n", he->img_version);
-	printf("he root ids vm %d\n", he->root_ids->vm_id);
-	printf("he lsmtype %d\n", he->lsmtype);
+//	printf("he fdinfo %d\n", he->has_fdinfo_per_id);
+//	printf("he imgv %d\n", he->img_version);
+//	printf("he root ids vm %d\n", he->root_ids->vm_id);
+//	printf("he lsmtype %d\n", he->lsmtype);
 
 	close_image(img);
 
@@ -516,26 +607,72 @@ int restore(pid_t rpid, char *rpath, int dfd){
 		return -1;
 
 	prepare_mappings(dfd, rpid, pid);
+//	unsigned long int ko;
+//	int read_fd = open_file(pid, "mem");
+//	lseek(read_fd, 0x7fffffffe1d8, SEEK_SET);
+//	read(read_fd, &ko, sizeof(ko));
+//	printf("%lx\n", ko);
+//	close(read_fd);
+
 	call_mremap(pid);
 
+	int write_fd = open_file(pid, "mem");
+	vdso_redirect(write_fd);
+	close(write_fd);
+	printf("vdso redirect\n");
 	//setmems(pid, rpid, revm);
 
+
+	long ret;
+	long remote_fd;
+	char buf[] = SHARED_FILE_PATH;
+#define PROT_ALL (PROT_EXEC | PROT_WRITE | PROT_READ)
+	void *tmp_map = remote_mmap(pid, &orig, (void *) 0x0,
+			PAGE_SIZE, PROT_ALL, 0x20 | MAP_SHARED, 0x0, 0x0);
+	int fd = open(buf, O_RDWR);
+	inject_syscall_buf(pid, buf, tmp_map, 0);
+	compel_syscall(pid, &orig, 0x2, &remote_fd,
+			(unsigned long)tmp_map, O_RDWR, 0x0, 0x0, 0x0, 0x0);
+
+	shared_remote_map = remote_mmap(pid, &orig, (void *) 0x0, PAGE_SIZE,
+			PROT_ALL, MAP_SHARED | MAP_FILE, remote_fd, 0x0);
+	compel_syscall(pid, &orig, 0x3, &ret, (unsigned long) remote_fd,
+			0x0, 0x0, 0x0, 0x0, 0x0);
+	shared_local_map = mmap(0x0, PAGE_SIZE, PROT_ALL, MAP_SHARED, fd, 0);
 	
 	img = open_image_at(dfd, CR_FD_CORE, O_RSTR, rpid);
 	if (!img)
 		return -1;
 	if (pb_read_one(img, &ce, PB_CORE) < 0)
 		return -1;
-	printf("ce %lx\n", ce->thread_info->gpregs->r15);
-	printf("nsigaction %ld, max %d\n", ce->tc->n_sigactions, SIGMAX);
-	printf("sigaction %lx, flags %lx, restorer %lx, mask %lx\n", ce->tc->sigactions[0]->sigaction, ce->tc->sigactions[0]->flags, ce->tc->sigactions[0]->restorer, ce->tc->sigactions[0]->mask);
+	restore_sigactions(pid, ce->tc->n_sigactions, ce->tc->sigactions);
 	
 	close_image(img);
 
 	setregs(pid, ce);
+	return (int)ret;
+
+}
+
+int restore(pid_t rpid, char *rpath, int dfd){
+	int status;
+	pid_t pid, cpid;
+	struct reg reg;
+
+	printf("CMD : %s\n", rpath);
+	printf("PPID: %d\n", getpid());
+	printf("Restore file: %d\n", rpid); 
+	
+	pid = restore_fork(rpid, rpath);
+//	ptrace_attach(pid);
+	waitpro(pid, &status);
+	ptrace_attach(pid +1);
+	waitpro(pid + 1, &status);
+	restore_process(pid, rpath, rpid, dfd, 0);
+	restore_process(pid + 1, rpath, rpid+1, dfd, 1);
 //	step_debug(pid);
 
-//	ptrace_cont(pid);
+	//ptrace_cont(pid);
 //	sleep(10);
 	
 //	waitpro(pid, &status);
@@ -547,6 +684,7 @@ int restore(pid_t rpid, char *rpath, int dfd){
 	 */
 //	while(1){}
 	ptrace_detach(pid);
+	ptrace_detach(pid+1);
 //	printf("detach\n");
 	
 	return pid;

@@ -107,8 +107,8 @@ void insert_breakpoint(pid_t pid, char *elfpath){
 //	entry_point = 0x400530;
 	memcpy(code_orig, code_int3, sizeof(code_orig));
 
-	waitpro(pid, &status);
-	printf("%d\n", WSTOPSIG(status));
+//	waitpro(pid, &status);
+//	printf("%d\n", WSTOPSIG(status));
 	if (ptrace_swap_area(pid, (void *)entry_point, (void *)code_orig, sizeof(code_orig)) <0 )
 		perror("ptrace swap");
 	printf("pid %d\n", pid);

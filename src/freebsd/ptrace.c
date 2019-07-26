@@ -157,6 +157,16 @@ int ptrace_step(pid_t pid){
 	return rc;
 }
 
+int ptrace_set_fsbase(pid_t pid, unsigned long *fs_base){
+	int rc;
+	rc = ptrace(PT_SETFSBASE, pid, (caddr_t)fs_base, 0);
+	if(rc < 0){
+		perror("ptrace(PT_SETFSBASE)");
+		exit(1);
+	}
+	return rc;
+}
+
 int ptrace_get_fsbase(pid_t pid, unsigned long *fs_base){
 	int rc;
 	rc = ptrace(PT_GETFSBASE, pid, (caddr_t)fs_base, 0);
