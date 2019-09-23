@@ -24,6 +24,7 @@
 #include "vma.h"
 #include "images/inventory.pb-c.h"
 #include "images/mm.pb-c.h"
+#include "images/fdinfo.pb-c.h"
 #include "getmap.h"
 #include "types.h"
 
@@ -573,6 +574,84 @@ void restore_sigactions(pid_t pid, int n_sigactions, SaEntry  **sa) {
 	printf("finished restore sigaction\n");
 }
 
+void epoll_restore(pid_t pid, int fd) {
+	struct orig orig;
+	long ret;
+	compel_syscall(pid, &orig, 213, &ret,
+				1, 0x0, 0x0, 0x0, 0x0, 0x0);
+	compel_syscall(pid, &orig, 33, &ret,
+				ret, fd, 0x0, 0x0, 0x0, 0x0);
+	printf("epoll instance fd %ld\n", ret);
+}
+
+int restore_epoll(pid_t pid, pid_t rpid, int dfd) {
+	int count = 0;
+	struct cr_img *img;
+	TaskKobjIdsEntry *ids;
+	int ret;
+
+	img = open_image_at(dfd, CR_FD_FILES, O_RSTR);
+	if (!img)
+		return -1;
+
+	while(1){
+		FileEntry *fe;
+
+		ret = pb_read_one_eof(img, &fe, PB_FILE);
+		printf("ret %d\n", ret);
+		if (ret <= 0)
+			break;
+
+		switch(fe->type){
+			case FD_TYPES__REG:
+				printf("File Entry REG, id %d, path %s\n", fe->id, fe->reg->name);
+				break;
+			case FD_TYPES__INETSK:
+				printf("File Entry INETSK id %d, src_port %d\n", fe->id, fe->isk->src_port);
+				break;
+			case FD_TYPES__UNIXSK:
+				printf("File Entry UNIXSK id %d, ino %d\n", fe->id, fe->usk->ino);
+				break;
+			case FD_TYPES__EVENTPOLL:
+				epoll_restore(pid, 8);
+				for(int i = 0; i < fe->epfd->n_tfd; i++){
+					printf("File Entry EVENTPOLL FILE[%d] fd %d, events %ld, data %ld\n", i, fe->epfd->tfd[i]->tfd, fe->epfd->tfd[i]->events, fe->epfd->tfd[i]->data);
+				}
+				break;
+			case FD_TYPES__EVENTFD:
+				printf("File Entry EVENTFD FILE id %d, efd flag %d\n", fe->id, fe->efd->flags);
+				break;
+			default:
+				break;
+		}
+	}
+	close_image(img);
+
+	img = open_image_at(dfd, CR_FD_IDS, O_RSTR, rpid);
+	if (!img)
+		return -1;
+
+	pb_read_one_eof(img, &ids, PB_IDS);
+	close_image(img);
+
+	img = open_image_at(dfd, CR_FD_FDINFO, O_RSTR, ids->files_id);
+	if (!img)
+		return -1;
+
+	while(1) {
+		FdinfoEntry *e;
+
+		ret = pb_read_one_eof(img, &e, PB_FDINFO);
+		printf("ret %d\n", ret);
+		if (ret <= 0)
+			break;
+
+		printf("id %d, type %d, fd %d\n", e->id, e->type, e->fd);
+		count++;
+	}
+	close_image(img);
+}
+
 int restore_process(pid_t pid, char *rpath, pid_t rpid, int dfd, int child){
 	int status;
 	struct orig orig;
@@ -646,8 +725,10 @@ int restore_process(pid_t pid, char *rpath, pid_t rpid, int dfd, int child){
 	if (pb_read_one(img, &ce, PB_CORE) < 0)
 		return -1;
 	restore_sigactions(pid, ce->tc->n_sigactions, ce->tc->sigactions);
-	
+
 	close_image(img);
+
+	restore_epoll(pid, rpid, dfd);
 
 	setregs(pid, ce);
 	return (int)ret;
