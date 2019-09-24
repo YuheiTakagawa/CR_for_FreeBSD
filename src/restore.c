@@ -574,6 +574,20 @@ void restore_sigactions(pid_t pid, int n_sigactions, SaEntry  **sa) {
 	printf("finished restore sigaction\n");
 }
 
+typedef union epoll_data {
+	void *ptr;
+	int fd;
+	uint32_t u32;
+	uint64_t u64;
+} epoll_data_t;
+
+struct epoll_event {
+	uint32_t events;
+	epoll_data_t data;
+};
+
+#define EPOLL_CTL_ADD 1
+
 void epoll_restore(pid_t pid, int fd) {
 	struct orig orig;
 	long ret;
@@ -584,11 +598,26 @@ void epoll_restore(pid_t pid, int fd) {
 	printf("epoll instance fd %ld\n", ret);
 }
 
+void epoll_ctl_restore(pid_t pid, int epfd, int tfd, unsigned int events,
+		void *data) {
+	struct orig orig;
+	long ret;
+	struct epoll_event ev;
+	ev.events = events;
+	ev.data.ptr = data;
+	compel_syscall(pid, &orig, 233, &ret,
+			epfd, EPOLL_CTL_ADD, tfd, (unsigned long)&ev, 0x0, 0x0);
+	if (ret != 0)
+		printf("failed epoll_ctl add epfd %d, tfd %d, ev %p %d\n", epfd, tfd, &ev, ret);
+	
+}
+
 int restore_epoll(pid_t pid, pid_t rpid, int dfd) {
 	int count = 0;
 	struct cr_img *img;
 	TaskKobjIdsEntry *ids;
 	int ret;
+	EventpollTfdEntry *entry;
 
 	img = open_image_at(dfd, CR_FD_FILES, O_RSTR);
 	if (!img)
@@ -615,7 +644,9 @@ int restore_epoll(pid_t pid, pid_t rpid, int dfd) {
 			case FD_TYPES__EVENTPOLL:
 				epoll_restore(pid, 8);
 				for(int i = 0; i < fe->epfd->n_tfd; i++){
-					printf("File Entry EVENTPOLL FILE[%d] fd %d, events %ld, data %ld\n", i, fe->epfd->tfd[i]->tfd, fe->epfd->tfd[i]->events, fe->epfd->tfd[i]->data);
+					entry = fe->epfd->tfd[i];
+					printf("File Entry EVENTPOLL FILE[%d] fd %d, events %ld, data %ld\n", i, entry->tfd, entry->events, entry->data);
+		//			epoll_ctl_restore(pid, 8, tmp->tfd, tmp->events, tmp->data);
 				}
 				break;
 			case FD_TYPES__EVENTFD:
