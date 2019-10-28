@@ -72,9 +72,11 @@ void step_debug(int pid){
 	while(1){
 		print_regs(pid);
 		printf("stop: %d\n", WSTOPSIG(status));
-		sleep(1);
+	//	sleep(1);
 		ptrace_step(pid);
 		waitpro(pid, &status);
+		if(WSTOPSIG(status) == SIGBUS)
+			break;
 	}
 }
 

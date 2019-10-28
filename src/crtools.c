@@ -79,7 +79,7 @@ int main(int argc, char *argv[]){
 			if(pid == 0)
 				goto usage;
 			int dfd = open(dpath, O_DIRECT);
-			restore(pid, path, dfd);
+			cr_restore_tasks(pid, path, dfd);
 			break;
 		}
 		if(!(strcmp(argv[i], "dump"))){

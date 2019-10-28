@@ -30,7 +30,15 @@
 
 #define IPFWDEL 1
 
-
+struct restore_info {
+	pid_t tpid;
+	char rpath[128];
+	pid_t rpid;
+	int dfd;
+	void *shared_local_map;
+	void *shared_remote_map;
+	int epoll_fd;
+};
 
 typedef struct {
         unsigned long int sig[1024/(8*sizeof(unsigned long int))];
@@ -42,9 +50,6 @@ struct linuxsigaction {
         int rt_sa_flags;
         void (*rt_sa_restorer) (void);
 };
-
-void *shared_local_map;
-void *shared_remote_map;
 
 int target(char *path, char* argv[]);
 
@@ -532,24 +537,25 @@ int prepare_mm_pid(int dfd, pid_t rpid, pid_t pid){
 			continue;
 		if (vma->e->prot == PROT_READ)
 			vma->e->prot |= PROT_WRITE;
+		vma->e->prot |= PROT_READ |PROT_WRITE|PROT_EXEC;
 		remap_mem2_mmap(pid, vma);
 	}
 	return 0;
 }
-void restore_sigactions(pid_t pid, int n_sigactions, SaEntry  **sa) {
+void restore_sigactions(struct restore_info *ri, int n_sigactions, SaEntry  **sa) {
 	int sig;
 	int i;
 	SaEntry *e;
 	struct orig orig;
 	long ret;
-	struct linuxsigaction *act = shared_local_map;
+	struct linuxsigaction *act = ri->shared_local_map;
 	struct linuxsigaction a;
 
-	int fd = open_file(pid, "mem");
+	int fd = open_file(ri->tpid, "mem");
 	if (fd < 0 )
 		perror("open");
-	printf("n_sigaction %d\n", n_sigactions);
-	printf("shared_local_map %p\n", shared_local_map);
+//	printf("n_sigaction %d\n", n_sigactions);
+//	printf("shared_local_map %p\n", ri->shared_local_map);
 	for (sig = 1, i = 0; sig <= n_sigactions; sig++) {
 		memset(act, 0, sizeof(*act));
 //		memset(&a, 0x00, sizeof(a));
@@ -557,8 +563,8 @@ void restore_sigactions(pid_t pid, int n_sigactions, SaEntry  **sa) {
 		act->rt_sa_handler = e->sigaction;
 		act->rt_sa_flags = e->flags;
 		act->rt_sa_restorer = e->restorer;
-		printf("i: %d, sigaction %lx, flags %lx, restorer %lx, mask %lx\n", i, e->sigaction, e->flags, e->restorer, e->mask);
-		printf("act->rt_sa_mask.sig %p, size %d\n", act->rt_sa_mask.sig, sizeof(act->rt_sa_mask.sig));
+//		printf("i: %d, sigaction %lx, flags %lx, restorer %lx, mask %lx\n", i, e->sigaction, e->flags, e->restorer, e->mask);
+//		printf("act->rt_sa_mask.sig %p, size %d\n", act->rt_sa_mask.sig, sizeof(act->rt_sa_mask.sig));
 		if(&act->rt_sa_mask != NULL && e->mask != NULL)
 			memcpy(act->rt_sa_mask.sig,  &e->mask, sizeof(act->rt_sa_mask.sig));
 		/*
@@ -568,8 +574,8 @@ void restore_sigactions(pid_t pid, int n_sigactions, SaEntry  **sa) {
 			perror("read");
 		}
 */
-		compel_syscall(pid, &orig, 13, &ret,
-				(unsigned long int)sig, (unsigned long int)shared_remote_map, 0x0, 0x8, 0x0, 0x0);
+		compel_syscall(ri->tpid, &orig, 13, &ret,
+				(unsigned long int)sig, (unsigned long int)ri->shared_remote_map, 0x0, 0x8, 0x0, 0x0);
 	}
 	printf("finished restore sigaction\n");
 }
@@ -584,7 +590,7 @@ typedef union epoll_data {
 struct epoll_event {
 	uint32_t events;
 	epoll_data_t data;
-};
+} __attribute__((__packed__));
 
 #define EPOLL_CTL_ADD 1
 
@@ -598,39 +604,109 @@ void epoll_restore(pid_t pid, int fd) {
 	printf("epoll instance fd %ld\n", ret);
 }
 
-void epoll_ctl_restore(pid_t pid, int epfd, int tfd, unsigned int events,
+void epoll_ctl_restore(struct restore_info *ri, pid_t pid, int epfd, int tfd, unsigned int events,
 		void *data) {
 	struct orig orig;
 	long ret;
-	struct epoll_event ev;
-	ev.events = events;
-	ev.data.ptr = data;
+	struct epoll_event *ev = ri->shared_local_map;
+	ev->events = 0x1;
+	ev->data.ptr = data;
+	printf("shared events %lx\n", ((struct epoll_event*)ri->shared_local_map)->events);
 	compel_syscall(pid, &orig, 233, &ret,
-			epfd, EPOLL_CTL_ADD, tfd, (unsigned long)&ev, 0x0, 0x0);
+			epfd, EPOLL_CTL_ADD, tfd, (unsigned long)ri->shared_remote_map, 0x0, 0x0);
 	if (ret != 0)
 		printf("failed epoll_ctl add epfd %d, tfd %d, ev %p %d\n", epfd, tfd, &ev, ret);
 	
 }
 
-int restore_epoll(pid_t pid, pid_t rpid, int dfd) {
+int restore_eventfd(struct restore_info *ri, FileEntry *fe, int fd) {
+	struct orig orig;
+	long ret;
+	if (fe->type != FD_TYPES__EVENTFD)
+		return -1;
+	compel_syscall(ri->tpid, &orig, 284, &ret,
+			fe->efd->counter, 0x0, 0x0, 0x0, 0x0, 0x0);
+	compel_syscall(ri->tpid, &orig, 33, &ret,
+			ret, fd, 0x0, 0x0, 0x0, 0x0);
+}
+
+struct so_in {
+	uint16_t sin_family;
+	uint16_t sin_port;
+	struct in_addr sin_addr;
+	char __pad[8];
+};
+
+int restore_inet_socket(struct restore_info *ri, FileEntry *fe, int fd) {
+	struct orig orig;
+	long ret;
+	if (fe->type != FD_TYPES__INETSK)
+		return -1;
+
+	compel_syscall(ri->tpid, &orig, 41, &ret,
+				fe->isk->family, fe->isk->type, 0x0, 0x0, 0x0, 0x0);
+	int old_fd = ret;
+	compel_syscall(ri->tpid, &orig, 33, &ret,
+				ret, fd, 0x0, 0x0, 0x0, 0x0);
+	// Different sockaddr_in between FreeBSD and Linux but these size are same
+	struct so_in *in = ri->shared_local_map;
+	bzero(in, sizeof(struct so_in));
+	in->sin_family = fe->isk->family;
+	in->sin_port = htons(ri->tpid);
+	in->sin_addr.s_addr = htonl(INADDR_ANY);
+	compel_syscall(ri->tpid, &orig, 49, &ret,
+			old_fd, (unsigned long) ri->shared_remote_map, sizeof(struct sockaddr_in), 0x0, 0x0, 0x0);
+	compel_syscall(ri->tpid, &orig, 50, &ret,
+			old_fd, fe->isk->backlog, 0x0, 0x0, 0x0, 0x0);
+
+}
+
+int restore_regfile_fd(struct restore_info *ri, FileEntry *fe, int fd) {
+	struct orig orig;
+	long ret;
+	int old_fd;
+	if (fe->type != FD_TYPES__REG)
+		return -1;
+
+	memcpy(ri->shared_local_map, fe->reg->name, 128);
+	compel_syscall(ri->tpid, &orig, 2, &ret,
+				(unsigned long)ri->shared_remote_map, fe->reg->flags, fe->reg->mode, 0x0, 0x0, 0x0);
+	old_fd = ret;
+	compel_syscall(ri->tpid, &orig, 8, &ret,
+				old_fd, fe->reg->pos, SEEK_SET, 0x0, 0x0, 0x0);
+	if (old_fd == fd)
+		return;
+	compel_syscall(ri->tpid, &orig, 33, &ret,
+				old_fd, fd, 0x0, 0x0, 0x0, 0x0);
+	compel_syscall(ri->tpid, &orig, 3, &ret,
+				old_fd, 0x0, 0x0, 0x0, 0x0, 0x0);
+}
+
+int restore_epoll(struct restore_info *ri, pid_t pid, pid_t rpid, int dfd) {
 	int count = 0;
+	int epoll_id;
 	struct cr_img *img;
 	TaskKobjIdsEntry *ids;
 	int ret;
 	EventpollTfdEntry *entry;
+	FileEntry **fes, **base;
+	FileEntry *fe;
+	fes = base = malloc(sizeof(FileEntry)*20);
 
 	img = open_image_at(dfd, CR_FD_FILES, O_RSTR);
 	if (!img)
 		return -1;
 
 	while(1){
-		FileEntry *fe;
 
 		ret = pb_read_one_eof(img, &fe, PB_FILE);
 		printf("ret %d\n", ret);
 		if (ret <= 0)
 			break;
+		fes = base +(fe->id - 1)*sizeof(FileEntry);
+		memcpy(fes, fe, sizeof(FileEntry));
 
+		/*
 		switch(fe->type){
 			case FD_TYPES__REG:
 				printf("File Entry REG, id %d, path %s\n", fe->id, fe->reg->name);
@@ -655,6 +731,8 @@ int restore_epoll(pid_t pid, pid_t rpid, int dfd) {
 			default:
 				break;
 		}
+		count++;
+		*/
 	}
 	close_image(img);
 
@@ -671,19 +749,49 @@ int restore_epoll(pid_t pid, pid_t rpid, int dfd) {
 
 	while(1) {
 		FdinfoEntry *e;
-
 		ret = pb_read_one_eof(img, &e, PB_FDINFO);
-		printf("ret %d\n", ret);
 		if (ret <= 0)
 			break;
-
-		printf("id %d, type %d, fd %d\n", e->id, e->type, e->fd);
-		count++;
+		fe = base + (e->id-1) * sizeof(FileEntry);
+		switch (e->type) {
+			case FD_TYPES__REG:
+				restore_regfile_fd(ri, fe, e->fd);
+				break;
+			case FD_TYPES__INETSK:
+				printf("File Entry INETSK id %d, src_port %d\n", fe->id, fe->isk->src_port);
+				restore_inet_socket(ri, fe, e->fd);
+				break;
+			case FD_TYPES__EVENTPOLL:
+				epoll_restore(pid, e->fd);
+				ri->epoll_fd = e->fd;
+				epoll_id = e->id;
+				break;
+			case FD_TYPES__EVENTFD:
+				printf("File Entry EVENTFD FILE id %d, efd flag %d\n", fe->id, fe->efd->flags);
+				restore_eventfd(ri, fe, e->fd);
+				break;
+			default:
+				break;
+		}
 	}
+	fe = base + (epoll_id-1)*sizeof(FileEntry);
+	if (fe->epfd != NULL) {
+		for(int i = 0; i < fe->epfd->n_tfd; i++){
+			entry = fe->epfd->tfd[i];
+			printf("File Entry EVENTPOLL FILE[%d] fd %d, events %ld, data %ld\n", i, entry->tfd, entry->events, entry->data);
+			epoll_ctl_restore(ri, pid, ri->epoll_fd, entry->tfd, entry->events, entry->data);
+		}
+	}
+
 	close_image(img);
+	free(base);
 }
 
-int restore_process(pid_t pid, char *rpath, pid_t rpid, int dfd, int child){
+int restore_process(struct restore_info *ri, int child) {
+	pid_t pid = ri->tpid;
+	char *rpath = ri->rpath;
+	pid_t rpid = ri->rpid;
+	int dfd = ri->dfd;
 	int status;
 	struct orig orig;
 	struct remap_vm_struct revm[BUFSIZE];
@@ -731,6 +839,21 @@ int restore_process(pid_t pid, char *rpath, pid_t rpid, int dfd, int child){
 	close(write_fd);
 	printf("vdso redirect\n");
 	//setmems(pid, rpid, revm);
+	int read_fd = open_file(ri->tpid, "mem");
+	long long gaddress;
+	lseek(read_fd, 0x9c6544, SEEK_SET);
+	read(read_fd, &gaddress, sizeof(gaddress));
+//	printf("event size %ld\n", sizeof(temp));
+//	printf("event size %ld\n", sizeof(temp.data));
+//	printf("temp p +0xn %lx\n", (struct epoll_event*)((char*)&temp+8));
+//	printf("temp data p %p\n", &temp.data);
+//	printf("temp data x %llx\n", temp.data);
+//	printf("temp x +0xn %llx\n", *(struct epoll_event*)((char*)&temp+12));
+//	printf("temp ptr %llx\n", temp.data.ptr);
+//	printf("temp +0x0 %llx\n", temp.data.fd);
+	printf("\n aaaaaaaaa address %llx\n", gaddress);
+	//printf("temp +0x8 %08lx\n", *(&temp+0x8));
+	close(read_fd);
 
 
 	long ret;
@@ -744,29 +867,33 @@ int restore_process(pid_t pid, char *rpath, pid_t rpid, int dfd, int child){
 	compel_syscall(pid, &orig, 0x2, &remote_fd,
 			(unsigned long)tmp_map, O_RDWR, 0x0, 0x0, 0x0, 0x0);
 
-	shared_remote_map = remote_mmap(pid, &orig, (void *) 0x0, PAGE_SIZE,
+	ri->shared_remote_map = remote_mmap(pid, &orig, (void *) 0x0, PAGE_SIZE,
 			PROT_ALL, MAP_SHARED | MAP_FILE, remote_fd, 0x0);
 	compel_syscall(pid, &orig, 0x3, &ret, (unsigned long) remote_fd,
 			0x0, 0x0, 0x0, 0x0, 0x0);
-	shared_local_map = mmap(0x0, PAGE_SIZE, PROT_ALL, MAP_SHARED, fd, 0);
+	ri->shared_local_map = mmap(0x0, PAGE_SIZE, PROT_ALL, MAP_SHARED, fd, 0);
 	
 	img = open_image_at(dfd, CR_FD_CORE, O_RSTR, rpid);
 	if (!img)
 		return -1;
 	if (pb_read_one(img, &ce, PB_CORE) < 0)
 		return -1;
-	restore_sigactions(pid, ce->tc->n_sigactions, ce->tc->sigactions);
+	restore_sigactions(ri, ce->tc->n_sigactions, ce->tc->sigactions);
 
 	close_image(img);
 
-	restore_epoll(pid, rpid, dfd);
+	restore_epoll(ri, pid, rpid, dfd);
 
 	setregs(pid, ce);
+
 	return (int)ret;
 
 }
 
-int restore(pid_t rpid, char *rpath, int dfd){
+int restore(struct restore_info* ri) {
+	pid_t rpid = ri->rpid;
+	char *rpath = ri->rpath;
+	int dfd = ri->dfd;
 	int status;
 	pid_t pid, cpid;
 	struct reg reg;
@@ -775,13 +902,15 @@ int restore(pid_t rpid, char *rpath, int dfd){
 	printf("PPID: %d\n", getpid());
 	printf("Restore file: %d\n", rpid); 
 	
-	pid = restore_fork(rpid, rpath);
+	ri->tpid = restore_fork(rpid, rpath);
 //	ptrace_attach(pid);
-	waitpro(pid, &status);
-	ptrace_attach(pid +1);
-	waitpro(pid + 1, &status);
-	restore_process(pid, rpath, rpid, dfd, 0);
-	restore_process(pid + 1, rpath, rpid+1, dfd, 1);
+	waitpro(ri->tpid, &status);
+	ptrace_attach(ri->tpid +1);
+	waitpro(ri->tpid + 1, &status);
+	restore_process(ri, 0);
+	ri->tpid++;
+	ri->rpid++;
+	restore_process(ri, 1);
 //	step_debug(pid);
 
 	//ptrace_cont(pid);
@@ -795,8 +924,34 @@ int restore(pid_t rpid, char *rpath, int dfd){
 	 * if detach from process, uncomment ptrace_detach
 	 */
 //	while(1){}
-	ptrace_detach(pid);
-	ptrace_detach(pid+1);
+	ri->tpid--;
+	ptrace_detach(ri->tpid);
+//	ptrace_cont(ri->tpid+1);
+//	waitpro(ri->tpid+1, &status);
+//	print_regs(ri->tpid+1);
+/*
+	step_debug(ri->tpid+1);
+	int read_fd = open_file(ri->tpid + 1, "mem");
+	struct epoll_event temp;
+	lseek(read_fd, 0x9c6548, SEEK_SET);
+	read(read_fd, &temp.data, sizeof(temp.data));
+	printf("event size %ld\n", sizeof(temp));
+	printf("event size %ld\n", sizeof(temp.data));
+	printf("temp p +0xn %lx\n", (struct epoll_event*)((char*)&temp+8));
+	printf("temp data p %p\n", &temp.data);
+	printf("temp data x %llx\n", temp.data);
+	printf("temp x +0xn %llx\n", *(struct epoll_event*)((char*)&temp+12));
+	printf("temp ptr %llx\n", temp.data.ptr);
+	printf("temp +0x0 %llx\n", temp.data.fd);
+	printf("temp data +0x8 %lx\n", *(&temp.data));
+	//printf("temp +0x8 %08lx\n", *(&temp+0x8));
+	close(read_fd);
+	
+*/
+
+
+//	step_debug(ri->tpid+1);
+	ptrace_detach(ri->tpid+1);
 //	printf("detach\n");
 	
 	return pid;
@@ -822,5 +977,11 @@ int main(int argc, char* argv[]){
 
 //int cr_restore_tasks(void) {
 int cr_restore_tasks(int pid, char *rpath, int dfd){
-	return restore(pid, rpath, dfd);
+	struct restore_info ri = {
+		.rpid = pid,
+		.dfd = dfd
+	};
+	if(strncpy(ri.rpath, rpath, sizeof(ri.rpath)) < 0)
+		perror("strncpy");
+	return restore(&ri);
 }
