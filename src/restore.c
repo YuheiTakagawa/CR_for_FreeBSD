@@ -438,7 +438,7 @@ void call_mremap(pid_t pid) {
 	size = 0x1c2000;
 	addr = 0x7ffff7a0e000;
 */
-	addr = 0x7ffff73b7000;
+	addr = 0x7ffff73b6000;
 	size = 0x7ffff7579000 - addr;
 
 	restore_library(write_fd, "/compat/linux/usr/lib64/libc.so.6", addr, size);
@@ -448,13 +448,13 @@ void call_mremap(pid_t pid) {
 
 	restore_library(write_fd, "/compat/linux/usr/lib64/ld-2.17.so", addr, size);
 
-	addr = 0x7ffff6fa1000;
-	size = 0x7ffff6fad000 - addr;
+	addr = 0x7ffff6fa0000;
+	size = 0x7ffff6fac000 - addr;
 
 	restore_library(write_fd, "/compat/linux/usr/lib64/libnss_files-2.17.so", addr, size);
 
-	addr = 0x7ffff71b4000;
-	size = 0x7ffff71b6000 - addr;
+	addr = 0x7ffff71b3000;
+	size = 0x7ffff71b5000 - addr;
 
 	restore_library(write_fd, "/compat/linux/usr/lib64/libfreebl3.so", addr, size);
 
