@@ -29,6 +29,7 @@
 #include "types.h"
 
 #define IPFWDEL 1
+#define PROT_ALL (PROT_EXEC | PROT_WRITE | PROT_READ)
 
 struct restore_info {
 	pid_t tpid;
@@ -364,7 +365,6 @@ int prepare_mappings(int dfd, pid_t rpid, pid_t pid){
 		if (ret <= 0){
 			break;
 		}
-		printf("pme %lx, num %d\n", pr.pe->vaddr, pr.pe->nr_pages);
 		for(int i = 0; i < pr.pe->nr_pages; i++){
 			pr.read_pages(&pr, va, 1, buf, 0x0);
 			if(lseek(write_fd, pr.pe->vaddr + i * PAGE_SIZE, SEEK_SET) < 0)
@@ -393,11 +393,6 @@ void remap_mem2_mmap(pid_t pid, struct vma_area *vma) {
 	struct orig orig;
 	remote_map = remote_mmap(pid, &orig,
 			vma->e->start, vma->e->end - vma->e->start, vma->e->prot, vma->e->flags | 0x20, 0x0, 0x0);
-//	printf("remote_map: %p\n", remote_map);
-	ptrace_cont(pid);
-	waitpro(pid, &status);
-//	printf("stopped: %d\n", WSTOPSIG(status));
-
 }
 
 void remap_mem2_munmap(pid_t pid, struct vma_area *vma) {
@@ -407,10 +402,6 @@ void remap_mem2_munmap(pid_t pid, struct vma_area *vma) {
 	struct orig orig;
 	compel_syscall(pid, &orig,
 			11, &ret, vma->e->start, vma->e->end - vma->e->start, 0x0, 0x0, 0x0, 0x0);
-	ptrace_cont(pid);
-	waitpro(pid, &status);
-	printf("stopped: %d\n", WSTOPSIG(status));
-
 }
 
 void restore_library(int write_fd, char *path, unsigned long int addr, size_t size){
@@ -554,26 +545,14 @@ void restore_sigactions(struct restore_info *ri, int n_sigactions, SaEntry  **sa
 	int fd = open_file(ri->tpid, "mem");
 	if (fd < 0 )
 		perror("open");
-//	printf("n_sigaction %d\n", n_sigactions);
-//	printf("shared_local_map %p\n", ri->shared_local_map);
 	for (sig = 1, i = 0; sig <= n_sigactions; sig++) {
 		memset(act, 0, sizeof(*act));
-//		memset(&a, 0x00, sizeof(a));
 		e = sa[i++];
 		act->rt_sa_handler = e->sigaction;
 		act->rt_sa_flags = e->flags;
 		act->rt_sa_restorer = e->restorer;
-//		printf("i: %d, sigaction %lx, flags %lx, restorer %lx, mask %lx\n", i, e->sigaction, e->flags, e->restorer, e->mask);
-//		printf("act->rt_sa_mask.sig %p, size %d\n", act->rt_sa_mask.sig, sizeof(act->rt_sa_mask.sig));
 		if(&act->rt_sa_mask != NULL && e->mask != NULL)
 			memcpy(act->rt_sa_mask.sig,  &e->mask, sizeof(act->rt_sa_mask.sig));
-		/*
-		if (lseek(fd, shared_remote_map, SEEK_SET) < 0)
-			perror("lseek");
-		if (read(fd, &a, sizeof(a)) < 0) {
-			perror("read");
-		}
-*/
 		compel_syscall(ri->tpid, &orig, 13, &ret,
 				(unsigned long int)sig, (unsigned long int)ri->shared_remote_map, 0x0, 0x8, 0x0, 0x0);
 	}
@@ -611,7 +590,6 @@ void epoll_ctl_restore(struct restore_info *ri, pid_t pid, int epfd, int tfd, un
 	struct epoll_event *ev = ri->shared_local_map;
 	ev->events = 0x1;
 	ev->data.ptr = data;
-	printf("shared events %lx\n", ((struct epoll_event*)ri->shared_local_map)->events);
 	compel_syscall(pid, &orig, 233, &ret,
 			epfd, EPOLL_CTL_ADD, tfd, (unsigned long)ri->shared_remote_map, 0x0, 0x0);
 	if (ret != 0)
@@ -700,7 +678,6 @@ int restore_epoll(struct restore_info *ri, pid_t pid, pid_t rpid, int dfd) {
 	while(1){
 
 		ret = pb_read_one_eof(img, &fe, PB_FILE);
-		printf("ret %d\n", ret);
 		if (ret <= 0)
 			break;
 		fes = base +(fe->id - 1)*sizeof(FileEntry);
@@ -787,6 +764,43 @@ int restore_epoll(struct restore_info *ri, pid_t pid, pid_t rpid, int dfd) {
 	free(base);
 }
 
+void free_restorer_mem(struct restore_info *ri) {
+	long ret;
+	struct orig orig;
+	pid_t pid = ri->tpid;
+
+
+	compel_syscall(pid, &orig, 0xb, &ret,
+			(unsigned long)ri->shared_remote_map, PAGE_SIZE, 0x0, 0x0, 0x0, 0x0);
+	munmap(ri->shared_local_map, PAGE_SIZE);
+
+	ri->shared_remote_map = NULL;
+	ri->shared_local_map = NULL;
+}
+
+void alloc_restorer_mem(struct restore_info *ri){
+	pid_t pid = ri->tpid;
+	long ret;
+	long remote_fd;
+	char buf[] = SHARED_FILE_PATH;
+	struct orig orig;
+	void *tmp_map = remote_mmap(pid, &orig, (void *) 0x0,
+			PAGE_SIZE, PROT_ALL, 0x20 | MAP_SHARED, 0x0, 0x0);
+	int fd = open(buf, O_RDWR);
+	inject_syscall_buf(pid, buf, tmp_map, 0);
+	compel_syscall(pid, &orig, 0x2, &remote_fd,
+			(unsigned long)tmp_map, O_RDWR, 0x0, 0x0, 0x0, 0x0);
+
+	ri->shared_remote_map = remote_mmap(pid, &orig, (void *) 0x0, PAGE_SIZE,
+			PROT_ALL, MAP_SHARED | MAP_FILE, remote_fd, 0x0);
+	compel_syscall(pid, &orig, 0x3, &ret, (unsigned long) remote_fd,
+			0x0, 0x0, 0x0, 0x0, 0x0);
+	compel_syscall(pid, &orig, 0xb, &ret,
+			(unsigned long)tmp_map, PAGE_SIZE, 0x0, 0x0, 0x0, 0x0);
+	ri->shared_local_map = mmap(0x0, PAGE_SIZE, PROT_ALL, MAP_SHARED, fd, 0);
+	
+}
+
 int restore_process(struct restore_info *ri, int child) {
 	pid_t pid = ri->tpid;
 	char *rpath = ri->rpath;
@@ -855,24 +869,8 @@ int restore_process(struct restore_info *ri, int child) {
 	//printf("temp +0x8 %08lx\n", *(&temp+0x8));
 	close(read_fd);
 
+	alloc_restorer_mem(ri);
 
-	long ret;
-	long remote_fd;
-	char buf[] = SHARED_FILE_PATH;
-#define PROT_ALL (PROT_EXEC | PROT_WRITE | PROT_READ)
-	void *tmp_map = remote_mmap(pid, &orig, (void *) 0x0,
-			PAGE_SIZE, PROT_ALL, 0x20 | MAP_SHARED, 0x0, 0x0);
-	int fd = open(buf, O_RDWR);
-	inject_syscall_buf(pid, buf, tmp_map, 0);
-	compel_syscall(pid, &orig, 0x2, &remote_fd,
-			(unsigned long)tmp_map, O_RDWR, 0x0, 0x0, 0x0, 0x0);
-
-	ri->shared_remote_map = remote_mmap(pid, &orig, (void *) 0x0, PAGE_SIZE,
-			PROT_ALL, MAP_SHARED | MAP_FILE, remote_fd, 0x0);
-	compel_syscall(pid, &orig, 0x3, &ret, (unsigned long) remote_fd,
-			0x0, 0x0, 0x0, 0x0, 0x0);
-	ri->shared_local_map = mmap(0x0, PAGE_SIZE, PROT_ALL, MAP_SHARED, fd, 0);
-	
 	img = open_image_at(dfd, CR_FD_CORE, O_RSTR, rpid);
 	if (!img)
 		return -1;
@@ -884,9 +882,11 @@ int restore_process(struct restore_info *ri, int child) {
 
 	restore_epoll(ri, pid, rpid, dfd);
 
+	free_restorer_mem(ri);
+
 	setregs(pid, ce);
 
-	return (int)ret;
+	return 0;
 
 }
 
