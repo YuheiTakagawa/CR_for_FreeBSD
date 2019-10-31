@@ -165,35 +165,12 @@ int restore_fork(int filePid, char *exec_path){
 		return pid;
 	}
 
-	/*
-	read_fd_list(filePid, fds);
-	for(i = 0; fds[i].fd != -2 ; i++){
-		printf("fd:%d, off:%ld, path:%s\n", fds[i].fd, fds[i].offset, fds[i].path);
-*/
-		/*
-		 *  if restore tty info, have to implement restoring ttys
-		 */
-/*
-		if(strstr(fds[i].path, "/dev/pts") == NULL){
-			if((strstr(fds[i].path, "internet")) ||
-				(strstr(fds[i].path, "socket"))){
-				restore_socket(filePid, fds[i].fd);
-				continue;
-			}else if(!strcmp(fds[i].path, "local"))
-				continue;
-			fd = prepare_restore_files(fds[i].path, fds[i].fd, fds[i].offset);
-		}
-	}
-	*/
 	pid = fork();
 	if(pid < 0){
 		perror("fork");
 		exit(1);
 	}
-//	if(pid == 0){
-//		char *exec[] = {exec_path, NULL};
-//		execvp(exec[0], exec);
-//	}
+
 	if(pid != 0){
 		waitpro(pid, &status);
 		if(WIFSTOPPED(status))
@@ -232,7 +209,6 @@ static int init_pagemaps(struct page_read *pr, int dfd, int pid) {
 			break;
 		}
 		pr->nr_pmes++;
-		printf("addr %lx, pages %d, flags%d\n", pr->pmes[i]->vaddr, pr->pmes[i]->nr_pages, pr->pmes[i]->flags);
 	}
 
 	return 0;
@@ -683,33 +659,6 @@ int restore_epoll(struct restore_info *ri, pid_t pid, pid_t rpid, int dfd) {
 		fes = base +(fe->id - 1)*sizeof(FileEntry);
 		memcpy(fes, fe, sizeof(FileEntry));
 
-		/*
-		switch(fe->type){
-			case FD_TYPES__REG:
-				printf("File Entry REG, id %d, path %s\n", fe->id, fe->reg->name);
-				break;
-			case FD_TYPES__INETSK:
-				printf("File Entry INETSK id %d, src_port %d\n", fe->id, fe->isk->src_port);
-				break;
-			case FD_TYPES__UNIXSK:
-				printf("File Entry UNIXSK id %d, ino %d\n", fe->id, fe->usk->ino);
-				break;
-			case FD_TYPES__EVENTPOLL:
-				epoll_restore(pid, 8);
-				for(int i = 0; i < fe->epfd->n_tfd; i++){
-					entry = fe->epfd->tfd[i];
-					printf("File Entry EVENTPOLL FILE[%d] fd %d, events %ld, data %ld\n", i, entry->tfd, entry->events, entry->data);
-		//			epoll_ctl_restore(pid, 8, tmp->tfd, tmp->events, tmp->data);
-				}
-				break;
-			case FD_TYPES__EVENTFD:
-				printf("File Entry EVENTFD FILE id %d, efd flag %d\n", fe->id, fe->efd->flags);
-				break;
-			default:
-				break;
-		}
-		count++;
-		*/
 	}
 	close_image(img);
 
@@ -827,11 +776,6 @@ int restore_process(struct restore_info *ri, int child) {
 	if (pb_read_one(img, &he, PB_INVENTORY) < 0)
 		return -1;
 
-//	printf("he fdinfo %d\n", he->has_fdinfo_per_id);
-//	printf("he imgv %d\n", he->img_version);
-//	printf("he root ids vm %d\n", he->root_ids->vm_id);
-//	printf("he lsmtype %d\n", he->lsmtype);
-
 	close_image(img);
 
 
@@ -839,12 +783,6 @@ int restore_process(struct restore_info *ri, int child) {
 		return -1;
 
 	prepare_mappings(dfd, rpid, pid);
-//	unsigned long int ko;
-//	int read_fd = open_file(pid, "mem");
-//	lseek(read_fd, 0x7fffffffe1d8, SEEK_SET);
-//	read(read_fd, &ko, sizeof(ko));
-//	printf("%lx\n", ko);
-//	close(read_fd);
 
 	call_mremap(pid);
 
@@ -853,21 +791,6 @@ int restore_process(struct restore_info *ri, int child) {
 	close(write_fd);
 	printf("vdso redirect\n");
 	//setmems(pid, rpid, revm);
-	int read_fd = open_file(ri->tpid, "mem");
-	long long gaddress;
-	lseek(read_fd, 0x9c6544, SEEK_SET);
-	read(read_fd, &gaddress, sizeof(gaddress));
-//	printf("event size %ld\n", sizeof(temp));
-//	printf("event size %ld\n", sizeof(temp.data));
-//	printf("temp p +0xn %lx\n", (struct epoll_event*)((char*)&temp+8));
-//	printf("temp data p %p\n", &temp.data);
-//	printf("temp data x %llx\n", temp.data);
-//	printf("temp x +0xn %llx\n", *(struct epoll_event*)((char*)&temp+12));
-//	printf("temp ptr %llx\n", temp.data.ptr);
-//	printf("temp +0x0 %llx\n", temp.data.fd);
-	printf("\n aaaaaaaaa address %llx\n", gaddress);
-	//printf("temp +0x8 %08lx\n", *(&temp+0x8));
-	close(read_fd);
 
 	alloc_restorer_mem(ri);
 
@@ -929,26 +852,6 @@ int restore(struct restore_info* ri) {
 //	ptrace_cont(ri->tpid+1);
 //	waitpro(ri->tpid+1, &status);
 //	print_regs(ri->tpid+1);
-/*
-	step_debug(ri->tpid+1);
-	int read_fd = open_file(ri->tpid + 1, "mem");
-	struct epoll_event temp;
-	lseek(read_fd, 0x9c6548, SEEK_SET);
-	read(read_fd, &temp.data, sizeof(temp.data));
-	printf("event size %ld\n", sizeof(temp));
-	printf("event size %ld\n", sizeof(temp.data));
-	printf("temp p +0xn %lx\n", (struct epoll_event*)((char*)&temp+8));
-	printf("temp data p %p\n", &temp.data);
-	printf("temp data x %llx\n", temp.data);
-	printf("temp x +0xn %llx\n", *(struct epoll_event*)((char*)&temp+12));
-	printf("temp ptr %llx\n", temp.data.ptr);
-	printf("temp +0x0 %llx\n", temp.data.fd);
-	printf("temp data +0x8 %lx\n", *(&temp.data));
-	//printf("temp +0x8 %08lx\n", *(&temp+0x8));
-	close(read_fd);
-	
-*/
-
 
 //	step_debug(ri->tpid+1);
 	ptrace_detach(ri->tpid+1);
@@ -956,26 +859,7 @@ int restore(struct restore_info* ri) {
 	
 	return pid;
 }
-	
-/*
-int main(int argc, char* argv[]){
-	int rpid;
-	char *rpath;
 
-	if(argc < 3){
-		printf("Usage: %s <path> <file pid>\n", argv[0]);
-		exit(1);
-	}
-
-	rpath = argv[1];
-	rpid = atoi(argv[2]);
-
-	restore(rpid, rpath);
-	return 0;
-}
-*/
-
-//int cr_restore_tasks(void) {
 int cr_restore_tasks(int pid, char *rpath, int dfd){
 	struct restore_info ri = {
 		.rpid = pid,
