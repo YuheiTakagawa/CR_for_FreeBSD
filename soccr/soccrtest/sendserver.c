@@ -46,7 +46,10 @@ int main(void){
 	sockpre = listen_port(9090);
 
 	socklen = sizeof(struct sockaddr_in);
+	printf("waiting\n");
 	sock = accept(sockpre, (struct sockaddr *)&dst, &socklen);
+	if (sock < 0)
+		perror("accept");
 	/*
 	sock = socket(AF_INET, SOCK_STREAM, 0);
 	dst.sin_family = AF_INET;

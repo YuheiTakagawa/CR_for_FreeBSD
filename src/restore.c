@@ -67,7 +67,7 @@ int target(char *path, char *argv[]){
 }
 
 int restore_socket(int pid, int rfd) {
-	/*
+	
 	int rst, fd;
 	int dsize;
 	char *queue;
@@ -145,7 +145,7 @@ int restore_socket(int pid, int rfd) {
 	printf("unfilter packet\n");
 //	setipfw(IPFWDEL, "192.168.11.1", "192.168.11.30");
 	setipfw(IPFWDEL, srcaddr, dstaddr);
-*/
+
 	return 0;
 }
 
@@ -356,7 +356,7 @@ int restore_epoll(struct restore_info *ri, pid_t pid, pid_t rpid, int dfd) {
 				break;
 			case FD_TYPES__INETSK:
 				printf("File Entry INETSK id %d, src_port %d\n", fe->id, fe->isk->src_port);
-				restore_inet_socket(ri, fe, e->fd);
+		//		restore_inet_socket(ri, fe, e->fd);
 				break;
 			case FD_TYPES__EVENTPOLL:
 				epoll_restore(pid, e->fd);
@@ -447,6 +447,28 @@ int restore_process(struct restore_info *ri, int child) {
 
 }
 
+int listen_port(int port) {
+	int sockpre;
+	socklen_t size;
+	struct sockaddr_in addr;
+	int aux;
+	
+	sockpre = socket(AF_INET, SOCK_STREAM, 0);
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = INADDR_ANY;
+	addr.sin_port = htons(port);
+	aux = 1;
+	setsockopt(sockpre, SOL_SOCKET, SO_REUSEADDR, (const char *) &aux, sizeof(aux));
+	size = sizeof(addr);
+	bind (sockpre, (struct sockaddr *) &addr, size);
+
+	if (listen(sockpre, 5) < 0){
+		perror("listen");
+		exit(1);
+	}
+	return sockpre;
+}
+
 int restore(struct restore_info* ri) {
 	pid_t rpid = ri->rpid;
 	char *rpath = ri->rpath;
@@ -459,6 +481,8 @@ int restore(struct restore_info* ri) {
 	printf("PPID: %d\n", getpid());
 	printf("Restore file: %d\n", rpid); 
 	
+	int fd = listen_port(80);
+	dup2(fd, 6);
 	ri->tpid = restore_fork(rpid, rpath);
 //	ptrace_attach(pid);
 	waitpro(ri->tpid, &status);

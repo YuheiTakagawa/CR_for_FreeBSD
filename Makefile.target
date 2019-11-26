@@ -26,7 +26,7 @@ CFLAG += -lprocstat
 CFLAG += -lpthread
 CFLAG += -D_BSD
 OBJ += compel/infect.a
-#OBJ += soccr/libsoccr.a
+OBJ += soccr/libsoccr.a
 OBJ += images/built-in.o
 endif
 
