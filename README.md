@@ -21,6 +21,9 @@ For Linuxulator be enaled at boot time, add this line to /etc/rc.conf:
 This project use procfs. procfs is not standard in FreeBSD.  
 `mount -t procfs procfs /proc`  
 
+use protobuf-c
+`pkg install protobuf-c`
+
 ## install(Linux)
 Using `bsd/string.h`in Linux, please install libbsd.
 `apt-get install libbsd-dev`
