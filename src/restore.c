@@ -396,6 +396,8 @@ int restore_process(struct restore_info *ri, int child) {
 	InventoryEntry *he;
 	CoreEntry *ce;
 
+	struct linuxreg *linuxreg;
+
 
 	insert_breakpoint(pid, rpath);
 	waitpro(pid, &status);
@@ -440,6 +442,10 @@ int restore_process(struct restore_info *ri, int child) {
 	restore_epoll(ri, pid, rpid, dfd);
 
 	free_restorer_mem(ri);
+
+	if (!child)
+		ce->thread_info->gpregs->ip += 0x2;
+	printf("ip: %llx\n", ce->thread_info->gpregs->ip);
 
 	setregs(pid, ce);
 
