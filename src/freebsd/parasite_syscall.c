@@ -126,8 +126,8 @@ void compel_syscall(pid_t pid, struct orig *orig, int nr, long *ret,
 		orig->reg.r_rip = 0x444230;
 		reg.r_rip = 0x444230;
 	}
-	printf("injection:%d  %d(0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx) = ",
-			pid, nr, arg1, arg2, arg3, arg4, arg5, arg6);
+//	printf("injection:%d  %d(0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx) = ",
+//			pid, nr, arg1, arg2, arg3, arg4, arg5, arg6);
 	compel_execute_syscall(pid, orig, &reg);
 	*ret = get_user_reg(reg, r_rax);
 }
@@ -151,7 +151,7 @@ void restore_setregs(pid_t pid, struct reg orig){
 	struct reg reg;
 	
 	ptrace_get_regs(pid, &reg);
-	printf("0x%lx\n", reg.r_rax);
+//	printf("0x%lx\n", reg.r_rax);
 		
 	ptrace_set_regs(pid, &orig);
 }

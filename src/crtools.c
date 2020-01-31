@@ -79,7 +79,8 @@ int main(int argc, char *argv[]){
 			if(pid == 0)
 				goto usage;
 			int dfd = open(dpath, O_DIRECT);
-			cr_restore_tasks(pid, path, dfd);
+			dup2(dfd, 65530);
+			cr_restore_tasks(pid, path, 65530);
 			break;
 		}
 		if(!(strcmp(argv[i], "dump"))){

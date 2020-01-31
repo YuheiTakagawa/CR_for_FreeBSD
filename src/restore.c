@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <netinet/in.h>
+#include <netinet/tcp_fsm.h>
 #include <arpa/inet.h>
 
 #define PACKAGE 1
@@ -25,8 +26,10 @@
 #include "images/inventory.pb-c.h"
 #include "images/mm.pb-c.h"
 #include "images/fdinfo.pb-c.h"
+#include "images/tcp-stream.pb-c.h"
 #include "getmap.h"
 #include "types.h"
+#include "sockets.h"
 
 #define IPFWDEL 1
 #define PROT_ALL (PROT_EXEC | PROT_WRITE | PROT_READ)
@@ -65,7 +68,7 @@ int target(char *path, char *argv[]){
 	perror("execvp");
 	exit(ret);
 }
-
+/*
 int restore_socket(int pid, int rfd) {
 	
 	int rst, fd;
@@ -148,7 +151,7 @@ int restore_socket(int pid, int rfd) {
 
 	return 0;
 }
-
+*/
 int restore_fork(int filePid, char *exec_path){
 	int status;
 	int fd;
@@ -262,28 +265,137 @@ struct so_in {
 	char __pad[8];
 };
 
+int read_tcp_queue(struct libsoccr_sk *sk, struct libsoccr_sk_data *data,
+		int queue, u32 len, struct cr_img *img)
+{
+	char *buf;
+
+	buf = xmalloc(len);
+	if (!buf)
+		return -1;
+
+	if (read_img_buf(img, buf, len) < 0)
+		goto err;
+
+	return libsoccr_set_queue_bytes(sk, queue, buf, SOCCR_MEM_EXCL);
+	
+err:
+	xfree(buf);
+	return -1;
+}
+
+int read_tcp_queues(struct libsoccr_sk *sk, struct libsoccr_sk_data *data, struct cr_img *img)
+{
+	u32 len;
+
+	len = data->inq_len;
+	if (len && read_tcp_queue(sk, data, TCP_RECV_QUEUE, len, img))
+		return -1;
+
+	len = data->outq_len;
+	if (len && read_tcp_queue(sk, data, TCP_SEND_QUEUE, len, img))
+		return -1;
+
+	return 0;
+}
+
+struct inet_sk_desc{
+	struct socket_desc sd;
+	unsigned int type;
+	unsigned int src_port;
+	unsigned int dst_port;
+	unsigned int state;
+	unsigned int rqlen;
+	unsigned int wqlen;
+	unsigned int ueqlen;
+	unsigned int src_addr[4];
+	unsigned int dst_addr[4];
+	unsigned short shutdown;
+	bool cork;
+
+	int rfd;
+	int cpt_reuseaddr;
+	struct list_head rlist;
+	void *priv;
+};
+
 int restore_inet_socket(struct restore_info *ri, FileEntry *fe, int fd) {
 	struct orig orig;
 	long ret;
+	int srcpt, dstpt;
+	struct libsoccr_sk *so_rst;
+	struct libsoccr_sk_data data = {};
+	union libsoccr_addr addr, dst;
+	TcpStreamEntry *tse;
+	struct cr_img *img;
+//	struct inet_sk_in a;
+
 	if (fe->type != FD_TYPES__INETSK)
 		return -1;
 
-	compel_syscall(ri->tpid, &orig, 41, &ret,
-				fe->isk->family, fe->isk->type, 0x0, 0x0, 0x0, 0x0);
-	int old_fd = ret;
-	compel_syscall(ri->tpid, &orig, 33, &ret,
-				ret, fd, 0x0, 0x0, 0x0, 0x0);
-	// Different sockaddr_in between FreeBSD and Linux but these size are same
-	struct so_in *in = ri->shared_local_map;
-	bzero(in, sizeof(struct so_in));
-	in->sin_family = fe->isk->family;
-	in->sin_port = htons(ri->tpid);
-	in->sin_addr.s_addr = htonl(INADDR_ANY);
-	compel_syscall(ri->tpid, &orig, 49, &ret,
-			old_fd, (unsigned long) ri->shared_remote_map, sizeof(struct sockaddr_in), 0x0, 0x0, 0x0);
-	compel_syscall(ri->tpid, &orig, 50, &ret,
-			old_fd, fe->isk->backlog, 0x0, 0x0, 0x0, 0x0);
+	if (fe->isk->state != 1)
+		return -1;
+	printf("dfd %d\n", ri->dfd);
 
+	img = open_image_at(ri->dfd, CR_FD_TCP_STREAM, O_RSTR, fe->isk->ino);
+	if (!img)
+		return -1;
+
+	if (pb_read_one(img, &tse, PB_TCP_STREAM) < 0){
+		close_image(img);
+		return -1;
+	}
+
+	if (!tse->has_unsq_len) {
+		close_image(img);
+		return -1;
+	}
+
+	data.state = fe->isk->state;
+	data.inq_len = tse->inq_len;
+	data.inq_seq = tse->inq_seq;
+	data.outq_len = tse->outq_len;
+	data.outq_seq = tse->outq_seq;
+	data.unsq_len = tse->unsq_len;
+	data.mss_clamp = tse->mss_clamp;
+	data.opt_mask = tse->opt_mask;
+
+		data.snd_wscale = tse->snd_wscale;
+		data.rcv_wscale = tse->rcv_wscale;
+
+	if (tse->has_snd_wnd) {
+		data.flags |= SOCCR_FLAGS_WINDOW;
+		data.snd_wl1 = tse->snd_wl1;
+		data.snd_wnd = tse->snd_wnd;
+		data.max_window = tse->max_window;
+		data.rcv_wnd = tse->rcv_wnd;
+		data.rcv_wup = tse->rcv_wup;
+	}
+
+	addr.v4.sin_family = fe->isk->family;
+	addr.v4.sin_port = htons(fe->isk->src_port);
+	memcpy(&addr.v4.sin_addr.s_addr, fe->isk->src_addr, sizeof(addr.v4.sin_addr.s_addr));
+
+	dst.v4.sin_family = fe->isk->family;
+	dst.v4.sin_port = htons(fe->isk->dst_port);
+	memcpy(&dst.v4.sin_addr.s_addr, fe->isk->dst_addr, sizeof(addr.v4.sin_addr.s_addr));
+	ret = socket(fe->isk->family, fe->isk->type, 0);
+
+	int old_fd = ret;
+	dup2(ret, fd);
+	close(old_fd);
+
+	so_rst = libsoccr_pause(fd);
+
+	libsoccr_set_addr(so_rst, 1, &addr, 0);
+	libsoccr_set_addr(so_rst, 0, &dst, 0);
+
+	read_tcp_queues(so_rst, &data, img);
+	libsoccr_restore(so_rst, &data, sizeof(data));
+	libsoccr_resume(so_rst);
+	printf("restore socket fd %d\n", fd);
+	close_image(img);
+	// Different sockaddr_in between FreeBSD and Linux but these size are same
 }
 
 int restore_regfile_fd(struct restore_info *ri, FileEntry *fe, int fd) {
@@ -305,6 +417,63 @@ int restore_regfile_fd(struct restore_info *ri, FileEntry *fe, int fd) {
 				old_fd, fd, 0x0, 0x0, 0x0, 0x0);
 	compel_syscall(ri->tpid, &orig, 3, &ret,
 				old_fd, 0x0, 0x0, 0x0, 0x0, 0x0);
+}
+
+int restore_socket(struct restore_info *ri, pid_t rpid, int dfd) {
+	int count = 0;
+	int epoll_id;
+	struct cr_img *img;
+	TaskKobjIdsEntry *ids;
+	int ret;
+	EventpollTfdEntry *entry;
+	FileEntry **fes, **base;
+	FileEntry *fe;
+	fes = base = malloc(sizeof(FileEntry)*2000);
+
+	img = open_image_at(dfd, CR_FD_FILES, O_RSTR);
+	if (!img)
+		return -1;
+
+	while(1){
+
+		ret = pb_read_one_eof(img, &fe, PB_FILE);
+		if (ret <= 0)
+			break;
+		fes = base +(fe->id - 1)*sizeof(FileEntry);
+		memcpy(fes, fe, sizeof(FileEntry));
+
+	}
+	close_image(img);
+
+	img = open_image_at(dfd, CR_FD_IDS, O_RSTR, rpid);
+	if (!img)
+		return -1;
+
+	pb_read_one_eof(img, &ids, PB_IDS);
+	close_image(img);
+
+	img = open_image_at(dfd, CR_FD_FDINFO, O_RSTR, ids->files_id);
+	if (!img)
+		return -1;
+
+	while(1) {
+		FdinfoEntry *e;
+		ret = pb_read_one_eof(img, &e, PB_FDINFO);
+		if (ret <= 0)
+			break;
+		fe = base + (e->id-1) * sizeof(FileEntry);
+		switch (e->type) {
+			case FD_TYPES__INETSK:
+				printf("File Entry INETSK id %d, src_port %d\n", fe->id, fe->isk->src_port);
+				restore_inet_socket(ri, fe, e->fd);
+				break;
+			default:
+				break;
+		}
+	}
+
+	close_image(img);
+	free(base);
 }
 
 int restore_epoll(struct restore_info *ri, pid_t pid, pid_t rpid, int dfd) {
@@ -355,7 +524,7 @@ int restore_epoll(struct restore_info *ri, pid_t pid, pid_t rpid, int dfd) {
 				restore_regfile_fd(ri, fe, e->fd);
 				break;
 			case FD_TYPES__INETSK:
-				printf("File Entry INETSK id %d, src_port %d\n", fe->id, fe->isk->src_port);
+		//		printf("File Entry INETSK id %d, src_port %d\n", fe->id, fe->isk->src_port);
 		//		restore_inet_socket(ri, fe, e->fd);
 				break;
 			case FD_TYPES__EVENTPOLL:
@@ -443,7 +612,7 @@ int restore_process(struct restore_info *ri, int child) {
 
 	free_restorer_mem(ri);
 
-	if (!child)
+//	if (!child)
 		ce->thread_info->gpregs->ip += 0x2;
 	printf("ip: %llx\n", ce->thread_info->gpregs->ip);
 
@@ -468,7 +637,7 @@ int listen_port(int port) {
 	size = sizeof(addr);
 	bind (sockpre, (struct sockaddr *) &addr, size);
 
-	if (listen(sockpre, 5) < 0){
+	if (listen(sockpre, -1) < 0){
 		perror("listen");
 		exit(1);
 	}
@@ -487,6 +656,7 @@ int restore(struct restore_info* ri) {
 	printf("PPID: %d\n", getpid());
 	printf("Restore file: %d\n", rpid); 
 	
+	restore_socket(ri, rpid + 1, dfd); 
 	int fd = listen_port(80);
 	dup2(fd, 6);
 	ri->tpid = restore_fork(rpid, rpath);
