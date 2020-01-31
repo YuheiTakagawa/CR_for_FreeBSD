@@ -20,7 +20,7 @@ int main(int argc, char *argv[]){
 	int fd;
 	int dsize;
 	char buf[256];
-	char chs[] = "Welcome 000\n";
+	char chs[] = "HELLO 00000\n";
 	char *queue;
 	char srcip[20], dstip[20];
 	int srcpt, dstpt;
@@ -92,14 +92,16 @@ int main(int argc, char *argv[]){
 	printf("unfilter packet\n");
 	setipfw(IPFWDEL, srcip, dstip);
 
-	snprintf(chs, sizeof(chs), "RESTORE FINISHED\n");
+	memset(chs, 0, sizeof(chs));
+	snprintf(chs, sizeof(chs), "RESTORE FIN\n");
+	printf("%s", chs);
 	write(rst, chs, sizeof(chs));
 	printf("fini\n");
-	while(1){}
-	/*while(read(rst, chs, sizeof(chs))){
+	while(read(rst, chs, sizeof(chs))){
 		printf("recv %s\n", chs);
 		usleep(100000);
-	}*/
+		write(rst, chs, sizeof(chs));
+	}
 
 	return 0;
 }

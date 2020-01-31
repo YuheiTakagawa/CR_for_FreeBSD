@@ -72,9 +72,11 @@ void step_debug(int pid){
 	while(1){
 		print_regs(pid);
 		printf("stop: %d\n", WSTOPSIG(status));
-		sleep(1);
+	//	sleep(1);
 		ptrace_step(pid);
 		waitpro(pid, &status);
+		if(WSTOPSIG(status) == SIGBUS)
+			break;
 	}
 }
 
@@ -307,6 +309,7 @@ int injection_clear(struct parasite_ctl *ctl, struct orig *orig) {
 
 int parasite_drain_fds_seize(void *ctl, pid_t pid)
 {
+	/*
 	struct libsoccr_sk_data data = {};
 	struct libsoccr_sk *so;
 	int sock, fd;
@@ -370,6 +373,7 @@ int parasite_drain_fds_seize(void *ctl, pid_t pid)
 	compel_rpc_sync(PARASITE_CMD_DRAIN_FDS, ctl);
 	libsoccr_close(so);
 	libsoccr_resume(so);
+	*/
 
 	return 0;
 }
@@ -464,7 +468,7 @@ int injection(pid_t pid, int *option){
 	ctl->addr_args = ctl->local_map + parasite_sym__export_parasite_args;
 	parasite_init_daemon(ctl);
 
-	compel_cmds_run(ctl, tcp_established);
+//	compel_cmds_run(ctl, tcp_established);
 
 	/*
 	 * send PARASITE_CMD_FINI to Parasite Daemon,

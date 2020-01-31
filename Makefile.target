@@ -6,7 +6,9 @@ CFLAG += -D_WITH_DPRINTF
 
 SRC_DIR = ./src
 INCLUDE = -I ./include
+INCLUDE += -I ./include/asm
 INCLUDE += -I ./
+INCLUDE += -I ./images
 
 
 UNAME := ${shell uname}
@@ -25,6 +27,7 @@ CFLAG += -lpthread
 CFLAG += -D_BSD
 OBJ += compel/infect.a
 OBJ += soccr/libsoccr.a
+OBJ += images/built-in.o
 endif
 
 ifneq ($(UNAME), Linux)
@@ -35,12 +38,17 @@ endif
 
 
 OBJ += $(SRC_DIR)/files.o
-OBJ += $(SRC_DIR)/images/rpc.pb-c.o
-OBJ += $(SRC_DIR)/utils.o
+OBJ += $(SRC_DIR)/util.o
 OBJ += $(SRC_DIR)/log.o
 OBJ += $(SRC_DIR)/scm-code.o
 OBJ += $(SRC_DIR)/cr-errno.o
 OBJ += $(SRC_DIR)/cr-service.o
+OBJ += $(SRC_DIR)/bfd.o
+OBJ += $(SRC_DIR)/image.o
+OBJ += $(SRC_DIR)/image-desc.o
+OBJ += $(SRC_DIR)/protobuf.o
+OBJ += $(SRC_DIR)/protobuf-desc.o
+#OBJ += $(SRC_DIR)/proc_parse.o
 
 OBJ += $(SRC_DEP)/ptrace.o
 OBJ += $(SRC_DEP)/parasite_syscall.o
@@ -55,10 +63,14 @@ COBJ += $(SRC_DIR)/getall.o
 
 ROBJ += $(SRC_DIR)/setmem.o
 ROBJ += $(SRC_DIR)/breakpoint.o
+ROBJ += $(SRC_DIR)/restore-mem.o
 ROBJ += $(SRC_DIR)/restore.o
 
 %.o: %.c
 	$(Q) $(CC) $(INCLUDE) $(CFLAG) -c -o $@ $^
+
+images/built-in.o:
+	$(GNUMAKE) -e -C images built-in.o
 
 compel/infect.a:
 	$(GNUMAKE) -e -C compel

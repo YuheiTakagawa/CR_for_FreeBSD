@@ -7,6 +7,9 @@
 #include "files.h"
 #include "ptrace.h"
 #include "register.h"
+#include "image.h"
+#include "imgset.h"
+#include "images/core.pb-c.h"
 
 int check_rip_syscall(pid_t pid, unsigned long int rip){
 	
@@ -49,35 +52,45 @@ void print_regs(pid_t pid){
 	ptrace_get_regs(pid, &reg);
 	__print_regs(&reg);
 }
-int setregs(pid_t pid, pid_t filePid){
+#define CEREGS(ce, reg) ce->thread_info_gpregs->reg
+int setregs(pid_t pid, CoreEntry *ce){
 	struct reg reg;
-	struct linuxreg linuxreg;
+	struct linuxreg *linuxreg;
 	int fd;
+	unsigned long int fs_base;
+
 
 	memset(&reg, 0, sizeof(reg));
-	fd = open_file(filePid, "regs");
-	read(fd, &linuxreg, sizeof(linuxreg));
+	//linuxreg = (struct linuxreg *)malloc(sizeof(struct linuxreg));
+	linuxreg = (struct linuxreg *)&ce->thread_info->gpregs->r15;
+	printf("OAX: %lx excuted\n", linuxreg->rax);
+//	fd = open_file(93585, "regs");
+//	read(fd, linuxreg, sizeof(struct linuxreg));
 
 	ptrace_get_regs(pid, &reg);
+	printf("rax %lx\n", linuxreg->orig_rax);
 
-	reg.r_rax = linuxreg.orig_rax;
-	reg.r_rbx = linuxreg.rbx;
-	reg.r_rcx = linuxreg.rcx;
-	reg.r_rdx = linuxreg.rdx;
-	reg.r_rsi = linuxreg.rsi;
-	reg.r_rdi = linuxreg.rdi;
-	reg.r_rbp = linuxreg.rbp;
-	reg.r_rsp = linuxreg.rsp;
-	reg.r_rip = linuxreg.rip;
-	reg.r_rflags = linuxreg.eflags;
-	reg.r_r8 = linuxreg.r8;
-	reg.r_r9 = linuxreg.r9;
-	reg.r_r10 = linuxreg.r10;
-	reg.r_r11 = linuxreg.r11;
-	reg.r_r12 = linuxreg.r12;
-	reg.r_r13 = linuxreg.r13;
-	reg.r_r14 = linuxreg.r14;
-	reg.r_r15 = linuxreg.r15;
+	reg.r_rax = linuxreg->orig_rax;
+//	reg.r_rax = linuxreg->rax;
+//	reg.r_rax = 0xfffffffffffff000;
+	reg.r_rbx = linuxreg->rbx;
+	reg.r_rcx = linuxreg->rcx;
+	reg.r_rdx = linuxreg->rdx;
+	reg.r_rsi = linuxreg->rsi;
+	reg.r_rdi = linuxreg->rdi;
+	reg.r_rbp = linuxreg->rbp;
+	reg.r_rsp = linuxreg->rsp;
+	reg.r_rip = linuxreg->rip - 0x2;
+	reg.r_rflags = linuxreg->eflags;
+	reg.r_r8 = linuxreg->r8;
+	reg.r_r9 = linuxreg->r9;
+	reg.r_r10 = linuxreg->r10;
+	reg.r_r11 = linuxreg->r11;
+	reg.r_r12 = linuxreg->r12;
+	reg.r_r13 = linuxreg->r13;
+	reg.r_r14 = linuxreg->r14;
+	reg.r_r15 = linuxreg->r15;
+	fs_base = linuxreg->fs_base;
 
 /*      reg.r_cs = 0x43;
 	reg.r_ss = 0x3b;
@@ -86,12 +99,16 @@ int setregs(pid_t pid, pid_t filePid){
 	reg.r_fs = 0x0;
 	reg.r_gs = 0x0;
 */      
+	
+	printf("fs_base %lx\n", fs_base);
 	check_rip_syscall(pid, reg.r_rip);
+	ptrace_set_fsbase(pid, &fs_base);
 
 	if(ptrace_set_regs(pid, &reg) < 0){
 	perror("ptrace(PT_SETREGS, ...)");
 	exit(1);
 	}
+	
 	return 0;
 }
 

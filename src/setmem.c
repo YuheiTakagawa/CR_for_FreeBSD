@@ -39,11 +39,11 @@ int setmems(pid_t pid, pid_t filePid, struct remap_vm_struct *revm){
 int write_mem(int read_fd, int write_fd, long int offset){
         char buf[BUFSIZE];
         int rnum;
+	int cnt;
 
         lseek(write_fd, offset, SEEK_SET);
 
         while(1){
-
                 rnum = read(read_fd, buf, sizeof(buf));
                 if(rnum > 0){
                         write(write_fd, buf, rnum);
@@ -108,10 +108,11 @@ void remap_vm(pid_t pid, pid_t filePid, struct remap_vm_struct *revm, struct ori
 	printf("sig stopped: %d\n", WSTOPSIG(status));
 	struct vmds vmds;
 	struct remap_vm_old revm_old;
-	read_vmmap_list(filePid, revm);
+	//read_vmmap_list(filePid, revm);
 	show_vmmap(pid, &vmds);
-	revm_old.old_addr = vmds.saddr;
-	revm_old.old_size = vmds.ssize;
-	remap_mem(pid, revm, &revm_old, orig);
+	//revm_old.old_addr = vmds.saddr;
+	//revm_old.old_size = vmds.ssize;
+	//remap_mem(pid, revm, &revm_old, orig);
+	ptrace_cont(pid);
 }
 

@@ -12,7 +12,7 @@ int open_file(pid_t pid, char* flag){
 
 	if(!strcmp(flag, "mem")){
 	snprintf(filepath, sizeof(filepath), "/proc/%d/mem", pid);
-	return  open(filepath, O_WRONLY);
+	return  open(filepath, O_RDWR);
 	}
 	snprintf(filepath, sizeof(filepath), "/dump/%d_%s.img", pid, flag);
 	return open(filepath, O_RDONLY);

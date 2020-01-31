@@ -30,7 +30,7 @@ int listen_port(int port) {
 	size = sizeof(addr);
 	bind (sockpre, (struct sockaddr *) &addr, size);
 
-	if (listen(sockpre, 5) == -1){
+	if (listen(sockpre, 5) < 0){
 		perror("listen");
 		exit(1);
 	}
@@ -44,7 +44,7 @@ int main(void){
 	struct sockaddr_in addr, dst;
 	int dsize = 0;
 	char buf[256];
-	char chs[] = "Welcome 000\n";
+	char chs[] = "HELLO 00000\n";
 	char *queue;
 	char srcip[20], dstip[20];
 	int srcpt, dstpt;
@@ -55,7 +55,10 @@ int main(void){
 	sockpre = listen_port(9090);
 
 	socklen = sizeof(struct sockaddr_in);
+	printf("waiting...\n");
 	sock = accept(sockpre, (struct sockaddr *)&dst, &socklen);
+	if (sock < 0)
+		perror("accept");
 	/*
 	sock = socket(AF_INET, SOCK_STREAM, 0);
 	dst.sin_family = AF_INET;
@@ -75,13 +78,13 @@ int main(void){
 	write(sock, chs, sizeof(chs));
 
 	for(int i = 0; i < 100; i++){
-		//read(sock, chs, sizeof(chs));
-		//printf("rsds %s\n", chs);
+		read(sock, chs, sizeof(chs));
+		printf("rsds %s\n", chs);
 		snprintf(chs, sizeof(chs), "wel %03d\n", i);
 		write(sock, chs, sizeof(chs));
 		if(i == 43) {
 			setipfw(IPFWADD, srcip, dstip);
-			//break;
+			break;
 		}
 		usleep(100000);
 		memset(chs, 0, sizeof(chs));

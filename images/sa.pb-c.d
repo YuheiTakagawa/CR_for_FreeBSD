@@ -1,12 +1,12 @@
-images/sa.pb-c.d images/sa.pb-c.o: images/sa.pb-c.c images/sa.pb-c.h \
+sa.pb-c.d sa.pb-c.o: sa.pb-c.c sa.pb-c.h \
  /usr/local/include/protobuf-c/protobuf-c.h /usr/include/assert.h \
  /usr/include/sys/cdefs.h /usr/include/limits.h /usr/include/sys/limits.h \
  /usr/include/machine/_limits.h /usr/include/x86/_limits.h \
  /usr/include/sys/syslimits.h \
- /usr/local/lib/gcc6/gcc/x86_64-portbld-freebsd11.1/6.4.0/include/stddef.h \
+ /usr/local/lib/gcc8/gcc/x86_64-portbld-freebsd13.0/8.3.0/include/stddef.h \
  /usr/include/sys/_types.h /usr/include/machine/_types.h \
  /usr/include/x86/_types.h \
- /usr/local/lib/gcc6/gcc/x86_64-portbld-freebsd11.1/6.4.0/include/stdint.h \
+ /usr/local/lib/gcc8/gcc/x86_64-portbld-freebsd13.0/8.3.0/include/stdint.h \
  /usr/include/stdint.h /usr/include/machine/_stdint.h \
- /usr/include/x86/_stdint.h /usr/include/sys/_stdint.h images/opts.pb-c.h \
- images/google/protobuf/descriptor.pb-c.h
+ /usr/include/x86/_stdint.h /usr/include/sys/_stdint.h opts.pb-c.h \
+ google/protobuf/descriptor.pb-c.h

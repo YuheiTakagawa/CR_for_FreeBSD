@@ -34,6 +34,10 @@ struct libsoccr_sk_data {
 	uint32_t	snd_scale;
 };
 
+#define SOCCR_FLAGS_WINDOW 0x1
+
+#define SOCCR_MEM_EXCL 0x1
+
 void setipfw(int, char*, char*);
 struct libsoccr_sk *libsoccr_pause(int fd);
 void libsoccr_resume(struct libsoccr_sk *sk);

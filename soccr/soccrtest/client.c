@@ -9,20 +9,22 @@
 #include <arpa/inet.h>
 
 int main (void){
-	printf("AF_INET %d\n", AF_INET);
+	printf("AF_INET %d\n", PF_INET);
 	int sockfd;
 	struct sockaddr_in addr;
 	char buf[] = "HELLO WORLD\n";
 	char tmp[9];
 	int count = 0;
 	srand(time(NULL));
-        sockfd	= socket(AF_INET, SOCK_STREAM, 0);
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = inet_addr("192.168.11.30");
+        sockfd = socket(PF_INET, SOCK_STREAM, 0);
+	addr.sin_family = PF_INET;
+	addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 	addr.sin_port = htons(9090);
 
-	if(connect(sockfd, (struct sockaddr *) &addr, sizeof(addr)) < 0)
+	if(connect(sockfd, (struct sockaddr *) &addr, sizeof(addr)) < 0){
 		perror("connect");
+		return -1;
+	}
 
 
 	if(write(sockfd, buf, sizeof(buf)) < 0)

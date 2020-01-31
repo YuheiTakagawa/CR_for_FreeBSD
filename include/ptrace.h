@@ -30,6 +30,7 @@ extern int ptrace_swap_area(pid_t pid, void *dst, void *src, long bytes);
 extern int ptrace_step(pid_t pid);
 extern int ptrace_get_fsbase(pid_t pid, unsigned long *fs_base);
 extern int ptrace_get_gsbase(pid_t pid, unsigned long *gs_base);
+extern int ptrace_set_fsbase(pid_t pid, unsigned long *fs_base);
 
 extern void waitpro(pid_t pid, int*);
 

@@ -70,7 +70,6 @@ static int parasite_trap(pid_t pid, struct reg *regs, struct orig *orig){
 	ret = 0;
 err:
 	restore_orig(pid, orig);
-	//ret = -1;
 	return ret;
 
 }
@@ -123,9 +122,14 @@ void compel_syscall(pid_t pid, struct orig *orig, int nr, long *ret,
 	reg.r_r8  = arg5;
 	reg.r_r9  = arg6;
 
+	if (reg.r_rip == 0x0){
+		orig->reg.r_rip = 0x444230;
+		reg.r_rip = 0x444230;
+	}
+//	printf("injection:%d  %d(0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx) = ",
+//			pid, nr, arg1, arg2, arg3, arg4, arg5, arg6);
 	compel_execute_syscall(pid, orig, &reg);
 	*ret = get_user_reg(reg, r_rax);
-	printf("return: %lx\n", *ret);
 }
 
 void *remote_mmap(pid_t pid, struct orig *orig, void *addr, size_t length, int prot, int flags, int fd, off_t offset){
@@ -147,16 +151,15 @@ void restore_setregs(pid_t pid, struct reg orig){
 	struct reg reg;
 	
 	ptrace_get_regs(pid, &reg);
-	printf("return value(rax) : %lx\n", reg.r_rax);
+//	printf("0x%lx\n", reg.r_rax);
 		
 	ptrace_set_regs(pid, &orig);
-	printf("restore_registers\n");
 }
 
 void restore_memory(pid_t pid, struct orig *orig){
 	ptrace_write_i(pid, orig->reg.r_rip, orig->text);
 	if(orig->addr != 0x0)
-	ptrace_write_d(pid, (unsigned long int)orig->addr, orig->data);
+		ptrace_write_d(pid, (unsigned long int)orig->addr, orig->data);
 }
 
 void restore_orig(pid_t pid, struct orig *orig){
