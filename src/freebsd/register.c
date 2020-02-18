@@ -80,7 +80,7 @@ int setregs(pid_t pid, CoreEntry *ce){
 	reg.r_rdi = linuxreg->rdi;
 	reg.r_rbp = linuxreg->rbp;
 	reg.r_rsp = linuxreg->rsp;
-	reg.r_rip = linuxreg->rip - 0x2;
+	reg.r_rip = linuxreg->rip-0x2;
 	reg.r_rflags = linuxreg->eflags;
 	reg.r_r8 = linuxreg->r8;
 	reg.r_r9 = linuxreg->r9;

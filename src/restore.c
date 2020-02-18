@@ -564,13 +564,15 @@ int restore_process(struct restore_info *ri, int child) {
 	struct cr_img *img;
 	InventoryEntry *he;
 	CoreEntry *ce;
+	int ret2;
 
 	struct linuxreg *linuxreg;
 
-
-	insert_breakpoint(pid, rpath);
-	waitpro(pid, &status);
-	printf("stop: %d\n", WIFSTOPPED(status));
+	if(!child){
+		insert_breakpoint(pid, rpath);
+		waitpro(pid, &status);
+		printf("stop: %d\n", WIFSTOPPED(status));
+	}
 	struct vmds vmds;
 	//remap_vm(pid, rpid, revm, &orig);
 	
@@ -583,12 +585,16 @@ int restore_process(struct restore_info *ri, int child) {
 
 	close_image(img);
 
-
+	if(!child){
+	compel_syscall(pid, &orig,
+			11, &ret2, 0x800949000, 0x801e03000- 0x800949000, 0x0,0x0,0x0,0x0);
+	}
 	if (prepare_mm_pid(dfd, rpid, pid) < 0)
 		return -1;
 
 	prepare_mappings(dfd, rpid, pid);
 
+	printf("call\n");
 	call_mremap(pid);
 
 	int write_fd = open_file(pid, "mem");
@@ -612,7 +618,7 @@ int restore_process(struct restore_info *ri, int child) {
 
 	free_restorer_mem(ri);
 
-//	if (!child)
+	if (!child)
 		ce->thread_info->gpregs->ip += 0x2;
 	printf("ip: %llx\n", ce->thread_info->gpregs->ip);
 
@@ -656,7 +662,7 @@ int restore(struct restore_info* ri) {
 	printf("PPID: %d\n", getpid());
 	printf("Restore file: %d\n", rpid); 
 	
-	restore_socket(ri, rpid + 1, dfd); 
+	restore_socket(ri, rpid, dfd); 
 	int fd = listen_port(80);
 	dup2(fd, 6);
 	ri->tpid = restore_fork(rpid, rpath);

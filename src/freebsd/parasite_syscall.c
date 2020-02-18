@@ -123,8 +123,8 @@ void compel_syscall(pid_t pid, struct orig *orig, int nr, long *ret,
 	reg.r_r9  = arg6;
 
 	if (reg.r_rip == 0x0){
-		orig->reg.r_rip = 0x444230;
-		reg.r_rip = 0x444230;
+		orig->reg.r_rip = 0x445557;
+		reg.r_rip = 0x445557;
 	}
 //	printf("injection:%d  %d(0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx) = ",
 //			pid, nr, arg1, arg2, arg3, arg4, arg5, arg6);

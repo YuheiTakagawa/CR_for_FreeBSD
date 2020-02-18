@@ -321,8 +321,6 @@ int prepare_mm_pid(int dfd, pid_t rpid, pid_t pid){
 
 	img = NULL;
 
-	compel_syscall(pid, &orig,
-			11, &ret2, 0x800949000, 0x801e03000- 0x800949000, 0x0,0x0,0x0,0x0);
 	while (vn < ri->mm->n_vmas || img != NULL) {
 		struct vma_area *vma;
 
