@@ -1,0 +1,8 @@
+#!/bin/sh
+
+/root/CR_for_FreeBSD/crtools restore -e /root/nginx -d/root/snapshot-nginx -p $1
+
+ifconfig igb0 192.168.11.2
+ifconfig igb0 192.168.11.2
+
+gdate "+%s%N"
